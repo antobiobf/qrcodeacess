@@ -1,0 +1,949 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gerador de QR Codes - Controle de Acesso</title>
+
+  <!--
+    SQL PARA CRIAR A TABELA NO SUPABASE
+
+    create table if not exists public.access_codes (
+      id uuid primary key default gen_random_uuid(),
+      event_name text not null,
+      event_date text,
+      event_time text,
+      accessed boolean default false,
+      table_number integer not null,
+      seat_number integer not null,
+      qr_code text not null unique,
+      status text not null default 'pending',
+      used_at timestamptz null,
+      created_at timestamptz not null default now()
+    );
+
+    alter table public.access_codes enable row level security;
+
+    -- Para teste rápido usando a anon key no frontend:
+    create policy "Permitir leitura anonima"
+    on public.access_codes
+    for select
+    to anon
+    using (true);
+
+    create policy "Permitir insercao anonima"
+    on public.access_codes
+    for insert
+    to anon
+    with check (true);
+
+    ATENÇÃO:
+    Para produção, o ideal é proteger essa tela com login e trocar as policies para authenticated.
+  -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode/1.5.1/qrcode.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+    }
+
+    body {
+      background: #f3f4f6;
+      color: #111827;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .header {
+      background: #111827;
+      color: #ffffff;
+      padding: 24px;
+      border-radius: 16px;
+      margin-bottom: 24px;
+    }
+
+    .header h1 {
+      font-size: 28px;
+      margin-bottom: 8px;
+    }
+
+    .header p {
+      color: #d1d5db;
+      font-size: 15px;
+    }
+
+    .card {
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+      margin-bottom: 24px;
+    }
+
+    .config-box {
+      border: 1px solid #e5e7eb;
+      background: #f9fafb;
+      margin-bottom: 24px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .config-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    label {
+      font-weight: bold;
+      font-size: 14px;
+    }
+
+    input {
+      padding: 13px 14px;
+      border: 1px solid #d1d5db;
+      border-radius: 10px;
+      font-size: 15px;
+      outline: none;
+    }
+
+    input:focus {
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    button {
+      border: none;
+      border-radius: 10px;
+      padding: 13px 18px;
+      font-size: 15px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .btn-primary {
+      background: #2563eb;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #1d4ed8;
+    }
+
+    .btn-secondary {
+      background: #e5e7eb;
+      color: #111827;
+    }
+
+    .btn-secondary:hover {
+      background: #d1d5db;
+    }
+
+    .btn-danger {
+      background: #dc2626;
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background: #b91c1c;
+    }
+
+    .message {
+      margin-top: 16px;
+      padding: 12px;
+      border-radius: 10px;
+      display: none;
+      font-size: 14px;
+    }
+
+    .message.success {
+      display: block;
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .message.error {
+      display: block;
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .message.info {
+      display: block;
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .summary-box {
+      background: #ffffff;
+      border-radius: 14px;
+      padding: 18px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+    }
+
+    .summary-box span {
+      display: block;
+      color: #6b7280;
+      font-size: 14px;
+      margin-bottom: 6px;
+    }
+
+    .summary-box strong {
+      font-size: 26px;
+    }
+
+    .table-section {
+      margin-bottom: 28px;
+    }
+
+    .table-title {
+      font-size: 20px;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .qr-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+      gap: 18px;
+    }
+
+    .qr-card {
+      position: relative;
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 18px;
+      text-align: center;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+      border: 1px solid #e5e7eb;
+    }
+
+    .qr-card canvas {
+      width: 150px !important;
+      height: 150px !important;
+      margin-bottom: 12px;
+    }
+
+    .qr-code-text {
+      font-weight: bold;
+      font-size: 14px;
+      word-break: break-all;
+      background: #f3f4f6;
+      padding: 8px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+    }
+
+    .qr-info {
+      font-size: 13px;
+      color: #6b7280;
+      margin-bottom: 12px;
+    }
+
+    .qr-card.used {
+      border: 2px solid #dc2626;
+      background: #fef2f2;
+    }
+
+    .used-badge {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: #dc2626;
+      color: white;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: bold;
+    }
+
+    .qr-card.used .qr-code-text {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .qr-card button {
+      width: 100%;
+      padding: 10px;
+      font-size: 13px;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: #6b7280;
+      background: #ffffff;
+      border-radius: 16px;
+      border: 1px dashed #d1d5db;
+    }
+
+    .small-text {
+      color: #6b7280;
+      font-size: 13px;
+      line-height: 1.4;
+      margin-top: 8px;
+    }
+
+    @media (max-width: 768px) {
+      body {
+        padding: 12px;
+      }
+
+      .form-grid,
+      .config-grid,
+      .summary {
+        grid-template-columns: 1fr;
+      }
+
+      .header h1 {
+        font-size: 23px;
+      }
+
+      .card {
+        padding: 18px;
+      }
+
+      .actions button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Gerador de QR Codes</h1>
+      <p>Crie QR Codes únicos por mesa e salve tudo no Supabase.</p>
+    </div>
+
+    <div class="card config-box">
+      <div class="config-grid">
+        <div class="form-group">
+          <label for="supabaseUrl">Supabase URL</label>
+          <input type="text" id="supabaseUrl" placeholder="https://xxxx.supabase.co" />
+        </div>
+
+        <div class="form-group">
+          <label for="supabaseKey">Supabase Anon Key</label>
+          <input type="password" id="supabaseKey" placeholder="Cole sua anon public key" />
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn-primary" onclick="saveSupabaseConfig()">Conectar Supabase</button>
+        <button class="btn-secondary" onclick="loadCodesFromSupabase()">Atualizar lista</button>
+      </div>
+
+      <p class="small-text">
+        Use a URL do projeto e a chave anon/public do Supabase. A tabela precisa se chamar <strong>access_codes</strong>.
+      </p>
+    </div>
+
+    <div class="card">
+      <div class="form-grid">
+        <div class="form-group">
+          <label for="eventDate">Data do evento</label>
+          <input type="date" id="eventDate" />
+        </div>
+
+        <div class="form-group">
+          <label for="eventTime">Hora do evento</label>
+          <input type="time" id="eventTime" />
+        </div>
+        <div class="form-group">
+          <label for="eventName">Nome do evento</label>
+          <input type="text" id="eventName" placeholder="Ex: Jantar VIP" />
+        </div>
+
+        <div class="form-group">
+          <label for="tableNumber">Número da mesa</label>
+          <input type="number" id="tableNumber" placeholder="Ex: 1" min="1" />
+        </div>
+
+        <div class="form-group">
+          <label for="guestQuantity">Quantidade de lugares</label>
+          <input type="number" id="guestQuantity" placeholder="Ex: 4" min="1" max="50" />
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn-primary" id="generateButton" onclick="generateQRCodes()">Gerar QR Codes</button>
+        <button class="btn-secondary" onclick="downloadAllQRCodes()">Baixar todos</button>
+      </div>
+
+      <div id="message" class="message"></div>
+    </div>
+
+    <div class="summary">
+      <div class="summary-box">
+        <span>Mesas criadas</span>
+        <strong id="totalTables">0</strong>
+      </div>
+      <div class="summary-box">
+        <span>QR Codes gerados</span>
+        <strong id="totalCodes">0</strong>
+      </div>
+      <div class="summary-box">
+        <span>Última mesa</span>
+        <strong id="lastTable">-</strong>
+      </div>
+    </div>
+
+    <div id="qrContainer"></div>
+  </div>
+
+  <script>
+    let supabaseClient = null;
+    let allCodes = [];
+
+    const savedUrl = localStorage.getItem('supabase_url') || 'https://pfyctxoikdrephjogdtm.supabase.co';
+    const savedKey = localStorage.getItem('supabase_key') || 'sb_publishable_h_5hK_HTT-XJ4WUoOGzkGg_tqkBDLjv';
+
+    document.getElementById('supabaseUrl').value = savedUrl;
+    document.getElementById('supabaseKey').value = savedKey;
+
+    if (savedUrl && savedKey) {
+      connectSupabase(savedUrl, savedKey);
+      loadCodesFromSupabase();
+    } else {
+      renderQRCodes();
+      updateSummary();
+      showMessage('Informe os dados do Supabase para carregar os QR Codes.', 'info');
+    }
+
+    function connectSupabase(url, key) {
+      const { createClient } = supabase;
+      supabaseClient = createClient(url, key);
+    }
+
+    async function saveSupabaseConfig() {
+      const url = document.getElementById('supabaseUrl').value.trim();
+      const key = document.getElementById('supabaseKey').value.trim();
+
+      if (!url || !key) {
+        showMessage('Informe a URL e a Anon Key do Supabase.', 'error');
+        return;
+      }
+
+      localStorage.setItem('supabase_url', url);
+      localStorage.setItem('supabase_key', key);
+
+      connectSupabase(url, key);
+      showMessage('Supabase conectado. Carregando dados...', 'success');
+      await loadCodesFromSupabase();
+    }
+
+    async function loadCodesFromSupabase() {
+      if (!supabaseClient) {
+        showMessage('Conecte o Supabase primeiro.', 'error');
+        return;
+      }
+
+      const { data, error } = await supabaseClient
+        .from('access_codes')
+        .select('*')
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        showMessage('Erro ao buscar dados no Supabase: ' + error.message, 'error');
+        return;
+      }
+
+      allCodes = data || [];
+      renderQRCodes();
+      updateSummary();
+      showMessage('Lista atualizada com dados do Supabase.', 'success');
+    }
+
+    function generateUniqueCode(eventName, tableNumber, seatNumber) {
+      const cleanEvent = eventName
+        .normalize('NFD')
+        .replace(/[̀-ͯ]/g, '')
+        .replace(/[^a-zA-Z0-9]/g, '')
+        .toUpperCase()
+        .substring(0, 8);
+
+      const randomPart = Math.random().toString(36).substring(2, 8).toUpperCase();
+      const timestamp = Date.now().toString().slice(-6);
+
+      return `${cleanEvent}-M${String(tableNumber).padStart(2, '0')}-L${String(seatNumber).padStart(2, '0')}-${randomPart}${timestamp}`;
+    }
+
+    async function generateQRCodes() {
+      if (!supabaseClient) {
+        showMessage('Conecte o Supabase antes de gerar os QR Codes.', 'error');
+        return;
+      }
+
+      const eventName = document.getElementById('eventName').value.trim();
+      const tableNumber = Number(document.getElementById('tableNumber').value);
+      const guestQuantity = Number(document.getElementById('guestQuantity').value);
+      const eventDate = document.getElementById('eventDate').value;
+      const eventTime = document.getElementById('eventTime').value;
+      const generateButton = document.getElementById('generateButton');
+
+      if (!eventName) {
+        showMessage('Informe o nome do evento.', 'error');
+        return;
+      }
+
+      if (!tableNumber || tableNumber < 1) {
+        showMessage('Informe um número de mesa válido.', 'error');
+        return;
+      }
+
+      if (!guestQuantity || guestQuantity < 1) {
+        showMessage('Informe a quantidade de lugares.', 'error');
+        return;
+      }
+
+      generateButton.disabled = true;
+      generateButton.textContent = 'Gerando...';
+
+      const { data: existingTable, error: checkError } = await supabaseClient
+        .from('access_codes')
+        .select('id')
+        .eq('event_name', eventName)
+        .eq('table_number', tableNumber)
+        .limit(1);
+
+      if (checkError) {
+        generateButton.disabled = false;
+        generateButton.textContent = 'Gerar QR Codes';
+        showMessage('Erro ao verificar a mesa: ' + checkError.message, 'error');
+        return;
+      }
+
+      if (existingTable && existingTable.length > 0) {
+        generateButton.disabled = false;
+        generateButton.textContent = 'Gerar QR Codes';
+        showMessage(`A mesa ${tableNumber} deste evento já existe no Supabase.`, 'error');
+        return;
+      }
+
+      const newCodes = [];
+
+      for (let seat = 1; seat <= guestQuantity; seat++) {
+        let code;
+
+        do {
+          code = generateUniqueCode(eventName, tableNumber, seat);
+        } while (allCodes.some(item => item.qr_code === code) || newCodes.some(item => item.qr_code === code));
+
+        newCodes.push({
+          event_name: eventName,
+          event_date: eventDate,
+          event_time: eventTime,
+          table_number: tableNumber,
+          seat_number: seat,
+          qr_code: code,
+          status: 'pending',
+          accessed: false
+        });
+      }
+
+      const { error: insertError } = await supabaseClient
+        .from('access_codes')
+        .insert(newCodes);
+
+      generateButton.disabled = false;
+      generateButton.textContent = 'Gerar QR Codes';
+
+      if (insertError) {
+        showMessage('Erro ao salvar no Supabase: ' + insertError.message, 'error');
+        return;
+      }
+
+      await loadCodesFromSupabase();
+      clearForm(false);
+      showMessage(`${guestQuantity} QR Codes salvos no Supabase para a mesa ${tableNumber}.`, 'success');
+    }
+
+    function renderQRCodes() {
+      const container = document.getElementById('qrContainer');
+      container.innerHTML = '';
+
+      if (allCodes.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state">
+            Nenhum QR Code encontrado no Supabase.
+          </div>
+        `;
+        return;
+      }
+
+      const groupedByTable = {};
+
+      allCodes.forEach(item => {
+        const key = `${item.event_name} - Mesa ${item.table_number}`;
+
+        if (!groupedByTable[key]) {
+          groupedByTable[key] = [];
+        }
+
+        groupedByTable[key].push(item);
+      });
+
+      Object.keys(groupedByTable).forEach(groupKey => {
+        const section = document.createElement('div');
+        section.className = 'table-section';
+
+        const title = document.createElement('div');
+        title.className = 'table-title';
+        title.innerHTML = `
+          <h2>${groupKey}</h2>
+          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <span>${groupedByTable[groupKey].length} QR Codes</span>
+            <button class="btn-primary" style="padding:10px 12px; font-size:13px;" onclick="sendTableQRCodes('${groupKey.replace(/'/g, "\'")}')">
+              Baixar PDF da mesa
+            </button>
+          </div>
+        `;
+
+        const grid = document.createElement('div');
+        grid.className = 'qr-grid';
+
+        groupedByTable[groupKey].forEach(item => {
+          const card = document.createElement('div');
+          card.className = item.accessed ? 'qr-card used' : 'qr-card';
+
+          if (item.accessed) {
+            const usedBadge = document.createElement('div');
+            usedBadge.className = 'used-badge';
+            usedBadge.textContent = 'JÁ ENTROU';
+            card.appendChild(usedBadge);
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.id = `canvas-${item.id}`;
+
+          const codeText = document.createElement('div');
+          codeText.className = 'qr-code-text';
+          codeText.textContent = item.qr_code;
+
+          const info = document.createElement('div');
+          info.className = 'qr-info';
+          info.innerHTML = item.accessed
+            ? `Mesa ${item.table_number} • Lugar ${item.seat_number} • ACESSO UTILIZADO`
+            : `Mesa ${item.table_number} • Lugar ${item.seat_number}`;
+
+          const downloadButton = document.createElement('button');
+          downloadButton.className = 'btn-secondary';
+          downloadButton.textContent = 'Baixar PDF';
+          downloadButton.onclick = () => downloadQRCodePDFAndWhatsApp(item);
+
+          card.appendChild(canvas);
+          card.appendChild(codeText);
+          card.appendChild(info);
+          card.appendChild(downloadButton);
+          grid.appendChild(card);
+
+          QRCode.toCanvas(canvas, item.qr_code, {
+            width: 180,
+            margin: 2,
+            errorCorrectionLevel: 'H'
+          });
+        });
+
+        section.appendChild(title);
+        section.appendChild(grid);
+        container.appendChild(section);
+      });
+    }
+
+    async function sendTableQRCodes(groupKey) {
+      const tableCodes = allCodes.filter(item => `${item.event_name} - Mesa ${item.table_number}` === groupKey);
+
+      if (tableCodes.length === 0) {
+        showMessage('Nenhum QR Code encontrado para esta mesa.', 'error');
+        return;
+      }
+
+      const firstItem = tableCodes[0];
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: [80, 120]
+      });
+
+      for (let index = 0; index < tableCodes.length; index++) {
+        const item = tableCodes[index];
+        const canvas = document.getElementById(`canvas-${item.id}`);
+
+        if (!canvas) continue;
+
+        if (index > 0) {
+          pdf.addPage([80, 120], 'portrait');
+        }
+
+        const image = canvas.toDataURL('image/png');
+
+        pdf.setFillColor(item.accessed ? 254 : 255, item.accessed ? 242 : 255, item.accessed ? 242 : 255);
+        pdf.rect(0, 0, 80, 120, 'F');
+
+        if (item.accessed) {
+          pdf.setFillColor(220, 38, 38);
+          pdf.roundedRect(17, 4, 46, 8, 2, 2, 'F');
+          pdf.setTextColor(255, 255, 255);
+          pdf.setFont('helvetica', 'bold');
+          pdf.setFontSize(8);
+          pdf.text('JÁ ACESSADO', 40, 9.5, { align: 'center' });
+        }
+
+        pdf.setTextColor(17, 24, 39);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(13);
+        pdf.text(item.event_name || 'Evento', 40, item.accessed ? 18 : 10, { align: 'center' });
+
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(9);
+
+        if (item.event_date) {
+          pdf.text(`Data: ${formatDateBR(item.event_date)}`, 40, item.accessed ? 24 : 16, { align: 'center' });
+        }
+
+        if (item.event_time) {
+          pdf.text(`Hora: ${item.event_time}`, 40, item.accessed ? 29 : 21, { align: 'center' });
+        }
+
+        pdf.addImage(image, 'PNG', 17, item.accessed ? 34 : 26, 46, 46);
+
+        pdf.setFillColor(243, 244, 246);
+        pdf.roundedRect(8, item.accessed ? 86 : 80, 64, 16, 3, 3, 'F');
+
+        pdf.setTextColor(17, 24, 39);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(10);
+
+        const codeLines = pdf.splitTextToSize(item.qr_code, 58);
+        pdf.text(codeLines, 40, item.accessed ? 92 : 86, { align: 'center' });
+
+        pdf.setTextColor(107, 114, 128);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setFontSize(10);
+        pdf.text(
+        item.accessed
+          ? `Mesa ${item.table_number} • Lugar ${item.seat_number} • JÁ ENTROU`
+          : `Mesa ${item.table_number} • Lugar ${item.seat_number}`,
+        40,
+        item.accessed ? 109 : 104,
+        { align: 'center' }
+      );
+      }
+
+      const fileName = `${firstItem.event_name}-mesa-${firstItem.table_number}-qrcodes.pdf`.replace(/[^a-zA-Z0-9.-]/g, '-');
+      await baixarPDFNoCelular(pdf, fileName);
+    }
+
+    async function downloadQRCodePDFAndWhatsApp(item) {
+      const canvas = document.getElementById(`canvas-${item.id}`);
+
+      if (!canvas) return;
+
+      const image = canvas.toDataURL('image/png');
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: [80, 120]
+      });
+
+      pdf.setFillColor(255, 255, 255);
+      pdf.rect(0, 0, 80, 120, 'F');
+
+      pdf.setTextColor(17, 24, 39);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(13);
+      pdf.text(item.event_name || 'Evento', 40, item.accessed ? 18 : 10, { align: 'center' });
+
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(9);
+
+      if (item.event_date) {
+        pdf.text(`Data: ${formatDateBR(item.event_date)}`, 40, item.accessed ? 24 : 16, { align: 'center' });
+      }
+
+      if (item.event_time) {
+        pdf.text(`Hora: ${item.event_time}`, 40, item.accessed ? 29 : 21, { align: 'center' });
+      }
+
+      pdf.addImage(image, 'PNG', 17, item.accessed ? 34 : 26, 46, 46);
+
+      pdf.setFillColor(243, 244, 246);
+      pdf.roundedRect(8, item.accessed ? 86 : 80, 64, 16, 3, 3, 'F');
+
+      pdf.setTextColor(17, 24, 39);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(10);
+
+      const codeLines = pdf.splitTextToSize(item.qr_code, 58);
+      pdf.text(codeLines, 40, item.accessed ? 92 : 86, { align: 'center' });
+
+      pdf.setTextColor(107, 114, 128);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(10);
+      pdf.text(
+        item.accessed
+          ? `Mesa ${item.table_number} • Lugar ${item.seat_number} • JÁ ENTROU`
+          : `Mesa ${item.table_number} • Lugar ${item.seat_number}`,
+        40,
+        item.accessed ? 109 : 104,
+        { align: 'center' }
+      );
+
+      const fileName = `${item.event_name}-mesa-${item.table_number}-lugar-${item.seat_number}.pdf`.replace(/[^a-zA-Z0-9.-]/g, '-');
+      await baixarPDFNoCelular(pdf, fileName);
+    }
+
+    async function baixarPDFNoCelular(pdf, fileName) {
+      const pdfBlob = pdf.output('blob');
+      const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
+
+      if (navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
+        try {
+          await navigator.share({
+            files: [pdfFile],
+            title: fileName,
+            text: ''
+          });
+          showMessage('PDF pronto para compartilhar.', 'success');
+          return;
+        } catch (error) {
+          if (error.name === 'AbortError') return;
+        }
+      }
+
+      const pdfUrl = URL.createObjectURL(pdfBlob);
+      const link = document.createElement('a');
+      link.href = pdfUrl;
+      link.download = fileName;
+      link.style.display = 'none';
+      link.rel = 'noopener';
+
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      setTimeout(() => {
+        URL.revokeObjectURL(pdfUrl);
+      }, 3000);
+
+      showMessage('PDF baixado. Agora compartilhe o arquivo pela galeria/arquivos do celular.', 'success');
+    }
+
+    function downloadQRCode(id, code) {
+      const canvas = document.getElementById(`canvas-${id}`);
+
+      if (!canvas) return;
+
+      const image = canvas.toDataURL('image/png');
+      const link = document.createElement('a');
+      link.href = image;
+      link.download = `${code}.png`;
+      link.click();
+    }
+
+    function downloadAllQRCodes() {
+      if (allCodes.length === 0) {
+        showMessage('Nenhum QR Code para baixar.', 'error');
+        return;
+      }
+
+      allCodes.forEach((item, index) => {
+        setTimeout(() => {
+          downloadQRCode(item.id, item.qr_code);
+        }, index * 300);
+      });
+
+      showMessage('Download dos QR Codes iniciado.', 'success');
+    }
+
+    function clearForm(clearEvent = true) {
+      if (clearEvent) {
+        document.getElementById('eventName').value = '';
+      }
+
+      document.getElementById('tableNumber').value = '';
+      document.getElementById('guestQuantity').value = '';
+    }
+
+    function updateSummary() {
+      const uniqueTables = new Set(allCodes.map(item => `${item.event_name}-${item.table_number}`));
+      const last = allCodes.length > 0 ? allCodes[allCodes.length - 1].table_number : '-';
+
+      document.getElementById('totalTables').textContent = uniqueTables.size;
+      document.getElementById('totalCodes').textContent = allCodes.length;
+      document.getElementById('lastTable').textContent = last;
+    }
+
+    function formatDateBR(dateString) {
+      if (!dateString) return '';
+
+      const parts = dateString.split('-');
+
+      if (parts.length !== 3) {
+        return dateString;
+      }
+
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+
+    function showMessage(text, type) {
+      const message = document.getElementById('message');
+      message.textContent = text;
+      message.className = `message ${type}`;
+
+      setTimeout(() => {
+        message.className = 'message';
+        message.textContent = '';
+      }, 5000);
+    }
+  </script>
+</body>
+</html>
