@@ -13,6 +13,9 @@
 
     alter table public.access_codes
     add column if not exists accessed boolean default false;
+
+    alter table public.access_codes
+    add column if not exists event_id uuid references public.events(id);
   -->
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -95,6 +98,28 @@
       padding: 22px;
       box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
       margin-bottom: 18px;
+    }
+
+    .event-box {
+      display: none;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      color: #1e3a8a;
+    }
+
+    .event-box.active {
+      display: block;
+    }
+
+    .event-box h2 {
+      font-size: 18px;
+      margin-bottom: 10px;
+    }
+
+    .event-box p {
+      font-size: 14px;
+      line-height: 1.45;
+      margin-bottom: 4px;
     }
 
     .config-grid {
@@ -354,6 +379,11 @@
       <p>Leia o QR Code pela câmera ou digite o código do ingresso.</p>
     </div>
 
+    <div class="card event-box" id="eventBox">
+      <h2 id="eventTitle">Evento não carregado</h2>
+      <p id="eventDetails"></p>
+    </div>
+
     <div class="card" id="configContainer" style="display:none;">
       <div class="config-grid">
         <div class="form-group">
@@ -408,6 +438,11 @@
     let lastScanTime = 0;
     let processingScan = false;
     let confirmationOpen = false;
+    let currentEventId = null;
+    let currentEventData = null;
+
+    const params = new URLSearchParams(window.location.search);
+    currentEventId = params.get('event_id');
 
     const savedUrl = localStorage.getItem('supabase_url') || 'https://pfyctxoikdrephjogdtm.supabase.co';
     const savedKey = localStorage.getItem('supabase_key') || 'sb_publishable_h_5hK_HTT-XJ4WUoOGzkGg_tqkBDLjv';
@@ -415,12 +450,7 @@
     document.getElementById('supabaseUrl').value = savedUrl;
     document.getElementById('supabaseKey').value = savedKey;
 
-    if (savedUrl && savedKey) {
-      connectSupabase(savedUrl, savedKey);
-      showMessage('Supabase conectado. Pronto para bipar.', 'success');
-    } else {
-      showMessage('Informe os dados do Supabase para começar.', 'info');
-    }
+    initializePage();
 
     document.getElementById('codeInput').addEventListener('keydown', function(event) {
       if (event.key === 'Enter') {
@@ -428,8 +458,27 @@
       }
     });
 
+    async function initializePage() {
+      if (savedUrl && savedKey) {
+        connectSupabase(savedUrl, savedKey);
+
+        if (!currentEventId) {
+          showMessage('Supabase conectado, mas nenhum event_id foi informado na URL.', 'error');
+          return;
+        }
+
+        const eventLoaded = await loadEventFromURL();
+
+        if (eventLoaded) {
+          showMessage('Supabase conectado. Pronto para bipar este evento.', 'success');
+        }
+      } else {
+        showMessage('Informe os dados do Supabase para começar.', 'info');
+      }
+    }
+
     function goHome() {
-      window.location.href = '/index.html' + window.location.search;
+      window.location.href = '/qrcode/eventos/';
     }
 
     function toggleConfig() {
@@ -442,7 +491,7 @@
       supabaseClient = createClient(url, key);
     }
 
-    function saveSupabaseConfig() {
+    async function saveSupabaseConfig() {
       const url = document.getElementById('supabaseUrl').value.trim().replace('/rest/v1/', '').replace('/rest/v1', '');
       const key = document.getElementById('supabaseKey').value.trim();
 
@@ -455,10 +504,51 @@
       localStorage.setItem('supabase_key', key);
       connectSupabase(url, key);
       showMessage('Supabase conectado com sucesso.', 'success');
+
+      if (currentEventId) {
+        await loadEventFromURL();
+      }
+    }
+
+    async function loadEventFromURL() {
+      if (!currentEventId || !supabaseClient) return false;
+
+      const { data, error } = await supabaseClient
+        .from('events')
+        .select('id, name, event_date, event_time, location')
+        .eq('id', currentEventId)
+        .maybeSingle();
+
+      if (error) {
+        showMessage('Erro ao carregar evento: ' + error.message, 'error');
+        return false;
+      }
+
+      if (!data) {
+        showMessage('Evento não encontrado para este ID.', 'error');
+        return false;
+      }
+
+      currentEventData = data;
+
+      const eventBox = document.getElementById('eventBox');
+      const eventTitle = document.getElementById('eventTitle');
+      const eventDetails = document.getElementById('eventDetails');
+
+      eventBox.classList.add('active');
+      eventTitle.textContent = data.name || 'Evento';
+      eventDetails.textContent = `${formatDateBR(data.event_date) || '-'} • ${formatTime(data.event_time) || '-'} • ${data.location || '-'}`;
+
+      return true;
     }
 
     async function startCamera() {
       if (cameraRunning) return;
+
+      if (!currentEventId) {
+        showMessage('Evento não informado na URL. Use /qrcode/acesso/?event_id=ID_DO_EVENTO.', 'error');
+        return;
+      }
 
       try {
         html5QrCode = new Html5Qrcode('reader');
@@ -488,7 +578,7 @@
         );
 
         cameraRunning = true;
-        showMessage('Câmera aberta. Aponte para o QR Code.', 'info');
+        showMessage('Câmera aberta. Aponte para o QR Code deste evento.', 'info');
       } catch (error) {
         showMessage('Erro ao abrir a câmera: ' + error.message, 'error');
       }
@@ -510,6 +600,12 @@
     async function searchCode(fromCamera = false) {
       if (!supabaseClient) {
         showMessage('Conecte o Supabase primeiro.', 'error');
+        releaseScanner();
+        return;
+      }
+
+      if (!currentEventId) {
+        showMessage('Evento não informado na URL. Use /qrcode/acesso/?event_id=ID_DO_EVENTO.', 'error');
         releaseScanner();
         return;
       }
@@ -557,6 +653,13 @@
         return;
       }
 
+      if (data.event_id !== currentEventId) {
+        renderResult(null, 'invalid');
+        showMessage('QR Code válido, mas pertence a outro evento.', 'error');
+        releaseScanner();
+        return;
+      }
+
       if (data.accessed === true) {
         renderResult(data, 'used');
         showMessage('Este QR Code já foi utilizado.', 'warning');
@@ -584,6 +687,11 @@
     async function confirmAccessCode(item) {
       const now = new Date().toISOString();
 
+      if (item.event_id !== currentEventId) {
+        showMessage('Este QR Code pertence a outro evento e não pode ser confirmado aqui.', 'error');
+        return;
+      }
+
       const { data, error } = await supabaseClient
         .from('access_codes')
         .update({
@@ -593,6 +701,7 @@
           used_at: now
         })
         .eq('id', item.id)
+        .eq('event_id', currentEventId)
         .or('accessed.is.null,accessed.eq.false')
         .select(`
           *,
@@ -613,7 +722,7 @@
 
       if (!data) {
         clearResultOnly();
-        showMessage('Este QR Code já foi utilizado por outro operador.', 'warning');
+        showMessage('Este QR Code já foi utilizado ou pertence a outro evento.', 'warning');
         document.getElementById('codeInput').value = '';
         return;
       }
@@ -735,20 +844,20 @@
     }
 
     function getEventName(item) {
-      return item.event_name || item.events?.name || '';
+      return item.event_name || item.events?.name || currentEventData?.name || '';
     }
 
     function getEventDate(item) {
-      return item.event_date || item.events?.event_date || '';
+      return item.event_date || item.events?.event_date || currentEventData?.event_date || '';
     }
 
     function getEventTime(item) {
-      const value = item.event_time || item.events?.event_time || '';
+      const value = item.event_time || item.events?.event_time || currentEventData?.event_time || '';
       return value ? String(value).substring(0, 5) : '';
     }
 
     function getEventLocation(item) {
-      return item.event_location || item.location || item.events?.location || '';
+      return item.event_location || item.location || item.events?.location || currentEventData?.location || '';
     }
 
     function clearResultOnly() {
@@ -776,6 +885,11 @@
       if (parts.length !== 3) return dateString;
 
       return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+
+    function formatTime(timeString) {
+      if (!timeString) return '';
+      return String(timeString).substring(0, 5);
     }
 
     function formatDateTimeBR(dateString) {
