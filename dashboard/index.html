@@ -1,0 +1,870 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard de Acessos - Controle de QR Codes</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+    }
+
+    body {
+      min-height: 100vh;
+      background: #f3f4f6;
+      color: #111827;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1300px;
+      margin: 0 auto;
+    }
+
+    .header {
+      position: relative;
+      background: linear-gradient(135deg, #111827, #1e3a8a);
+      color: white;
+      padding: 28px;
+      border-radius: 22px;
+      margin-bottom: 22px;
+      box-shadow: 0 12px 32px rgba(17, 24, 39, 0.18);
+    }
+
+    .header h1 {
+      font-size: 32px;
+      margin-bottom: 8px;
+      padding-right: 110px;
+    }
+
+    .header p {
+      color: #dbeafe;
+      font-size: 15px;
+      padding-right: 110px;
+    }
+
+    .header-menu {
+      position: absolute;
+      right: 20px;
+      top: 20px;
+      display: flex;
+      gap: 10px;
+    }
+
+    .icon-button {
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(255,255,255,0.1);
+      color: white;
+      cursor: pointer;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      backdrop-filter: blur(10px);
+    }
+
+    .event-card {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-bottom: 22px;
+    }
+
+    .event-info {
+      background: white;
+      padding: 18px;
+      border-radius: 18px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+    }
+
+    .event-info span {
+      display: block;
+      color: #6b7280;
+      font-size: 13px;
+      margin-bottom: 6px;
+    }
+
+    .event-info strong {
+      font-size: 18px;
+      color: #111827;
+    }
+
+    .config-box {
+      display: none;
+      background: white;
+      padding: 22px;
+      border-radius: 18px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+      margin-bottom: 22px;
+    }
+
+    .config-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+
+    label {
+      font-weight: bold;
+      font-size: 14px;
+      margin-bottom: 8px;
+      display: block;
+    }
+
+    input, select {
+      width: 100%;
+      padding: 14px;
+      border: 1px solid #d1d5db;
+      border-radius: 12px;
+      font-size: 15px;
+      outline: none;
+      background: white;
+    }
+
+    input:focus, select:focus {
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14);
+    }
+
+    button {
+      border: none;
+      border-radius: 12px;
+      padding: 13px 18px;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 15px;
+    }
+
+    .btn-primary {
+      background: #2563eb;
+      color: white;
+    }
+
+    .btn-secondary {
+      background: #e5e7eb;
+      color: #111827;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 14px;
+      margin-bottom: 22px;
+    }
+
+    .stat-card {
+      background: white;
+      border-radius: 20px;
+      padding: 20px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+      border: 1px solid #eef2f7;
+    }
+
+    .stat-card span {
+      color: #6b7280;
+      font-size: 13px;
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    .stat-card strong {
+      font-size: 34px;
+      line-height: 1;
+    }
+
+    .stat-card small {
+      display: block;
+      margin-top: 8px;
+      color: #6b7280;
+    }
+
+    .progress-card {
+      background: white;
+      padding: 22px;
+      border-radius: 20px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+      margin-bottom: 22px;
+    }
+
+    .progress-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .progress-head h2 {
+      font-size: 22px;
+    }
+
+    .progress-head strong {
+      font-size: 28px;
+      color: #2563eb;
+    }
+
+    .progress-bar {
+      height: 20px;
+      background: #e5e7eb;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #2563eb, #16a34a);
+      transition: width 0.4s;
+    }
+
+    .tools {
+      background: white;
+      padding: 18px;
+      border-radius: 18px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+      margin-bottom: 22px;
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr auto;
+      gap: 12px;
+      align-items: end;
+    }
+
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 22px;
+      margin-bottom: 22px;
+    }
+
+    .panel {
+      background: white;
+      border-radius: 20px;
+      padding: 20px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+    }
+
+    .panel h2 {
+      margin-bottom: 16px;
+      font-size: 22px;
+    }
+
+    .table-list {
+      display: grid;
+      gap: 12px;
+      max-height: 520px;
+      overflow: auto;
+      padding-right: 4px;
+    }
+
+    .table-row {
+      border: 1px solid #e5e7eb;
+      border-radius: 14px;
+      padding: 14px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .table-row h3 {
+      font-size: 16px;
+      margin-bottom: 8px;
+    }
+
+    .mini-progress {
+      height: 10px;
+      background: #e5e7eb;
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .mini-fill {
+      height: 100%;
+      background: #16a34a;
+      width: 0%;
+    }
+
+    .badge {
+      padding: 8px 10px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: bold;
+      white-space: nowrap;
+    }
+
+    .badge-green {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .badge-yellow {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .badge-red {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .access-list {
+      display: grid;
+      gap: 10px;
+      max-height: 520px;
+      overflow: auto;
+      padding-right: 4px;
+    }
+
+    .access-item {
+      border: 1px solid #e5e7eb;
+      border-radius: 14px;
+      padding: 12px;
+      background: #f9fafb;
+    }
+
+    .access-item strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .access-item span {
+      display: block;
+      color: #6b7280;
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .full-panel {
+      background: white;
+      border-radius: 20px;
+      padding: 20px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    th, td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid #e5e7eb;
+      vertical-align: top;
+    }
+
+    th {
+      color: #6b7280;
+      font-size: 12px;
+      text-transform: uppercase;
+    }
+
+    .message {
+      display: none;
+      margin-bottom: 18px;
+      padding: 14px;
+      border-radius: 14px;
+      font-size: 14px;
+    }
+
+    .message.success {
+      display: block;
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .message.error {
+      display: block;
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .message.info {
+      display: block;
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    @media (max-width: 980px) {
+      .stats-grid,
+      .event-card,
+      .dashboard-grid,
+      .tools,
+      .config-grid {
+        grid-template-columns: 1fr;
+      }
+
+      body {
+        padding: 12px;
+      }
+
+      .header h1 {
+        font-size: 24px;
+      }
+
+      table {
+        display: block;
+        overflow-x: auto;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="header-menu">
+        <!-- <button class="icon-button" onclick="goHome()" title="Home">🏠</button> -->
+        <button class="icon-button" onclick="toggleConfig()" title="Configurações">⚙️</button>
+      </div>
+      <h1>Dashboard de Acessos</h1>
+      <p>Acompanhe entradas, pendências, mesas e últimos acessos do evento em tempo real.</p>
+    </div>
+
+    <div id="message" class="message"></div>
+
+    <div class="config-box" id="configBox">
+      <div class="config-grid">
+        <div>
+          <label for="supabaseUrl">Supabase URL</label>
+          <input id="supabaseUrl" type="text" placeholder="https://xxxx.supabase.co" />
+        </div>
+        <div>
+          <label for="supabaseKey">Supabase Anon Key</label>
+          <input id="supabaseKey" type="password" placeholder="Cole sua anon/public key" />
+        </div>
+      </div>
+      <button class="btn-primary" onclick="saveConfig()">Salvar e conectar</button>
+    </div>
+
+    <div class="event-card">
+      <div class="event-info">
+        <span>Evento</span>
+        <strong id="eventName">-</strong>
+      </div>
+      <div class="event-info">
+        <span>Data</span>
+        <strong id="eventDate">-</strong>
+      </div>
+      <div class="event-info">
+        <span>Hora</span>
+        <strong id="eventTime">-</strong>
+      </div>
+      <div class="event-info">
+        <span>Local</span>
+        <strong id="eventLocation">-</strong>
+      </div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <span>Total de QR Codes</span>
+        <strong id="statTotal">0</strong>
+        <small>Todos os ingressos</small>
+      </div>
+      <div class="stat-card">
+        <span>Acessaram</span>
+        <strong id="statAccessed">0</strong>
+        <small>Entradas confirmadas</small>
+      </div>
+      <div class="stat-card">
+        <span>Pendentes</span>
+        <strong id="statPending">0</strong>
+        <small>Ainda não entraram</small>
+      </div>
+      <div class="stat-card">
+        <span>Mesas</span>
+        <strong id="statTables">0</strong>
+        <small>Mesas cadastradas</small>
+      </div>
+      <div class="stat-card">
+        <span>Individuais</span>
+        <strong id="statIndividual">0</strong>
+        <small>Ingressos individuais</small>
+      </div>
+    </div>
+
+    <div class="progress-card">
+      <div class="progress-head">
+        <h2>Progresso de entrada</h2>
+        <strong id="progressPercent">0%</strong>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill"></div>
+      </div>
+    </div>
+
+    <div class="tools">
+      <div>
+        <label for="searchInput">Buscar</label>
+        <input id="searchInput" type="text" placeholder="Nome, telefone, e-mail, mesa, código..." oninput="renderDashboard()" />
+      </div>
+      <div>
+        <label for="statusFilter">Status</label>
+        <select id="statusFilter" onchange="renderDashboard()">
+          <option value="all">Todos</option>
+          <option value="accessed">Acessados</option>
+          <option value="pending">Pendentes</option>
+        </select>
+      </div>
+      <div>
+        <label for="typeFilter">Tipo</label>
+        <select id="typeFilter" onchange="renderDashboard()">
+          <option value="all">Todos</option>
+          <option value="mesa">Mesa</option>
+          <option value="individual">Individual</option>
+        </select>
+      </div>
+      <button class="btn-primary" onclick="loadDashboard()">Atualizar</button>
+    </div>
+
+    <div class="dashboard-grid">
+      <div class="panel">
+        <h2>Acessos por mesa</h2>
+        <div class="table-list" id="tablesList"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Últimos acessos</h2>
+        <div class="access-list" id="latestAccessList"></div>
+      </div>
+    </div>
+
+    <div class="full-panel">
+      <h2 style="margin-bottom: 16px;">Lista geral de QR Codes</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Status</th>
+            <th>Tipo</th>
+            <th>Nome</th>
+            <th>Mesa/Lugar</th>
+            <th>Código</th>
+            <th>Contato</th>
+            <th>Data/Hora acesso</th>
+          </tr>
+        </thead>
+        <tbody id="codesTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    let supabaseClient = null;
+    let currentEventId = null;
+    let eventData = null;
+    let accessCodes = [];
+    let refreshTimer = null;
+
+    const savedUrl = localStorage.getItem('supabase_url') || 'https://pfyctxoikdrephjogdtm.supabase.co';
+    const savedKey = localStorage.getItem('supabase_key') || 'sb_publishable_h_5hK_HTT-XJ4WUoOGzkGg_tqkBDLjv';
+
+    document.getElementById('supabaseUrl').value = savedUrl;
+    document.getElementById('supabaseKey').value = savedKey;
+
+    function goHome() {
+      window.location.href = '/index.html' + window.location.search;
+    }
+
+    function toggleConfig() {
+      const box = document.getElementById('configBox');
+      box.style.display = box.style.display === 'none' || !box.style.display ? 'block' : 'none';
+    }
+
+    function connectSupabase(url, key) {
+      const { createClient } = supabase;
+      supabaseClient = createClient(url, key);
+    }
+
+    async function saveConfig() {
+      const url = document.getElementById('supabaseUrl').value.trim().replace('/rest/v1/', '').replace('/rest/v1', '');
+      const key = document.getElementById('supabaseKey').value.trim();
+
+      if (!url || !key) {
+        showMessage('Informe URL e chave do Supabase.', 'error');
+        return;
+      }
+
+      localStorage.setItem('supabase_url', url);
+      localStorage.setItem('supabase_key', key);
+      connectSupabase(url, key);
+      await initializeDashboard();
+    }
+
+    async function initializeDashboard() {
+      const params = new URLSearchParams(window.location.search);
+      currentEventId = params.get('event_id');
+
+      if (!currentEventId) {
+        showMessage('Informe o event_id na URL. Ex: dashboard.html?event_id=UUID', 'error');
+        return;
+      }
+
+      await loadEvent();
+      await loadDashboard();
+
+      if (refreshTimer) clearInterval(refreshTimer);
+      refreshTimer = setInterval(loadDashboard, 10000);
+    }
+
+    async function loadEvent() {
+      const { data, error } = await supabaseClient
+        .from('events')
+        .select('id, name, event_date, event_time, location')
+        .eq('id', currentEventId)
+        .maybeSingle();
+
+      if (error) {
+        showMessage('Erro ao carregar evento: ' + error.message, 'error');
+        return;
+      }
+
+      if (!data) {
+        showMessage('Evento não encontrado.', 'error');
+        return;
+      }
+
+      eventData = data;
+      document.getElementById('eventName').textContent = data.name || '-';
+      document.getElementById('eventDate').textContent = formatDateBR(data.event_date) || '-';
+      document.getElementById('eventTime').textContent = data.event_time ? String(data.event_time).substring(0, 5) : '-';
+      document.getElementById('eventLocation').textContent = data.location || '-';
+    }
+
+    async function loadDashboard() {
+      if (!supabaseClient || !currentEventId) return;
+
+      const { data, error } = await supabaseClient
+        .from('access_codes')
+        .select('*')
+        .eq('event_id', currentEventId)
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        showMessage('Erro ao carregar acessos: ' + error.message, 'error');
+        return;
+      }
+
+      accessCodes = data || [];
+      renderDashboard();
+    }
+
+    function renderDashboard() {
+      const filtered = getFilteredCodes();
+      renderStats();
+      renderTables(filtered);
+      renderLatestAccesses();
+      renderCodesTable(filtered);
+    }
+
+    function getFilteredCodes() {
+      const search = document.getElementById('searchInput').value.trim().toLowerCase();
+      const status = document.getElementById('statusFilter').value;
+      const type = document.getElementById('typeFilter').value;
+
+      return accessCodes.filter(item => {
+        const itemType = item.ticket_type || 'mesa';
+        const accessed = item.accessed === true;
+
+        if (status === 'accessed' && !accessed) return false;
+        if (status === 'pending' && accessed) return false;
+        if (type !== 'all' && itemType !== type) return false;
+
+        if (!search) return true;
+
+        const values = [
+          item.qr_code,
+          item.customer_name,
+          item.customer_email,
+          item.customer_whatsapp,
+          item.table_number,
+          item.seat_number,
+          item.status
+        ];
+
+        return values
+          .filter(value => value !== null && value !== undefined)
+          .some(value => String(value).toLowerCase().includes(search));
+      });
+    }
+
+    function renderStats() {
+      const total = accessCodes.length;
+      const accessed = accessCodes.filter(item => item.accessed === true).length;
+      const pending = total - accessed;
+      const mesa = accessCodes.filter(item => (item.ticket_type || 'mesa') === 'mesa');
+      const individual = accessCodes.filter(item => (item.ticket_type || 'mesa') === 'individual').length;
+      const uniqueTables = new Set(mesa.map(item => item.table_number).filter(Boolean));
+      const percent = total > 0 ? Math.round((accessed / total) * 100) : 0;
+
+      document.getElementById('statTotal').textContent = total;
+      document.getElementById('statAccessed').textContent = accessed;
+      document.getElementById('statPending').textContent = pending;
+      document.getElementById('statTables').textContent = uniqueTables.size;
+      document.getElementById('statIndividual').textContent = individual;
+      document.getElementById('progressPercent').textContent = `${percent}%`;
+      document.getElementById('progressFill').style.width = `${percent}%`;
+    }
+
+    function renderTables(codes) {
+      const list = document.getElementById('tablesList');
+      const mesaCodes = codes.filter(item => (item.ticket_type || 'mesa') === 'mesa');
+      const grouped = {};
+
+      mesaCodes.forEach(item => {
+        const key = `Mesa ${item.table_number}${item.customer_name ? ` - ${item.customer_name}` : ''}`;
+        if (!grouped[key]) grouped[key] = [];
+        grouped[key].push(item);
+      });
+
+      const rows = Object.keys(grouped).map(key => {
+        const items = grouped[key];
+        const total = items.length;
+        const accessed = items.filter(item => item.accessed === true).length;
+        const percent = total > 0 ? Math.round((accessed / total) * 100) : 0;
+        return { key, total, accessed, percent };
+      }).sort((a, b) => b.percent - a.percent || b.accessed - a.accessed);
+
+      if (rows.length === 0) {
+        list.innerHTML = '<div class="access-item"><strong>Nenhuma mesa encontrada.</strong><span>Os dados aparecerão aqui após gerar QR Codes.</span></div>';
+        return;
+      }
+
+      list.innerHTML = rows.map(row => `
+        <div class="table-row">
+          <div>
+            <h3>${escapeHTML(row.key)}</h3>
+            <div class="mini-progress"><div class="mini-fill" style="width:${row.percent}%"></div></div>
+          </div>
+          <span class="badge ${row.percent === 100 ? 'badge-green' : row.percent > 0 ? 'badge-yellow' : 'badge-red'}">
+            ${row.accessed}/${row.total} • ${row.percent}%
+          </span>
+        </div>
+      `).join('');
+    }
+
+    function renderLatestAccesses() {
+      const list = document.getElementById('latestAccessList');
+      const latest = accessCodes
+        .filter(item => item.accessed === true && (item.accessed_at || item.used_at))
+        .sort((a, b) => new Date(b.accessed_at || b.used_at) - new Date(a.accessed_at || a.used_at))
+        .slice(0, 12);
+
+      if (latest.length === 0) {
+        list.innerHTML = '<div class="access-item"><strong>Nenhum acesso registrado.</strong><span>Aguardando primeiras entradas.</span></div>';
+        return;
+      }
+
+      list.innerHTML = latest.map(item => `
+        <div class="access-item">
+          <strong>${escapeHTML(getPersonLabel(item))}</strong>
+          <span>${escapeHTML(getPlaceLabel(item))}</span>
+          <span>${escapeHTML(item.qr_code || '-')}</span>
+          <span>${formatDateTimeBR(item.accessed_at || item.used_at)}</span>
+        </div>
+      `).join('');
+    }
+
+    function renderCodesTable(codes) {
+      const tbody = document.getElementById('codesTableBody');
+
+      if (codes.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7">Nenhum registro encontrado.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = codes.map(item => {
+        const accessed = item.accessed === true;
+        return `
+          <tr>
+            <td><span class="badge ${accessed ? 'badge-green' : 'badge-yellow'}">${accessed ? 'Acessou' : 'Pendente'}</span></td>
+            <td>${(item.ticket_type || 'mesa') === 'individual' ? 'Individual' : 'Mesa'}</td>
+            <td>${escapeHTML(getPersonLabel(item))}</td>
+            <td>${escapeHTML(getPlaceLabel(item))}</td>
+            <td>${escapeHTML(item.qr_code || '-')}</td>
+            <td>${escapeHTML(getContactLabel(item))}</td>
+            <td>${formatDateTimeBR(item.accessed_at || item.used_at) || '-'}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function getPersonLabel(item) {
+      return item.customer_name || ((item.ticket_type || 'mesa') === 'individual' ? 'Ingresso individual' : 'Sem nome');
+    }
+
+    function getPlaceLabel(item) {
+      if ((item.ticket_type || 'mesa') === 'individual') {
+        return 'Ingresso individual';
+      }
+      return `Mesa ${item.table_number || '-'} • Lugar ${item.seat_number || '-'}`;
+    }
+
+    function getContactLabel(item) {
+      const contact = [];
+      if (item.customer_whatsapp) contact.push(item.customer_whatsapp);
+      if (item.customer_email) contact.push(item.customer_email);
+      return contact.length ? contact.join(' • ') : '-';
+    }
+
+    function formatDateBR(dateString) {
+      if (!dateString) return '';
+      const parts = String(dateString).split('-');
+      if (parts.length !== 3) return dateString;
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+
+    function formatDateTimeBR(dateString) {
+      if (!dateString) return '';
+      const date = new Date(dateString);
+      if (Number.isNaN(date.getTime())) return dateString;
+      return date.toLocaleString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      });
+    }
+
+    function escapeHTML(value) {
+      return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function showMessage(text, type) {
+      const message = document.getElementById('message');
+      message.textContent = text;
+      message.className = `message ${type}`;
+
+      setTimeout(() => {
+        message.className = 'message';
+        message.textContent = '';
+      }, 5000);
+    }
+
+    if (savedUrl && savedKey) {
+      connectSupabase(savedUrl, savedKey);
+      initializeDashboard();
+    } else {
+      toggleConfig();
+      showMessage('Configure o Supabase para iniciar.', 'info');
+    }
+  </script>
+</body>
+</html>

@@ -1,18 +1,15 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Bipagem de QR Codes - Controle de Acesso</title>
 
   <!--
-    ALTER TABLE PARA ADICIONAR DATA/HORA DO ACESSO
+    ALTER TABLE PARA DATA/HORA DO ACESSO
 
     alter table public.access_codes
     add column if not exists accessed_at timestamptz;
-
-    Se ainda não tiver a coluna accessed, rode também:
 
     alter table public.access_codes
     add column if not exists accessed boolean default false;
@@ -54,11 +51,13 @@
     .header h1 {
       font-size: 28px;
       margin-bottom: 8px;
+      padding: 0 90px;
     }
 
     .header p {
       color: #d1d5db;
       font-size: 15px;
+      padding: 0 90px;
     }
 
     .header-menu {
@@ -88,11 +87,6 @@
     .config-menu-button:hover {
       background: rgba(255, 255, 255, 0.16);
       transform: scale(1.03);
-    }
-
-    .header p {
-      color: #d1d5db;
-      font-size: 15px;
     }
 
     .card {
@@ -258,12 +252,6 @@
       border-color: #16a34a;
     }
 
-    .result-title {
-      font-size: 22px;
-      font-weight: bold;
-      margin-bottom: 12px;
-    }
-
     .result-row {
       display: flex;
       justify-content: space-between;
@@ -323,6 +311,13 @@
 
       .header h1 {
         font-size: 23px;
+        padding: 0 84px 0 0;
+        text-align: left;
+      }
+
+      .header p {
+        padding: 0 84px 0 0;
+        text-align: left;
       }
 
       .card {
@@ -331,6 +326,10 @@
 
       button {
         width: 100%;
+      }
+
+      .config-menu-button {
+        width: 42px;
       }
 
       .result-row {
@@ -344,44 +343,32 @@
     }
   </style>
 </head>
-
 <body>
   <div class="container">
     <div class="header">
       <div class="header-menu">
-        <button class="config-menu-button" onclick="goHome()" title="Home">
-          🏠
-        </button>
-
-        <button class="config-menu-button" onclick="toggleConfig()" title="Configurações">
-          ⚙️
-        </button>
+        <!-- <button class="config-menu-button" onclick="goHome()" title="Home">🏠</button> -->
+        <button class="config-menu-button" onclick="toggleConfig()" title="Configurações">⚙️</button>
       </div>
       <h1>Bipagem de QR Codes</h1>
       <p>Leia o QR Code pela câmera ou digite o código do ingresso.</p>
     </div>
 
     <div class="card" id="configContainer" style="display:none;">
-
-
-      <div>
-        <div class="config-grid">
-          <div class="form-group">
-            <label for="supabaseUrl">Supabase URL</label>
-            <input type="text" id="supabaseUrl" placeholder="https://xxxx.supabase.co" />
-          </div>
-
-          <div class="form-group">
-            <label for="supabaseKey">Supabase Anon Key</label>
-            <input type="password" id="supabaseKey" placeholder="Cole sua anon public key" />
-          </div>
+      <div class="config-grid">
+        <div class="form-group">
+          <label for="supabaseUrl">Supabase URL</label>
+          <input type="text" id="supabaseUrl" placeholder="https://xxxx.supabase.co" />
         </div>
 
-        <div class="actions">
-          <button class="btn-primary" onclick="saveSupabaseConfig()">Conectar Supabase</button>
+        <div class="form-group">
+          <label for="supabaseKey">Supabase Anon Key</label>
+          <input type="password" id="supabaseKey" placeholder="Cole sua anon public key" />
         </div>
+      </div>
 
-        <!-- <p class="small-text">A URL deve ser somente até <strong>.supabase.co</strong>, sem <strong>/rest/v1</strong>.</p> -->
+      <div class="actions">
+        <button class="btn-primary" onclick="saveSupabaseConfig()">Conectar Supabase</button>
       </div>
     </div>
 
@@ -392,12 +379,11 @@
       </div>
 
       <div class="actions">
-        <button class="btn-primary" id="searchButton" onclick="searchCode()">Pesquisar código</button>
+        <button class="btn-primary" id="searchButton" onclick="searchCode(false)">Pesquisar código</button>
         <button class="btn-secondary" onclick="clearScreen()">Limpar</button>
       </div>
 
       <div id="message" class="message"></div>
-
       <div id="resultCard" class="result-card"></div>
     </div>
 
@@ -436,24 +422,19 @@
       showMessage('Informe os dados do Supabase para começar.', 'info');
     }
 
-    document.getElementById('codeInput').addEventListener('keydown', function (event) {
+    document.getElementById('codeInput').addEventListener('keydown', function(event) {
       if (event.key === 'Enter') {
         searchCode(false);
       }
     });
 
     function goHome() {
-      window.location.href = '/index.html';
+      window.location.href = '/index.html' + window.location.search;
     }
 
     function toggleConfig() {
       const container = document.getElementById('configContainer');
-
-      if (container.style.display === 'none') {
-        container.style.display = 'block';
-      } else {
-        container.style.display = 'none';
-      }
+      container.style.display = container.style.display === 'none' ? 'block' : 'none';
     }
 
     function connectSupabase(url, key) {
@@ -547,7 +528,16 @@
 
       const { data, error } = await supabaseClient
         .from('access_codes')
-        .select('*')
+        .select(`
+          *,
+          events (
+            id,
+            name,
+            event_date,
+            event_time,
+            location
+          )
+        `)
         .eq('qr_code', code)
         .maybeSingle();
 
@@ -577,14 +567,7 @@
       confirmationOpen = true;
       processingScan = true;
 
-      const confirmAccess = confirm(
-        `Confirmar acesso?
-
-Evento: ${data.event_name}
-Mesa: ${data.table_number}
-Lugar: ${data.seat_number}
-Código: ${data.qr_code}`
-      );
+      const confirmAccess = confirm(`Confirmar acesso?\n\n${buildAccessDetails(data, false)}`);
 
       if (confirmAccess) {
         await confirmAccessCode(data);
@@ -611,7 +594,16 @@ Código: ${data.qr_code}`
         })
         .eq('id', item.id)
         .or('accessed.is.null,accessed.eq.false')
-        .select('*')
+        .select(`
+          *,
+          events (
+            id,
+            name,
+            event_date,
+            event_time,
+            location
+          )
+        `)
         .maybeSingle();
 
       if (error) {
@@ -629,14 +621,7 @@ Código: ${data.qr_code}`
       clearResultOnly();
       document.getElementById('codeInput').value = '';
 
-      alert(
-        `ENTRADA CONFIRMADA ✅
-
-Evento: ${data.event_name}
-Mesa: ${data.table_number}
-Lugar: ${data.seat_number}
-Data/Hora: ${formatDateTimeBR(data.accessed_at)}`
-      );
+      alert(`ENTRADA CONFIRMADA ✅\n\n${buildAccessDetails(data, true)}`);
 
       showMessage(`Entrada confirmada com sucesso. Data/Hora: ${formatDateTimeBR(data.accessed_at)}`, 'success');
 
@@ -690,20 +675,80 @@ Data/Hora: ${formatDateTimeBR(data.accessed_at)}`
       const isUsed = item.accessed === true || status === 'used';
       card.classList.add(isUsed ? 'used' : 'available');
 
+      const rows = buildResultRows(item, isUsed);
+
       card.innerHTML = `
         <div class="big-status ${isUsed ? 'used' : 'available'}">
           ${isUsed ? 'JÁ UTILIZADO' : 'LIBERADO PARA ACESSO'}
         </div>
-
-        <div class="result-row"><span>Evento</span><span>${escapeHTML(item.event_name || '-')}</span></div>
-        <div class="result-row"><span>Data do evento</span><span>${formatDateBR(item.event_date) || '-'}</span></div>
-        <div class="result-row"><span>Hora do evento</span><span>${escapeHTML(item.event_time || '-')}</span></div>
-        <div class="result-row"><span>Mesa</span><span>${item.table_number || '-'}</span></div>
-        <div class="result-row"><span>Lugar</span><span>${item.seat_number || '-'}</span></div>
-        <div class="result-row"><span>Código</span><span>${escapeHTML(item.qr_code || '-')}</span></div>
-        <div class="result-row"><span>Acessado</span><span>${isUsed ? 'Sim' : 'Não'}</span></div>
-        <div class="result-row"><span>Data/Hora do acesso</span><span>${formatDateTimeBR(item.accessed_at || item.used_at) || '-'}</span></div>
+        ${rows}
       `;
+    }
+
+    function buildResultRows(item, isUsed) {
+      const rows = [];
+
+      addRow(rows, 'Evento', getEventName(item));
+      addRow(rows, 'Convidado', item.customer_name);
+      addRow(rows, 'Data do evento', formatDateBR(getEventDate(item)));
+      addRow(rows, 'Hora do evento', getEventTime(item));
+      addRow(rows, 'Local', getEventLocation(item));
+      addRow(rows, 'Mesa', item.table_number);
+      addRow(rows, 'Lugar', item.seat_number);
+      addRow(rows, 'Código', item.qr_code);
+      addRow(rows, 'Acessado', isUsed ? 'Sim' : 'Não');
+      addRow(rows, 'Data/Hora do acesso', formatDateTimeBR(item.accessed_at || item.used_at));
+
+      return rows.join('');
+    }
+
+    function addRow(rows, label, value) {
+      if (value === null || value === undefined || value === '') return;
+
+      rows.push(`
+        <div class="result-row">
+          <span>${escapeHTML(label)}</span>
+          <span>${escapeHTML(value)}</span>
+        </div>
+      `);
+    }
+
+    function buildAccessDetails(item, includeAccessTime) {
+      const lines = [];
+
+      addLine(lines, 'Evento', getEventName(item));
+      addLine(lines, 'Convidado', item.customer_name);
+      addLine(lines, 'Mesa', item.table_number);
+      addLine(lines, 'Lugar', item.seat_number);
+      addLine(lines, 'Código', item.qr_code);
+
+      if (includeAccessTime) {
+        addLine(lines, 'Data/Hora', formatDateTimeBR(item.accessed_at || item.used_at));
+      }
+
+      return lines.join('\n');
+    }
+
+    function addLine(lines, label, value) {
+      if (value === null || value === undefined || value === '') return;
+      lines.push(`${label}: ${value}`);
+    }
+
+    function getEventName(item) {
+      return item.event_name || item.events?.name || '';
+    }
+
+    function getEventDate(item) {
+      return item.event_date || item.events?.event_date || '';
+    }
+
+    function getEventTime(item) {
+      const value = item.event_time || item.events?.event_time || '';
+      return value ? String(value).substring(0, 5) : '';
+    }
+
+    function getEventLocation(item) {
+      return item.event_location || item.location || item.events?.location || '';
     }
 
     function clearResultOnly() {
@@ -759,5 +804,4 @@ Data/Hora: ${formatDateTimeBR(data.accessed_at)}`
     }
   </script>
 </body>
-
 </html>

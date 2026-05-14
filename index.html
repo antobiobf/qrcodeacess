@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -28,6 +29,7 @@
     );
 
     alter table public.access_codes
+    add column if not exists event_id uuid references public.events(id),
     add column if not exists event_date text,
     add column if not exists event_time text,
     add column if not exists ticket_type text default 'mesa',
@@ -95,8 +97,8 @@
     }
 
     .config-menu-button {
-      background: rgba(255,255,255,0.08);
-      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
       color: white;
       width: 42px;
       height: 42px;
@@ -111,7 +113,7 @@
     }
 
     .config-menu-button:hover {
-      background: rgba(255,255,255,0.16);
+      background: rgba(255, 255, 255, 0.16);
       transform: scale(1.03);
     }
 
@@ -258,6 +260,17 @@
       font-size: 26px;
     }
 
+    .search-box {
+      margin-bottom: 18px;
+    }
+
+    .search-box input {
+      width: 100%;
+      font-size: 16px;
+      padding: 16px;
+      border-radius: 14px;
+    }
+
     .tabs-nav {
       display: flex;
       gap: 12px;
@@ -401,6 +414,7 @@
     }
   </style>
 </head>
+
 <body>
   <div class="container">
     <div class="header">
@@ -440,6 +454,11 @@
           <label for="eventTime">Hora do evento</label>
           <input type="time" id="eventTime" />
         </div>
+
+        <div class="form-group">
+          <label for="eventLocation">Local do evento</label>
+          <input type="text" id="eventLocation" placeholder="Ex: Mirante do Paço" />
+        </div>
       </div>
 
       <div class="actions">
@@ -448,7 +467,8 @@
       </div>
 
       <p class="small-text">
-        Use a URL do projeto e a chave anon/public do Supabase. A tabela precisa se chamar <strong>access_codes</strong>.
+        Use a URL do projeto e a chave anon/public do Supabase. A tabela precisa se chamar
+        <strong>access_codes</strong>.
       </p>
     </div>
 
@@ -502,12 +522,20 @@
         <strong id="totalTables">0</strong>
       </div>
       <div class="summary-box">
-        <span>QR Codes gerados</span>
+        <span>QR Codes - Mesa</span>
         <strong id="totalCodes">0</strong>
       </div>
       <div class="summary-box">
-        <span>Ingressos individuais</span>
+        <span>QR Codes - Individuais</span>
         <strong id="totalIndividual">0</strong>
+      </div>
+    </div>
+
+    <div class="card search-box">
+      <div class="form-group">
+        <label for="searchInput">Buscar QR Code</label>
+        <input type="text" id="searchInput" placeholder="Busque por nome, e-mail, WhatsApp, mesa ou código do QR Code"
+          oninput="handleSearchInput()" />
       </div>
     </div>
 
@@ -523,34 +551,63 @@
     let supabaseClient = null;
     let allCodes = [];
     let activeTab = 'mesa';
+    let searchTerm = '';
 
     const savedUrl = localStorage.getItem('supabase_url') || 'https://pfyctxoikdrephjogdtm.supabase.co';
     const savedKey = localStorage.getItem('supabase_key') || 'sb_publishable_h_5hK_HTT-XJ4WUoOGzkGg_tqkBDLjv';
     const savedEventName = localStorage.getItem('event_name') || '';
     const savedEventDate = localStorage.getItem('event_date') || '';
     const savedEventTime = localStorage.getItem('event_time') || '';
+    const savedEventLocation = localStorage.getItem('event_location') || '';
+    let currentEventId = null;
+    let currentEventData = null;
 
     document.getElementById('supabaseUrl').value = savedUrl;
     document.getElementById('supabaseKey').value = savedKey;
     document.getElementById('eventName').value = savedEventName;
     document.getElementById('eventDate').value = savedEventDate;
     document.getElementById('eventTime').value = savedEventTime;
+    document.getElementById('eventLocation').value = savedEventLocation;
 
     toggleTicketType();
-
-    if (savedUrl && savedKey) {
-      connectSupabase(savedUrl, savedKey);
-      loadCodesFromSupabase();
-    } else {
-      renderQRCodes();
-      updateSummary();
-      showMessage('Informe os dados do Supabase para carregar os QR Codes.', 'info');
-    }
 
     function toggleConfig() {
       const container = document.getElementById('configContainer');
       container.style.display = container.style.display === 'none' ? 'block' : 'none';
     }
+
+
+    const whatsappInput = document.getElementById('customerWhatsapp');
+
+    whatsappInput.addEventListener('input', function (e) {
+      let value = e.target.value.replace(/\D/g, '');
+
+      value = value.substring(0, 11);
+
+      if (value.length > 10) {
+        value = value.replace(
+          /^(\d{2})(\d{5})(\d{4}).*/,
+          '($1) $2-$3'
+        );
+      } else if (value.length > 6) {
+        value = value.replace(
+          /^(\d{2})(\d{4})(\d{0,4}).*/,
+          '($1) $2-$3'
+        );
+      } else if (value.length > 2) {
+        value = value.replace(
+          /^(\d{2})(\d{0,5})/,
+          '($1) $2'
+        );
+      } else {
+        value = value.replace(
+          /^(\d*)/,
+          '($1'
+        );
+      }
+
+      e.target.value = value;
+    });
 
     function toggleTicketType() {
       const ticketType = document.getElementById('ticketType').value;
@@ -582,6 +639,7 @@
       const eventName = document.getElementById('eventName').value.trim();
       const eventDate = document.getElementById('eventDate').value;
       const eventTime = document.getElementById('eventTime').value;
+      const eventLocation = document.getElementById('eventLocation').value.trim();
 
       if (!url || !key) {
         showMessage('Informe a URL e a Anon Key do Supabase.', 'error');
@@ -593,6 +651,7 @@
       localStorage.setItem('event_name', eventName);
       localStorage.setItem('event_date', eventDate);
       localStorage.setItem('event_time', eventTime);
+      localStorage.setItem('event_location', eventLocation);
 
       connectSupabase(url, key);
       showMessage('Configurações salvas. Carregando dados...', 'success');
@@ -605,9 +664,20 @@
         return;
       }
 
+      const eventId = currentEventId || localStorage.getItem('event_id');
+
+      if (!eventId) {
+        allCodes = [];
+        renderQRCodes();
+        updateSummary();
+        showMessage('Informe um event_id válido na URL para carregar os QR Codes.', 'error');
+        return;
+      }
+
       const { data, error } = await supabaseClient
         .from('access_codes')
         .select('*')
+        .eq('event_id', eventId)
         .order('created_at', { ascending: true });
 
       if (error) {
@@ -618,7 +688,7 @@
       allCodes = data || [];
       renderQRCodes();
       updateSummary();
-      showMessage('Lista atualizada com dados do Supabase.', 'success');
+      showMessage('Lista atualizada com QR Codes deste evento.', 'success');
     }
 
     function generateUniqueCode(eventName, tableNumber, seatNumber, ticketType) {
@@ -646,6 +716,7 @@
       }
 
       const ticketType = document.getElementById('ticketType').value;
+      const eventId = currentEventId || localStorage.getItem('event_id');
       const eventName = document.getElementById('eventName').value.trim();
       const eventDate = document.getElementById('eventDate').value;
       const eventTime = document.getElementById('eventTime').value;
@@ -656,8 +727,13 @@
       const customerWhatsapp = document.getElementById('customerWhatsapp').value.trim();
       const generateButton = document.getElementById('generateButton');
 
+      if (!eventId) {
+        showMessage('Evento não carregado. Informe um event_id válido na URL.', 'error');
+        return;
+      }
+
       if (!eventName) {
-        showMessage('Informe o nome do evento nas configurações.', 'error');
+        showMessage('Evento carregado sem nome. Verifique a tabela events.', 'error');
         return;
       }
 
@@ -683,7 +759,7 @@
         const { data: existingTable, error: checkError } = await supabaseClient
           .from('access_codes')
           .select('id')
-          .eq('event_name', eventName)
+          .eq('event_id', eventId)
           .eq('ticket_type', 'mesa')
           .eq('table_number', tableNumber)
           .limit(1);
@@ -713,6 +789,7 @@
         } while (allCodes.some(item => item.qr_code === code) || newCodes.some(item => item.qr_code === code));
 
         newCodes.push({
+          event_id: eventId,
           event_name: eventName,
           event_date: eventDate,
           event_time: eventTime,
@@ -750,19 +827,67 @@
       );
     }
 
+    function handleSearchInput() {
+      searchTerm = document.getElementById('searchInput').value.trim().toLowerCase();
+
+      if (searchTerm) {
+        const matched = allCodes.filter(matchesSearch);
+        const hasMesa = matched.some(item => (item.ticket_type || 'mesa') === 'mesa');
+        const hasIndividual = matched.some(item => (item.ticket_type || 'mesa') === 'individual');
+
+        if (hasIndividual && !hasMesa) {
+          activeTab = 'individual';
+        }
+
+        if (hasMesa && !hasIndividual) {
+          activeTab = 'mesa';
+        }
+
+        document.getElementById('tabMesa').classList.toggle('active', activeTab === 'mesa');
+        document.getElementById('tabIndividual').classList.toggle('active', activeTab === 'individual');
+      }
+
+      renderQRCodes();
+    }
+
+    function matchesSearch(item) {
+      if (!searchTerm) return true;
+
+      const values = [
+        item.qr_code,
+        item.customer_name,
+        item.customer_email,
+        item.customer_whatsapp,
+        item.table_number,
+        item.seat_number,
+        item.event_name,
+        item.event_date,
+        item.event_time
+      ];
+
+      return values
+        .filter(value => value !== null && value !== undefined)
+        .some(value => String(value).toLowerCase().includes(searchTerm));
+    }
+
     function renderQRCodes() {
       const container = document.getElementById('qrContainer');
       container.innerHTML = '';
 
       const filteredCodes = allCodes.filter(item => {
         const type = item.ticket_type || 'mesa';
-        return activeTab === 'mesa' ? type === 'mesa' : type === 'individual';
+        const matchesTab = activeTab === 'mesa' ? type === 'mesa' : type === 'individual';
+        return matchesTab && matchesSearch(item);
       });
 
       if (filteredCodes.length === 0) {
         container.innerHTML = `
           <div class="empty-state">
-            ${activeTab === 'mesa' ? 'Nenhum QR Code de mesa encontrado.' : 'Nenhum ingresso individual encontrado.'}
+            ${searchTerm
+            ? 'Nenhum QR Code encontrado para esta busca.'
+            : activeTab === 'mesa'
+              ? 'Nenhum QR Code de mesa encontrado.'
+              : 'Nenhum ingresso individual encontrado.'}
           </div>
         `;
         return;
@@ -1130,6 +1255,72 @@
         message.textContent = '';
       }, 5000);
     }
+
+
+    async function loadEventFromURL() {
+      const params = new URLSearchParams(window.location.search);
+      const eventId = params.get('event_id');
+
+      if (!eventId || !supabaseClient) {
+        return false;
+      }
+
+      const { data, error } = await supabaseClient
+        .from('events')
+        .select('id, name, event_date, event_time, location')
+        .eq('id', eventId)
+        .maybeSingle();
+
+      if (error) {
+        showMessage('Erro ao buscar evento: ' + error.message, 'error');
+        return false;
+      }
+
+      if (!data) {
+        showMessage('Evento não encontrado para este ID.', 'error');
+        return false;
+      }
+
+      currentEventId = data.id;
+      currentEventData = data;
+
+      localStorage.setItem('event_id', data.id);
+      localStorage.setItem('event_name', data.name || '');
+      localStorage.setItem('event_date', data.event_date || '');
+      localStorage.setItem('event_time', data.event_time || '');
+      localStorage.setItem('event_location', data.location || '');
+
+      document.getElementById('eventName').value = data.name || '';
+      document.getElementById('eventDate').value = data.event_date || '';
+      document.getElementById('eventTime').value = data.event_time ? String(data.event_time).substring(0, 5) : '';
+      document.getElementById('eventLocation').value = data.location || '';
+
+      showMessage(`Evento carregado: ${data.name}`, 'success');
+      return true;
+    }
+
+    async function initializeSystem() {
+      if (savedUrl && savedKey) {
+        connectSupabase(savedUrl, savedKey);
+
+        const eventLoaded = await loadEventFromURL();
+
+        if (eventLoaded) {
+          await loadCodesFromSupabase();
+        } else {
+          allCodes = [];
+          renderQRCodes();
+          updateSummary();
+        }
+      } else {
+        renderQRCodes();
+        updateSummary();
+        showMessage('Informe os dados do Supabase para carregar os QR Codes.', 'info');
+      }
+    }
+
+    initializeSystem();
   </script>
 </body>
+
 </html>
