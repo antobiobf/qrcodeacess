@@ -6,39 +6,40 @@
   <title>Gerador de QR Codes - Controle de Acesso</title>
 
   <!--
-    SQL PARA CRIAR A TABELA NO SUPABASE
+    SQL / ALTER TABLE PARA O SUPABASE
 
     create table if not exists public.access_codes (
       id uuid primary key default gen_random_uuid(),
       event_name text not null,
       event_date text,
       event_time text,
+      ticket_type text default 'mesa',
+      customer_name text,
+      customer_email text,
+      customer_whatsapp text,
       accessed boolean default false,
-      table_number integer not null,
-      seat_number integer not null,
+      accessed_at timestamptz null,
+      table_number integer,
+      seat_number integer,
       qr_code text not null unique,
       status text not null default 'pending',
       used_at timestamptz null,
       created_at timestamptz not null default now()
     );
 
-    alter table public.access_codes enable row level security;
+    alter table public.access_codes
+    add column if not exists event_date text,
+    add column if not exists event_time text,
+    add column if not exists ticket_type text default 'mesa',
+    add column if not exists customer_name text,
+    add column if not exists customer_email text,
+    add column if not exists customer_whatsapp text,
+    add column if not exists accessed boolean default false,
+    add column if not exists accessed_at timestamptz;
 
-    -- Para teste rápido usando a anon key no frontend:
-    create policy "Permitir leitura anonima"
-    on public.access_codes
-    for select
-    to anon
-    using (true);
-
-    create policy "Permitir insercao anonima"
-    on public.access_codes
-    for insert
-    to anon
-    with check (true);
-
-    ATENÇÃO:
-    Para produção, o ideal é proteger essa tela com login e trocar as policies para authenticated.
+    alter table public.access_codes
+    alter column table_number drop not null,
+    alter column seat_number drop not null;
   -->
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode/1.5.1/qrcode.min.js"></script>
@@ -65,6 +66,7 @@
     }
 
     .header {
+      position: relative;
       background: #111827;
       color: #ffffff;
       padding: 24px;
@@ -75,11 +77,42 @@
     .header h1 {
       font-size: 28px;
       margin-bottom: 8px;
+      padding-right: 54px;
     }
 
     .header p {
       color: #d1d5db;
       font-size: 15px;
+      padding-right: 54px;
+    }
+
+    .header-menu {
+      position: absolute;
+      top: 18px;
+      right: 18px;
+      display: flex;
+      gap: 10px;
+    }
+
+    .config-menu-button {
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: white;
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      cursor: pointer;
+      transition: 0.2s;
+      backdrop-filter: blur(10px);
+    }
+
+    .config-menu-button:hover {
+      background: rgba(255,255,255,0.16);
+      transform: scale(1.03);
     }
 
     .card {
@@ -96,7 +129,8 @@
       margin-bottom: 24px;
     }
 
-    .form-grid {
+    .form-grid,
+    .config-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 16px;
@@ -104,10 +138,7 @@
     }
 
     .config-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
-      margin-bottom: 16px;
+      grid-template-columns: repeat(2, 1fr);
     }
 
     .form-group {
@@ -121,15 +152,18 @@
       font-size: 14px;
     }
 
-    input {
+    input,
+    select {
       padding: 13px 14px;
       border: 1px solid #d1d5db;
       border-radius: 10px;
       font-size: 15px;
       outline: none;
+      background: white;
     }
 
-    input:focus {
+    input:focus,
+    select:focus {
       border-color: #2563eb;
       box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
     }
@@ -171,15 +205,6 @@
 
     .btn-secondary:hover {
       background: #d1d5db;
-    }
-
-    .btn-danger {
-      background: #dc2626;
-      color: white;
-    }
-
-    .btn-danger:hover {
-      background: #b91c1c;
     }
 
     .message {
@@ -233,6 +258,27 @@
       font-size: 26px;
     }
 
+    .tabs-nav {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+
+    .tab-button {
+      background: #e5e7eb;
+      color: #111827;
+      border-radius: 999px;
+      padding: 12px 18px;
+      font-size: 15px;
+      font-weight: bold;
+    }
+
+    .tab-button.active {
+      background: #2563eb;
+      color: white;
+    }
+
     .table-section {
       margin-bottom: 28px;
     }
@@ -283,6 +329,7 @@
       font-size: 13px;
       color: #6b7280;
       margin-bottom: 12px;
+      min-height: 34px;
     }
 
     .qr-card.used {
@@ -357,11 +404,17 @@
 <body>
   <div class="container">
     <div class="header">
+      <div class="header-menu">
+        <button class="config-menu-button" onclick="toggleConfig()" title="Configurações">
+          ⚙️
+        </button>
+      </div>
+
       <h1>Gerador de QR Codes</h1>
-      <p>Crie QR Codes únicos por mesa e salve tudo no Supabase.</p>
+      <p>Crie QR Codes por mesa ou ingressos individuais e salve tudo no Supabase.</p>
     </div>
 
-    <div class="card config-box">
+    <div class="card config-box" id="configContainer" style="display:none;">
       <div class="config-grid">
         <div class="form-group">
           <label for="supabaseUrl">Supabase URL</label>
@@ -371,6 +424,21 @@
         <div class="form-group">
           <label for="supabaseKey">Supabase Anon Key</label>
           <input type="password" id="supabaseKey" placeholder="Cole sua anon public key" />
+        </div>
+
+        <div class="form-group">
+          <label for="eventName">Nome do evento</label>
+          <input type="text" id="eventName" placeholder="Ex: Geraldinho" />
+        </div>
+
+        <div class="form-group">
+          <label for="eventDate">Data do evento</label>
+          <input type="date" id="eventDate" />
+        </div>
+
+        <div class="form-group">
+          <label for="eventTime">Hora do evento</label>
+          <input type="time" id="eventTime" />
         </div>
       </div>
 
@@ -387,25 +455,34 @@
     <div class="card">
       <div class="form-grid">
         <div class="form-group">
-          <label for="eventDate">Data do evento</label>
-          <input type="date" id="eventDate" />
+          <label for="ticketType">Tipo de QR Code</label>
+          <select id="ticketType" onchange="toggleTicketType()">
+            <option value="mesa">Mesa</option>
+            <option value="individual">Ingresso individual</option>
+          </select>
         </div>
 
         <div class="form-group">
-          <label for="eventTime">Hora do evento</label>
-          <input type="time" id="eventTime" />
-        </div>
-        <div class="form-group">
-          <label for="eventName">Nome do evento</label>
-          <input type="text" id="eventName" placeholder="Ex: Jantar VIP" />
+          <label for="customerName">Nome</label>
+          <input type="text" id="customerName" placeholder="Ex: Antônio" />
         </div>
 
         <div class="form-group">
+          <label for="customerEmail">E-mail</label>
+          <input type="email" id="customerEmail" placeholder="Ex: cliente@email.com" />
+        </div>
+
+        <div class="form-group">
+          <label for="customerWhatsapp">WhatsApp</label>
+          <input type="text" id="customerWhatsapp" placeholder="Ex: 81999999999" />
+        </div>
+
+        <div class="form-group mesa-field">
           <label for="tableNumber">Número da mesa</label>
           <input type="number" id="tableNumber" placeholder="Ex: 1" min="1" />
         </div>
 
-        <div class="form-group">
+        <div class="form-group mesa-field">
           <label for="guestQuantity">Quantidade de lugares</label>
           <input type="number" id="guestQuantity" placeholder="Ex: 4" min="1" max="50" />
         </div>
@@ -429,9 +506,14 @@
         <strong id="totalCodes">0</strong>
       </div>
       <div class="summary-box">
-        <span>Última mesa</span>
-        <strong id="lastTable">-</strong>
+        <span>Ingressos individuais</span>
+        <strong id="totalIndividual">0</strong>
       </div>
+    </div>
+
+    <div class="tabs-nav">
+      <button class="tab-button active" id="tabMesa" onclick="setActiveTab('mesa')">QR Codes de mesa</button>
+      <button class="tab-button" id="tabIndividual" onclick="setActiveTab('individual')">Ingressos individuais</button>
     </div>
 
     <div id="qrContainer"></div>
@@ -440,12 +522,21 @@
   <script>
     let supabaseClient = null;
     let allCodes = [];
+    let activeTab = 'mesa';
 
     const savedUrl = localStorage.getItem('supabase_url') || 'https://pfyctxoikdrephjogdtm.supabase.co';
     const savedKey = localStorage.getItem('supabase_key') || 'sb_publishable_h_5hK_HTT-XJ4WUoOGzkGg_tqkBDLjv';
+    const savedEventName = localStorage.getItem('event_name') || '';
+    const savedEventDate = localStorage.getItem('event_date') || '';
+    const savedEventTime = localStorage.getItem('event_time') || '';
 
     document.getElementById('supabaseUrl').value = savedUrl;
     document.getElementById('supabaseKey').value = savedKey;
+    document.getElementById('eventName').value = savedEventName;
+    document.getElementById('eventDate').value = savedEventDate;
+    document.getElementById('eventTime').value = savedEventTime;
+
+    toggleTicketType();
 
     if (savedUrl && savedKey) {
       connectSupabase(savedUrl, savedKey);
@@ -456,14 +547,41 @@
       showMessage('Informe os dados do Supabase para carregar os QR Codes.', 'info');
     }
 
+    function toggleConfig() {
+      const container = document.getElementById('configContainer');
+      container.style.display = container.style.display === 'none' ? 'block' : 'none';
+    }
+
+    function toggleTicketType() {
+      const ticketType = document.getElementById('ticketType').value;
+      const mesaFields = document.querySelectorAll('.mesa-field');
+      const generateButton = document.getElementById('generateButton');
+
+      mesaFields.forEach(field => {
+        field.style.display = ticketType === 'mesa' ? 'flex' : 'none';
+      });
+
+      generateButton.textContent = ticketType === 'mesa' ? 'Gerar QR Codes' : 'Gerar ingresso individual';
+    }
+
+    function setActiveTab(tab) {
+      activeTab = tab;
+      document.getElementById('tabMesa').classList.toggle('active', tab === 'mesa');
+      document.getElementById('tabIndividual').classList.toggle('active', tab === 'individual');
+      renderQRCodes();
+    }
+
     function connectSupabase(url, key) {
       const { createClient } = supabase;
       supabaseClient = createClient(url, key);
     }
 
     async function saveSupabaseConfig() {
-      const url = document.getElementById('supabaseUrl').value.trim();
+      const url = document.getElementById('supabaseUrl').value.trim().replace('/rest/v1/', '').replace('/rest/v1', '');
       const key = document.getElementById('supabaseKey').value.trim();
+      const eventName = document.getElementById('eventName').value.trim();
+      const eventDate = document.getElementById('eventDate').value;
+      const eventTime = document.getElementById('eventTime').value;
 
       if (!url || !key) {
         showMessage('Informe a URL e a Anon Key do Supabase.', 'error');
@@ -472,9 +590,12 @@
 
       localStorage.setItem('supabase_url', url);
       localStorage.setItem('supabase_key', key);
+      localStorage.setItem('event_name', eventName);
+      localStorage.setItem('event_date', eventDate);
+      localStorage.setItem('event_time', eventTime);
 
       connectSupabase(url, key);
-      showMessage('Supabase conectado. Carregando dados...', 'success');
+      showMessage('Configurações salvas. Carregando dados...', 'success');
       await loadCodesFromSupabase();
     }
 
@@ -500,16 +621,20 @@
       showMessage('Lista atualizada com dados do Supabase.', 'success');
     }
 
-    function generateUniqueCode(eventName, tableNumber, seatNumber) {
+    function generateUniqueCode(eventName, tableNumber, seatNumber, ticketType) {
       const cleanEvent = eventName
         .normalize('NFD')
         .replace(/[̀-ͯ]/g, '')
         .replace(/[^a-zA-Z0-9]/g, '')
         .toUpperCase()
-        .substring(0, 8);
+        .substring(0, 8) || 'EVENTO';
 
       const randomPart = Math.random().toString(36).substring(2, 8).toUpperCase();
       const timestamp = Date.now().toString().slice(-6);
+
+      if (ticketType === 'individual') {
+        return `${cleanEvent}-IND-${randomPart}${timestamp}`;
+      }
 
       return `${cleanEvent}-M${String(tableNumber).padStart(2, '0')}-L${String(seatNumber).padStart(2, '0')}-${randomPart}${timestamp}`;
     }
@@ -520,50 +645,62 @@
         return;
       }
 
+      const ticketType = document.getElementById('ticketType').value;
       const eventName = document.getElementById('eventName').value.trim();
-      const tableNumber = Number(document.getElementById('tableNumber').value);
-      const guestQuantity = Number(document.getElementById('guestQuantity').value);
       const eventDate = document.getElementById('eventDate').value;
       const eventTime = document.getElementById('eventTime').value;
+      const tableNumber = Number(document.getElementById('tableNumber').value);
+      const guestQuantity = ticketType === 'mesa' ? Number(document.getElementById('guestQuantity').value) : 1;
+      const customerName = document.getElementById('customerName').value.trim();
+      const customerEmail = document.getElementById('customerEmail').value.trim();
+      const customerWhatsapp = document.getElementById('customerWhatsapp').value.trim();
       const generateButton = document.getElementById('generateButton');
 
       if (!eventName) {
-        showMessage('Informe o nome do evento.', 'error');
+        showMessage('Informe o nome do evento nas configurações.', 'error');
         return;
       }
 
-      if (!tableNumber || tableNumber < 1) {
+      if (ticketType === 'mesa' && (!tableNumber || tableNumber < 1)) {
         showMessage('Informe um número de mesa válido.', 'error');
         return;
       }
 
-      if (!guestQuantity || guestQuantity < 1) {
+      if (ticketType === 'mesa' && (!guestQuantity || guestQuantity < 1)) {
         showMessage('Informe a quantidade de lugares.', 'error');
+        return;
+      }
+
+      if (ticketType === 'individual' && !customerName) {
+        showMessage('Informe o nome do convidado para ingresso individual.', 'error');
         return;
       }
 
       generateButton.disabled = true;
       generateButton.textContent = 'Gerando...';
 
-      const { data: existingTable, error: checkError } = await supabaseClient
-        .from('access_codes')
-        .select('id')
-        .eq('event_name', eventName)
-        .eq('table_number', tableNumber)
-        .limit(1);
+      if (ticketType === 'mesa') {
+        const { data: existingTable, error: checkError } = await supabaseClient
+          .from('access_codes')
+          .select('id')
+          .eq('event_name', eventName)
+          .eq('ticket_type', 'mesa')
+          .eq('table_number', tableNumber)
+          .limit(1);
 
-      if (checkError) {
-        generateButton.disabled = false;
-        generateButton.textContent = 'Gerar QR Codes';
-        showMessage('Erro ao verificar a mesa: ' + checkError.message, 'error');
-        return;
-      }
+        if (checkError) {
+          generateButton.disabled = false;
+          toggleTicketType();
+          showMessage('Erro ao verificar a mesa: ' + checkError.message, 'error');
+          return;
+        }
 
-      if (existingTable && existingTable.length > 0) {
-        generateButton.disabled = false;
-        generateButton.textContent = 'Gerar QR Codes';
-        showMessage(`A mesa ${tableNumber} deste evento já existe no Supabase.`, 'error');
-        return;
+        if (existingTable && existingTable.length > 0) {
+          generateButton.disabled = false;
+          toggleTicketType();
+          showMessage(`A mesa ${tableNumber} deste evento já existe no Supabase.`, 'error');
+          return;
+        }
       }
 
       const newCodes = [];
@@ -572,15 +709,19 @@
         let code;
 
         do {
-          code = generateUniqueCode(eventName, tableNumber, seat);
+          code = generateUniqueCode(eventName, tableNumber, seat, ticketType);
         } while (allCodes.some(item => item.qr_code === code) || newCodes.some(item => item.qr_code === code));
 
         newCodes.push({
           event_name: eventName,
           event_date: eventDate,
           event_time: eventTime,
-          table_number: tableNumber,
-          seat_number: seat,
+          ticket_type: ticketType,
+          customer_name: customerName || null,
+          customer_email: customerEmail || null,
+          customer_whatsapp: customerWhatsapp || null,
+          table_number: ticketType === 'mesa' ? tableNumber : null,
+          seat_number: ticketType === 'mesa' ? seat : null,
           qr_code: code,
           status: 'pending',
           accessed: false
@@ -592,7 +733,7 @@
         .insert(newCodes);
 
       generateButton.disabled = false;
-      generateButton.textContent = 'Gerar QR Codes';
+      toggleTicketType();
 
       if (insertError) {
         showMessage('Erro ao salvar no Supabase: ' + insertError.message, 'error');
@@ -601,17 +742,27 @@
 
       await loadCodesFromSupabase();
       clearForm(false);
-      showMessage(`${guestQuantity} QR Codes salvos no Supabase para a mesa ${tableNumber}.`, 'success');
+      showMessage(
+        ticketType === 'mesa'
+          ? `${guestQuantity} QR Codes salvos no Supabase para a mesa ${tableNumber}.`
+          : `Ingresso individual gerado para ${customerName}.`,
+        'success'
+      );
     }
 
     function renderQRCodes() {
       const container = document.getElementById('qrContainer');
       container.innerHTML = '';
 
-      if (allCodes.length === 0) {
+      const filteredCodes = allCodes.filter(item => {
+        const type = item.ticket_type || 'mesa';
+        return activeTab === 'mesa' ? type === 'mesa' : type === 'individual';
+      });
+
+      if (filteredCodes.length === 0) {
         container.innerHTML = `
           <div class="empty-state">
-            Nenhum QR Code encontrado no Supabase.
+            ${activeTab === 'mesa' ? 'Nenhum QR Code de mesa encontrado.' : 'Nenhum ingresso individual encontrado.'}
           </div>
         `;
         return;
@@ -619,8 +770,8 @@
 
       const groupedByTable = {};
 
-      allCodes.forEach(item => {
-        const key = `${item.event_name} - Mesa ${item.table_number}`;
+      filteredCodes.forEach(item => {
+        const key = getGroupKey(item);
 
         if (!groupedByTable[key]) {
           groupedByTable[key] = [];
@@ -635,15 +786,30 @@
 
         const title = document.createElement('div');
         title.className = 'table-title';
-        title.innerHTML = `
-          <h2>${groupKey}</h2>
-          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
-            <span>${groupedByTable[groupKey].length} QR Codes</span>
-            <button class="btn-primary" style="padding:10px 12px; font-size:13px;" onclick="sendTableQRCodes('${groupKey.replace(/'/g, "\'")}')">
-              Baixar PDF da mesa
-            </button>
-          </div>
-        `;
+
+        const titleText = document.createElement('h2');
+        titleText.textContent = groupKey;
+
+        const titleActions = document.createElement('div');
+        titleActions.style.display = 'flex';
+        titleActions.style.gap = '10px';
+        titleActions.style.alignItems = 'center';
+        titleActions.style.flexWrap = 'wrap';
+
+        const countText = document.createElement('span');
+        countText.textContent = `${groupedByTable[groupKey].length} QR Codes`;
+
+        const tablePdfButton = document.createElement('button');
+        tablePdfButton.className = 'btn-primary';
+        tablePdfButton.style.padding = '10px 12px';
+        tablePdfButton.style.fontSize = '13px';
+        tablePdfButton.textContent = activeTab === 'mesa' ? 'Baixar PDF da mesa' : 'Baixar PDF dos ingressos';
+        tablePdfButton.onclick = () => sendTableQRCodes(groupKey);
+
+        titleActions.appendChild(countText);
+        titleActions.appendChild(tablePdfButton);
+        title.appendChild(titleText);
+        title.appendChild(titleActions);
 
         const grid = document.createElement('div');
         grid.className = 'qr-grid';
@@ -668,9 +834,7 @@
 
           const info = document.createElement('div');
           info.className = 'qr-info';
-          info.innerHTML = item.accessed
-            ? `Mesa ${item.table_number} • Lugar ${item.seat_number} • ACESSO UTILIZADO`
-            : `Mesa ${item.table_number} • Lugar ${item.seat_number}`;
+          info.innerHTML = getInfoText(item);
 
           const downloadButton = document.createElement('button');
           downloadButton.className = 'btn-secondary';
@@ -696,11 +860,34 @@
       });
     }
 
+    function getGroupKey(item) {
+      const type = item.ticket_type || 'mesa';
+
+      if (type === 'individual') {
+        return `${item.event_name} - Ingressos individuais`;
+      }
+
+      return `${item.event_name} - Mesa ${item.table_number}${item.customer_name ? ` - Mesa de ${item.customer_name}` : ''}`;
+    }
+
+    function getInfoText(item) {
+      const type = item.ticket_type || 'mesa';
+
+      if (type === 'individual') {
+        return `${item.customer_name || 'Ingresso individual'}${item.accessed ? ' • ACESSO UTILIZADO' : ''}`;
+      }
+
+      const ownerText = item.customer_name ? ` • Mesa de ${item.customer_name}` : '';
+      return item.accessed
+        ? `Mesa ${item.table_number} • Lugar ${item.seat_number}${ownerText} • ACESSO UTILIZADO`
+        : `Mesa ${item.table_number} • Lugar ${item.seat_number}${ownerText}`;
+    }
+
     async function sendTableQRCodes(groupKey) {
-      const tableCodes = allCodes.filter(item => `${item.event_name} - Mesa ${item.table_number}` === groupKey);
+      const tableCodes = allCodes.filter(item => getGroupKey(item) === groupKey);
 
       if (tableCodes.length === 0) {
-        showMessage('Nenhum QR Code encontrado para esta mesa.', 'error');
+        showMessage('Nenhum QR Code encontrado para gerar o PDF.', 'error');
         return;
       }
 
@@ -712,72 +899,31 @@
         format: [80, 120]
       });
 
+      let addedPages = 0;
+
       for (let index = 0; index < tableCodes.length; index++) {
         const item = tableCodes[index];
         const canvas = document.getElementById(`canvas-${item.id}`);
 
         if (!canvas) continue;
 
-        if (index > 0) {
+        if (addedPages > 0) {
           pdf.addPage([80, 120], 'portrait');
         }
 
-        const image = canvas.toDataURL('image/png');
-
-        pdf.setFillColor(item.accessed ? 254 : 255, item.accessed ? 242 : 255, item.accessed ? 242 : 255);
-        pdf.rect(0, 0, 80, 120, 'F');
-
-        if (item.accessed) {
-          pdf.setFillColor(220, 38, 38);
-          pdf.roundedRect(17, 4, 46, 8, 2, 2, 'F');
-          pdf.setTextColor(255, 255, 255);
-          pdf.setFont('helvetica', 'bold');
-          pdf.setFontSize(8);
-          pdf.text('JÁ ACESSADO', 40, 9.5, { align: 'center' });
-        }
-
-        pdf.setTextColor(17, 24, 39);
-        pdf.setFont('helvetica', 'bold');
-        pdf.setFontSize(13);
-        pdf.text(item.event_name || 'Evento', 40, item.accessed ? 18 : 10, { align: 'center' });
-
-        pdf.setFont('helvetica', 'normal');
-        pdf.setFontSize(9);
-
-        if (item.event_date) {
-          pdf.text(`Data: ${formatDateBR(item.event_date)}`, 40, item.accessed ? 24 : 16, { align: 'center' });
-        }
-
-        if (item.event_time) {
-          pdf.text(`Hora: ${item.event_time}`, 40, item.accessed ? 29 : 21, { align: 'center' });
-        }
-
-        pdf.addImage(image, 'PNG', 17, item.accessed ? 34 : 26, 46, 46);
-
-        pdf.setFillColor(243, 244, 246);
-        pdf.roundedRect(8, item.accessed ? 86 : 80, 64, 16, 3, 3, 'F');
-
-        pdf.setTextColor(17, 24, 39);
-        pdf.setFont('helvetica', 'bold');
-        pdf.setFontSize(10);
-
-        const codeLines = pdf.splitTextToSize(item.qr_code, 58);
-        pdf.text(codeLines, 40, item.accessed ? 92 : 86, { align: 'center' });
-
-        pdf.setTextColor(107, 114, 128);
-        pdf.setFont('helvetica', 'normal');
-        pdf.setFontSize(10);
-        pdf.text(
-        item.accessed
-          ? `Mesa ${item.table_number} • Lugar ${item.seat_number} • JÁ ENTROU`
-          : `Mesa ${item.table_number} • Lugar ${item.seat_number}`,
-        40,
-        item.accessed ? 109 : 104,
-        { align: 'center' }
-      );
+        addedPages++;
+        drawTicketPdfPage(pdf, item, canvas);
       }
 
-      const fileName = `${firstItem.event_name}-mesa-${firstItem.table_number}-qrcodes.pdf`.replace(/[^a-zA-Z0-9.-]/g, '-');
+      if (addedPages === 0) {
+        showMessage('Não foi possível encontrar os QR Codes renderizados na tela. Atualize a lista e tente novamente.', 'error');
+        return;
+      }
+
+      const fileName = (firstItem.ticket_type || 'mesa') === 'individual'
+        ? `${firstItem.event_name}-ingressos-individuais.pdf`.replace(/[^a-zA-Z0-9.-]/g, '-')
+        : `${firstItem.event_name}-mesa-${firstItem.table_number}-qrcodes.pdf`.replace(/[^a-zA-Z0-9.-]/g, '-');
+
       await baixarPDFNoCelular(pdf, fileName);
     }
 
@@ -786,7 +932,6 @@
 
       if (!canvas) return;
 
-      const image = canvas.toDataURL('image/png');
       const { jsPDF } = window.jspdf;
       const pdf = new jsPDF({
         orientation: 'portrait',
@@ -794,51 +939,88 @@
         format: [80, 120]
       });
 
-      pdf.setFillColor(255, 255, 255);
+      drawTicketPdfPage(pdf, item, canvas);
+
+      const fileName = (item.ticket_type || 'mesa') === 'individual'
+        ? `${item.event_name}-${item.customer_name || 'ingresso-individual'}.pdf`.replace(/[^a-zA-Z0-9.-]/g, '-')
+        : `${item.event_name}-mesa-${item.table_number}-lugar-${item.seat_number}.pdf`.replace(/[^a-zA-Z0-9.-]/g, '-');
+
+      await baixarPDFNoCelular(pdf, fileName);
+    }
+
+    function drawTicketPdfPage(pdf, item, canvas) {
+      const image = canvas.toDataURL('image/png');
+      const hasName = Boolean(item.customer_name);
+      const isUsed = Boolean(item.accessed);
+      const type = item.ticket_type || 'mesa';
+
+      pdf.setFillColor(isUsed ? 254 : 255, isUsed ? 242 : 255, isUsed ? 242 : 255);
       pdf.rect(0, 0, 80, 120, 'F');
+
+      if (isUsed) {
+        pdf.setFillColor(220, 38, 38);
+        pdf.roundedRect(17, 4, 46, 8, 2, 2, 'F');
+        pdf.setTextColor(255, 255, 255);
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(8);
+        pdf.text('JÁ ACESSADO', 40, 9.5, { align: 'center' });
+      }
 
       pdf.setTextColor(17, 24, 39);
       pdf.setFont('helvetica', 'bold');
       pdf.setFontSize(13);
-      pdf.text(item.event_name || 'Evento', 40, item.accessed ? 18 : 10, { align: 'center' });
+      pdf.text(item.event_name || 'Evento', 40, isUsed ? 18 : 10, { align: 'center' });
 
       pdf.setFont('helvetica', 'normal');
       pdf.setFontSize(9);
 
       if (item.event_date) {
-        pdf.text(`Data: ${formatDateBR(item.event_date)}`, 40, item.accessed ? 24 : 16, { align: 'center' });
+        pdf.text(`Data: ${formatDateBR(item.event_date)}`, 40, isUsed ? 24 : 16, { align: 'center' });
       }
 
       if (item.event_time) {
-        pdf.text(`Hora: ${item.event_time}`, 40, item.accessed ? 29 : 21, { align: 'center' });
+        pdf.text(`Hora: ${item.event_time}`, 40, isUsed ? 29 : 21, { align: 'center' });
       }
 
-      pdf.addImage(image, 'PNG', 17, item.accessed ? 34 : 26, 46, 46);
+      if (hasName) {
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(9);
+        pdf.text(
+          type === 'mesa' ? `Mesa de ${item.customer_name}` : item.customer_name,
+          40,
+          isUsed ? 33 : 25,
+          { align: 'center' }
+        );
+      }
+
+      const qrY = hasName ? (isUsed ? 38 : 30) : (isUsed ? 34 : 26);
+      const boxY = hasName ? (isUsed ? 88 : 82) : (isUsed ? 86 : 80);
+      const textY = hasName ? (isUsed ? 94 : 88) : (isUsed ? 92 : 86);
+      const footerY = hasName ? (isUsed ? 111 : 106) : (isUsed ? 109 : 104);
+
+      pdf.addImage(image, 'PNG', 17, qrY, 46, 46);
 
       pdf.setFillColor(243, 244, 246);
-      pdf.roundedRect(8, item.accessed ? 86 : 80, 64, 16, 3, 3, 'F');
+      pdf.roundedRect(8, boxY, 64, 16, 3, 3, 'F');
 
       pdf.setTextColor(17, 24, 39);
       pdf.setFont('helvetica', 'bold');
       pdf.setFontSize(10);
 
       const codeLines = pdf.splitTextToSize(item.qr_code, 58);
-      pdf.text(codeLines, 40, item.accessed ? 92 : 86, { align: 'center' });
+      pdf.text(codeLines, 40, textY, { align: 'center' });
 
       pdf.setTextColor(107, 114, 128);
       pdf.setFont('helvetica', 'normal');
       pdf.setFontSize(10);
-      pdf.text(
-        item.accessed
-          ? `Mesa ${item.table_number} • Lugar ${item.seat_number} • JÁ ENTROU`
-          : `Mesa ${item.table_number} • Lugar ${item.seat_number}`,
-        40,
-        item.accessed ? 109 : 104,
-        { align: 'center' }
-      );
 
-      const fileName = `${item.event_name}-mesa-${item.table_number}-lugar-${item.seat_number}.pdf`.replace(/[^a-zA-Z0-9.-]/g, '-');
-      await baixarPDFNoCelular(pdf, fileName);
+      const footerText = type === 'individual'
+        ? `${item.customer_name || 'Ingresso individual'}${isUsed ? ' • JÁ ENTROU' : ''}`
+        : isUsed
+          ? `Mesa ${item.table_number} • Lugar ${item.seat_number} • JÁ ENTROU`
+          : `Mesa ${item.table_number} • Lugar ${item.seat_number}`;
+
+      pdf.text(footerText, 40, footerY, { align: 'center' });
     }
 
     async function baixarPDFNoCelular(pdf, fileName) {
@@ -909,23 +1091,27 @@
         document.getElementById('eventName').value = '';
       }
 
+      document.getElementById('customerName').value = '';
+      document.getElementById('customerEmail').value = '';
+      document.getElementById('customerWhatsapp').value = '';
       document.getElementById('tableNumber').value = '';
       document.getElementById('guestQuantity').value = '';
     }
 
     function updateSummary() {
-      const uniqueTables = new Set(allCodes.map(item => `${item.event_name}-${item.table_number}`));
-      const last = allCodes.length > 0 ? allCodes[allCodes.length - 1].table_number : '-';
+      const mesaCodes = allCodes.filter(item => (item.ticket_type || 'mesa') === 'mesa');
+      const individualCodes = allCodes.filter(item => (item.ticket_type || 'mesa') === 'individual');
+      const uniqueTables = new Set(mesaCodes.map(item => `${item.event_name}-${item.table_number}`));
 
       document.getElementById('totalTables').textContent = uniqueTables.size;
-      document.getElementById('totalCodes').textContent = allCodes.length;
-      document.getElementById('lastTable').textContent = last;
+      document.getElementById('totalCodes').textContent = mesaCodes.length;
+      document.getElementById('totalIndividual').textContent = individualCodes.length;
     }
 
     function formatDateBR(dateString) {
       if (!dateString) return '';
 
-      const parts = dateString.split('-');
+      const parts = String(dateString).split('-');
 
       if (parts.length !== 3) {
         return dateString;

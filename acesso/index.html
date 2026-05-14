@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -41,6 +42,7 @@
     }
 
     .header {
+      position: relative;
       background: #111827;
       color: white;
       border-radius: 18px;
@@ -52,6 +54,40 @@
     .header h1 {
       font-size: 28px;
       margin-bottom: 8px;
+    }
+
+    .header p {
+      color: #d1d5db;
+      font-size: 15px;
+    }
+
+    .header-menu {
+      position: absolute;
+      top: 18px;
+      right: 18px;
+      display: flex;
+      gap: 10px;
+    }
+
+    .config-menu-button {
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: white;
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      cursor: pointer;
+      transition: 0.2s;
+      backdrop-filter: blur(10px);
+    }
+
+    .config-menu-button:hover {
+      background: rgba(255, 255, 255, 0.16);
+      transform: scale(1.03);
     }
 
     .header p {
@@ -308,31 +344,45 @@
     }
   </style>
 </head>
+
 <body>
   <div class="container">
     <div class="header">
+      <div class="header-menu">
+        <button class="config-menu-button" onclick="goHome()" title="Home">
+          🏠
+        </button>
+
+        <button class="config-menu-button" onclick="toggleConfig()" title="Configurações">
+          ⚙️
+        </button>
+      </div>
       <h1>Bipagem de QR Codes</h1>
       <p>Leia o QR Code pela câmera ou digite o código do ingresso.</p>
     </div>
 
-    <div class="card">
-      <div class="config-grid">
-        <div class="form-group">
-          <label for="supabaseUrl">Supabase URL</label>
-          <input type="text" id="supabaseUrl" placeholder="https://xxxx.supabase.co" />
+    <div class="card" id="configContainer" style="display:none;">
+
+
+      <div>
+        <div class="config-grid">
+          <div class="form-group">
+            <label for="supabaseUrl">Supabase URL</label>
+            <input type="text" id="supabaseUrl" placeholder="https://xxxx.supabase.co" />
+          </div>
+
+          <div class="form-group">
+            <label for="supabaseKey">Supabase Anon Key</label>
+            <input type="password" id="supabaseKey" placeholder="Cole sua anon public key" />
+          </div>
         </div>
 
-        <div class="form-group">
-          <label for="supabaseKey">Supabase Anon Key</label>
-          <input type="password" id="supabaseKey" placeholder="Cole sua anon public key" />
+        <div class="actions">
+          <button class="btn-primary" onclick="saveSupabaseConfig()">Conectar Supabase</button>
         </div>
-      </div>
 
-      <div class="actions">
-        <button class="btn-primary" onclick="saveSupabaseConfig()">Conectar Supabase</button>
+        <!-- <p class="small-text">A URL deve ser somente até <strong>.supabase.co</strong>, sem <strong>/rest/v1</strong>.</p> -->
       </div>
-
-      <p class="small-text">A URL deve ser somente até <strong>.supabase.co</strong>, sem <strong>/rest/v1</strong>.</p>
     </div>
 
     <div class="card">
@@ -386,11 +436,25 @@
       showMessage('Informe os dados do Supabase para começar.', 'info');
     }
 
-    document.getElementById('codeInput').addEventListener('keydown', function(event) {
+    document.getElementById('codeInput').addEventListener('keydown', function (event) {
       if (event.key === 'Enter') {
         searchCode(false);
       }
     });
+
+    function goHome() {
+      window.location.href = '/index.html';
+    }
+
+    function toggleConfig() {
+      const container = document.getElementById('configContainer');
+
+      if (container.style.display === 'none') {
+        container.style.display = 'block';
+      } else {
+        container.style.display = 'none';
+      }
+    }
 
     function connectSupabase(url, key) {
       const { createClient } = supabase;
@@ -546,7 +610,7 @@ Código: ${data.qr_code}`
           used_at: now
         })
         .eq('id', item.id)
-        .eq('accessed', false)
+        .or('accessed.is.null,accessed.eq.false')
         .select('*')
         .maybeSingle();
 
@@ -566,7 +630,12 @@ Código: ${data.qr_code}`
       document.getElementById('codeInput').value = '';
 
       alert(
-        `ENTRADA CONFIRMADA ✅\n\nEvento: ${data.event_name}\nMesa: ${data.table_number}\nLugar: ${data.seat_number}\nData/Hora: ${formatDateTimeBR(data.accessed_at)}`
+        `ENTRADA CONFIRMADA ✅
+
+Evento: ${data.event_name}
+Mesa: ${data.table_number}
+Lugar: ${data.seat_number}
+Data/Hora: ${formatDateTimeBR(data.accessed_at)}`
       );
 
       showMessage(`Entrada confirmada com sucesso. Data/Hora: ${formatDateTimeBR(data.accessed_at)}`, 'success');
@@ -690,4 +759,5 @@ Código: ${data.qr_code}`
     }
   </script>
 </body>
+
 </html>
