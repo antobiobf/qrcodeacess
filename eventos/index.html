@@ -477,16 +477,24 @@
             </div>
 
             <div class="event-actions">
-            <a class="btn-link btn-success" href="/qrcode/acesso/?event_id=${eventId}">Bipagem</a>
 
-            <a class="btn-link btn-primary" href="/qrcode/?event_id=${eventId}">
-              Cadastro / Gerador de QR Code
-            </a>
+  <a class="btn-link btn-success" href="/qrcode/acesso/?event_id=${eventId}">
+    Bipagem
+  </a>
 
-            <a class="btn-link btn-dark" href="/qrcode/dashboard/?event_id=${eventId}">
-              Dashboard
-            </a>
-            </div>
+  <a class="btn-link btn-primary" href="/qrcode/?event_id=${eventId}">
+    Cadastro / Gerador de QR Code
+  </a>
+
+  <a class="btn-link btn-dark" href="/qrcode/dashboard/?event_id=${eventId}">
+    Dashboard
+  </a>
+
+  <a class="btn-link btn-warning" href="/convidados/?event_id=${eventId}">
+    Convidados
+  </a>
+
+</div>
           </div>
         `;
       }).join('');

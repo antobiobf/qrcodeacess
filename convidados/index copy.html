@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Gestão de Convidados - Envio Seguro</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; font-family:Arial,sans-serif; }
+    body { background:#f3f4f6; color:#111827; padding:20px; }
+    .container { max-width:1400px; margin:0 auto; }
+    .header { position:relative; background:linear-gradient(135deg,#111827,#1e3a8a); color:#fff; border-radius:24px; padding:30px; margin-bottom:24px; box-shadow:0 12px 32px rgba(17,24,39,.18); }
+    .header h1 { font-size:36px; margin-bottom:10px; padding-right:90px; }
+    .header p { color:#dbeafe; font-size:17px; padding-right:90px; }
+    .header-menu { position:absolute; right:22px; top:22px; display:flex; gap:10px; }
+    .icon-button { width:44px; height:44px; border-radius:14px; border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.1); color:white; font-size:18px; cursor:pointer; }
+    .card,.panel { background:#fff; border-radius:20px; padding:24px; margin-bottom:24px; box-shadow:0 8px 24px rgba(0,0,0,.06); }
+    .grid-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:24px; }
+    .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+    .info-box { background:#fff; border-radius:18px; padding:18px; box-shadow:0 8px 24px rgba(0,0,0,.06); }
+    .info-box span { display:block; color:#6b7280; font-size:13px; margin-bottom:6px; }
+    .info-box strong { font-size:24px; }
+    .summary-box strong { font-size:34px; }
+    .form-group { display:flex; flex-direction:column; gap:8px; }
+    label { font-weight:bold; font-size:14px; }
+    input,textarea,select { width:100%; padding:14px; border:1px solid #d1d5db; border-radius:12px; font-size:15px; outline:none; background:#fff; }
+    textarea { min-height:260px; resize:vertical; line-height:1.45; }
+    input:focus,textarea:focus,select:focus { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,.14); }
+    button,.btn-link { border:none; border-radius:12px; padding:13px 16px; font-weight:bold; cursor:pointer; font-size:14px; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; transition:.2s; white-space:nowrap; }
+    button:disabled { opacity:.6; cursor:not-allowed; }
+    .btn-primary { background:#2563eb; color:white; }
+    .btn-success { background:#16a34a; color:white; }
+    .btn-warning { background:#f59e0b; color:white; }
+    .btn-danger { background:#dc2626; color:white; }
+    .btn-secondary { background:#e5e7eb; color:#111827; }
+    .btn-dark { background:#111827; color:white; }
+    .message { display:none; padding:14px; border-radius:14px; margin-bottom:18px; font-size:14px; }
+    .message.success { display:block; background:#dcfce7; color:#166534; }
+    .message.error { display:block; background:#fee2e2; color:#991b1b; }
+    .message.info { display:block; background:#dbeafe; color:#1e40af; }
+    .message.warning { display:block; background:#fef3c7; color:#92400e; }
+    .config-box { display:none; }
+    .import-section { display:grid; grid-template-columns:1fr 230px; gap:14px; align-items:center; }
+    .import-section button { height:54px; }
+    .safe-send-box { border:1px solid #fde68a; background:#fffbeb; border-radius:18px; padding:18px; margin-bottom:18px; }
+    .safe-send-box h3 { color:#92400e; margin-bottom:8px; }
+    .safe-send-box p { color:#92400e; line-height:1.45; font-size:14px; }
+    .send-controls { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-top:16px; }
+    .send-progress { display:none; margin-top:18px; padding:16px; border-radius:16px; background:#eff6ff; border:1px solid #bfdbfe; color:#1e3a8a; }
+    .send-progress.active { display:block; }
+    .progress-bar { height:14px; border-radius:999px; background:#dbeafe; overflow:hidden; margin-top:10px; }
+    .progress-fill { height:100%; width:0%; background:#2563eb; transition:.3s; }
+    .tools { display:grid; grid-template-columns:2fr auto auto; gap:14px; align-items:end; }
+    table { width:100%; border-collapse:collapse; font-size:14px; }
+    th,td { padding:12px; text-align:left; border-bottom:1px solid #e5e7eb; vertical-align:top; }
+    th { color:#6b7280; font-size:12px; text-transform:uppercase; }
+    .table-actions { display:flex; gap:8px; flex-wrap:wrap; }
+    .badge { padding:7px 10px; border-radius:999px; font-size:12px; font-weight:bold; white-space:nowrap; }
+    .badge-green { background:#dcfce7; color:#166534; }
+    .badge-yellow { background:#fef3c7; color:#92400e; }
+    .badge-gray { background:#f3f4f6; color:#4b5563; }
+    .small-text { color:#6b7280; font-size:13px; line-height:1.45; margin-top:8px; }
+    .empty-state { text-align:center; padding:40px 20px; color:#6b7280; background:#fff; border:1px dashed #d1d5db; border-radius:18px; }
+
+    @media(max-width:900px){
+      body{padding:12px}.grid-4,.grid-2,.send-controls,.tools,.import-section{grid-template-columns:1fr}.header h1{font-size:26px}button,.btn-link{width:100%}table{display:block;overflow-x:auto}
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="header-menu">
+        <button class="icon-button" onclick="goEvents()" title="Eventos">🏠</button>
+        <button class="icon-button" onclick="toggleConfig()" title="Configurações">⚙️</button>
+      </div>
+      <h1>Gestão de Convidados</h1>
+      <p>Importe convidados, envie confirmações com segurança e acompanhe presenças.</p>
+    </div>
+
+    <div id="message" class="message"></div>
+
+    <div class="card config-box" id="configBox">
+      <div class="grid-2">
+        <div class="form-group">
+          <label for="supabaseUrl">Supabase URL</label>
+          <input id="supabaseUrl" type="text" placeholder="https://xxxx.supabase.co" />
+        </div>
+        <div class="form-group">
+          <label for="supabaseKey">Supabase Anon Key</label>
+          <input id="supabaseKey" type="password" placeholder="Cole sua anon/public key" />
+        </div>
+      </div>
+      <div style="margin-top:16px;">
+        <button class="btn-primary" onclick="saveConfig()">Salvar e conectar</button>
+      </div>
+    </div>
+
+    <div class="grid-4">
+      <div class="info-box"><span>Evento</span><strong id="eventName">-</strong></div>
+      <div class="info-box"><span>Data</span><strong id="eventDate">-</strong></div>
+      <div class="info-box"><span>Hora</span><strong id="eventTime">-</strong></div>
+      <div class="info-box"><span>Local</span><strong id="eventLocation">-</strong></div>
+    </div>
+
+    <div class="grid-4">
+      <div class="info-box summary-box"><span>Total de convidados</span><strong id="totalGuests">0</strong></div>
+      <div class="info-box summary-box"><span>Confirmados</span><strong id="confirmedGuests">0</strong></div>
+      <div class="info-box summary-box"><span>Pendentes</span><strong id="pendingGuests">0</strong></div>
+      <div class="info-box summary-box"><span>Grupos</span><strong id="totalGroups">0</strong></div>
+    </div>
+
+    <div class="card">
+      <h2 style="margin-bottom:18px;">Importar planilha</h2>
+      <div class="import-section">
+        <div class="form-group">
+          <label for="spreadsheetFile">Planilha Excel ou CSV</label>
+          <input type="file" id="spreadsheetFile" accept=".xlsx,.xls,.csv" />
+          <p class="small-text">A planilha deve conter as colunas: <strong>Nome do Convidado</strong>, <strong>Nome do Grupo</strong> e <strong>Whatsapp</strong>.</p>
+        </div>
+        <button id="importButton" class="btn-primary" onclick="importSpreadsheet()">Importar convidados</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 style="margin-bottom:18px;">Mensagem padrão</h2>
+      <div class="form-group">
+        <label for="messageTemplate">Mensagem enviada ao convidado</label>
+        <textarea id="messageTemplate">🎉 *Você é nosso(a) convidado(a) especial!*
+
+Olá, {{nome}} 👋
+
+Temos o prazer de convidar você para o evento *{{evento}}* ✨
+
+📅 *Data:* {{data}}
+⏰ *Hora:* {{hora}}
+📍 *Local:* {{local}}
+
+Sua presença é muito importante para nós ❤️
+
+Para confirmar sua participação, basta clicar no link abaixo:
+
+👉 {{link}}
+
+Esperamos você para viver esse momento incrível conosco! 🚀</textarea>
+        <p class="small-text">Variáveis disponíveis: {{nome}}, {{grupo}}, {{evento}}, {{data}}, {{hora}}, {{local}}, {{link}}</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2 style="margin-bottom:18px;">Envio em lote protegido</h2>
+
+      <div class="safe-send-box">
+        <h3>⚠️ Proteção contra bloqueio</h3>
+        <p>Esta tela evita envio agressivo: limita a quantidade por lote, aplica intervalo entre mensagens, pausa obrigatória entre lotes, pula quem já recebeu e exige confirmação antes de iniciar. Mesmo assim, evite mensagens para pessoas que não esperam seu contato.</p>
+      </div>
+
+      <div class="send-controls">
+        <div class="form-group">
+          <label for="batchLimit">Mensagens por lote</label>
+          <select id="batchLimit">
+            <option value="10">10 - muito seguro</option>
+            <option value="15" selected>15 - seguro</option>
+            <option value="20">20 - moderado</option>
+            <option value="30">30 - maior risco</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="delaySeconds">Intervalo entre mensagens</label>
+          <select id="delaySeconds">
+            <option value="8">8 segundos</option>
+            <option value="12" selected>12 segundos</option>
+            <option value="20">20 segundos</option>
+            <option value="30">30 segundos</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="pauseMinutes">Pausa após cada lote</label>
+          <select id="pauseMinutes">
+            <option value="2">2 minutos</option>
+            <option value="5" selected>5 minutos</option>
+            <option value="10">10 minutos</option>
+            <option value="15">15 minutos</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>&nbsp;</label>
+          <button id="safeSendButton" class="btn-success" onclick="startSafeBatchSend()">Iniciar envio seguro</button>
+        </div>
+      </div>
+
+      <div class="actions" style="display:flex;gap:12px;flex-wrap:wrap;margin-top:14px;">
+        <button id="stopSendButton" class="btn-danger" onclick="stopBatchSend()" disabled>Parar envio</button>
+        <button class="btn-secondary" onclick="resetMessageSentForPending()">Liberar reenvio dos pendentes</button>
+      </div>
+
+      <div id="sendProgress" class="send-progress">
+        <strong id="sendProgressTitle">Preparando envio...</strong>
+        <p id="sendProgressText" style="margin-top:8px;">-</p>
+        <div class="progress-bar"><div class="progress-fill" id="sendProgressFill"></div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="tools">
+        <div class="form-group">
+          <label for="searchInput">Buscar convidado</label>
+          <input id="searchInput" type="text" placeholder="Nome, grupo ou WhatsApp" oninput="renderGuests()" />
+        </div>
+        <button class="btn-secondary" onclick="loadGuests()">Atualizar lista</button>
+        <button class="btn-warning" onclick="openNextPending()">Abrir próximo pendente</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2 style="margin-bottom:16px;">Convidados do evento</h2>
+      <div id="guestsTableContainer"></div>
+    </div>
+  </div>
+
+<script>
+let supabaseClient = null;
+let currentEventId = null;
+let currentEventData = null;
+let guests = [];
+let batchSending = false;
+let stopRequested = false;
+
+const savedUrl = localStorage.getItem('supabase_url') || 'https://pfyctxoikdrephjogdtm.supabase.co';
+const savedKey = localStorage.getItem('supabase_key') || 'sb_publishable_h_5hK_HTT-XJ4WUoOGzkGg_tqkBDLjv';
+
+document.getElementById('supabaseUrl').value = savedUrl;
+document.getElementById('supabaseKey').value = savedKey;
+
+initializePage();
+
+async function initializePage() {
+  const params = new URLSearchParams(window.location.search);
+  currentEventId = params.get('event_id');
+
+  if (!currentEventId) {
+    showMessage('Informe o event_id na URL. Ex: /qrcode/convidados/?event_id=UUID', 'error');
+    return;
+  }
+
+  if (savedUrl && savedKey) {
+    connectSupabase(savedUrl, savedKey);
+    await loadEvent();
+    await loadGuests();
+  } else {
+    toggleConfig();
+    showMessage('Configure o Supabase para carregar convidados.', 'info');
+  }
+}
+
+function goEvents() { window.location.href = '/qrcode/eventos/'; }
+
+function toggleConfig() {
+  const box = document.getElementById('configBox');
+  box.style.display = box.style.display === 'none' || !box.style.display ? 'block' : 'none';
+}
+
+function connectSupabase(url, key) {
+  const { createClient } = supabase;
+  supabaseClient = createClient(url, key);
+}
+
+async function saveConfig() {
+  const url = document.getElementById('supabaseUrl').value.trim().replace('/rest/v1/', '').replace('/rest/v1', '');
+  const key = document.getElementById('supabaseKey').value.trim();
+
+  if (!url || !key) {
+    showMessage('Informe URL e chave do Supabase.', 'error');
+    return;
+  }
+
+  localStorage.setItem('supabase_url', url);
+  localStorage.setItem('supabase_key', key);
+  connectSupabase(url, key);
+  await loadEvent();
+  await loadGuests();
+  showMessage('Supabase conectado com sucesso.', 'success');
+}
+
+async function loadEvent() {
+  const { data, error } = await supabaseClient
+    .from('events')
+    .select('id, name, event_date, event_time, location')
+    .eq('id', currentEventId)
+    .maybeSingle();
+
+  if (error || !data) {
+    showMessage('Evento não encontrado.', 'error');
+    return;
+  }
+
+  currentEventData = data;
+  document.getElementById('eventName').textContent = data.name || '-';
+  document.getElementById('eventDate').textContent = formatDateBR(data.event_date) || '-';
+  document.getElementById('eventTime').textContent = formatTime(data.event_time) || '-';
+  document.getElementById('eventLocation').textContent = data.location || '-';
+}
+
+async function loadGuests() {
+  if (!supabaseClient || !currentEventId) return;
+
+  const { data, error } = await supabaseClient
+    .from('event_guests')
+    .select('*')
+    .eq('event_id', currentEventId)
+    .order('created_at', { ascending: true });
+
+  if (error) {
+    showMessage('Erro ao carregar convidados: ' + error.message, 'error');
+    return;
+  }
+
+  guests = data || [];
+  renderGuests();
+  updateSummary();
+}
+
+async function importSpreadsheet() {
+  const input = document.getElementById('spreadsheetFile');
+  const file = input.files[0];
+  const button = document.getElementById('importButton');
+
+  if (!file) { showMessage('Selecione uma planilha para importar.', 'error'); return; }
+  if (!currentEventId) { showMessage('Evento não carregado.', 'error'); return; }
+
+  button.disabled = true;
+  button.textContent = 'Importando...';
+
+  try {
+    const rows = await readSpreadsheet(file);
+    const guestsToInsert = rows.map(normalizeRow).filter(item => item.guest_name);
+
+    if (guestsToInsert.length === 0) {
+      showMessage('Nenhum convidado válido encontrado na planilha.', 'error');
+      return;
+    }
+
+    const { error } = await supabaseClient.from('event_guests').insert(guestsToInsert);
+
+    if (error) { showMessage('Erro ao importar convidados: ' + error.message, 'error'); return; }
+
+    input.value = '';
+    await loadGuests();
+    showMessage(`${guestsToInsert.length} convidados importados com sucesso.`, 'success');
+  } catch (error) {
+    showMessage('Erro ao ler planilha: ' + error.message, 'error');
+  } finally {
+    button.disabled = false;
+    button.textContent = 'Importar convidados';
+  }
+}
+
+function readSpreadsheet(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = event => {
+      try {
+        const data = new Uint8Array(event.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(firstSheet, { defval: '' });
+        resolve(rows);
+      } catch (error) { reject(error); }
+    };
+    reader.onerror = () => reject(new Error('Não foi possível ler o arquivo.'));
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+function normalizeRow(row) {
+  const guestName = getValueByPossibleNames(row, ['Nome do Convidado', 'Nome', 'Convidado', 'guest_name']);
+  const groupName = getValueByPossibleNames(row, ['Nome do Grupo', 'Grupo', 'group_name']);
+  const whatsapp = getValueByPossibleNames(row, ['Whatsapp', 'WhatsApp', 'Telefone', 'Celular', 'whatsapp']);
+  return { event_id: currentEventId, guest_name: String(guestName || '').trim(), group_name: String(groupName || '').trim() || null, whatsapp: normalizePhone(whatsapp), confirmed: false, message_sent: false };
+}
+
+function getValueByPossibleNames(row, names) {
+  const normalizedMap = {};
+  Object.keys(row).forEach(key => { normalizedMap[normalizeText(key)] = row[key]; });
+  for (const name of names) {
+    const value = normalizedMap[normalizeText(name)];
+    if (value !== undefined && value !== null && String(value).trim() !== '') return value;
+  }
+  return '';
+}
+
+function renderGuests() {
+  const container = document.getElementById('guestsTableContainer');
+  const search = document.getElementById('searchInput').value.trim().toLowerCase();
+
+  const filtered = guests.filter(guest => {
+    if (!search) return true;
+    const values = [guest.guest_name, guest.group_name, guest.whatsapp];
+    return values.filter(Boolean).some(value => String(value).toLowerCase().includes(search));
+  });
+
+  if (filtered.length === 0) {
+    container.innerHTML = '<div class="empty-state">Nenhum convidado encontrado.</div>';
+    return;
+  }
+
+  container.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>Status</th><th>Mensagem</th><th>Convidado</th><th>Grupo</th><th>WhatsApp</th><th>Confirmado em</th><th>Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${filtered.map(guest => `
+          <tr>
+            <td>${guest.confirmed ? '<span class="badge badge-green">Confirmado</span>' : '<span class="badge badge-yellow">Pendente</span>'}</td>
+            <td>${guest.message_sent ? '<span class="badge badge-gray">Enviada</span>' : '<span class="badge badge-yellow">Não enviada</span>'}</td>
+            <td>${escapeHTML(guest.guest_name)}</td>
+            <td>${escapeHTML(guest.group_name || '-')}</td>
+            <td>${escapeHTML(formatPhoneBR(guest.whatsapp) || '-')}</td>
+            <td>${formatDateTimeBR(guest.confirmed_at) || '-'}</td>
+            <td>
+              <div class="table-actions">
+                <button class="btn-secondary" onclick="copyConfirmationLink('${guest.id}')">Copiar link</button>
+                <button class="btn-success" onclick="openWhatsApp('${guest.id}', true)">WhatsApp</button>
+                <button class="btn-dark" onclick="markMessageSent('${guest.id}')">Marcar enviado</button>
+              </div>
+            </td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+}
+
+function updateSummary() {
+  const total = guests.length;
+  const confirmed = guests.filter(item => item.confirmed === true).length;
+  const pending = total - confirmed;
+  const groups = new Set(guests.map(item => item.group_name).filter(Boolean));
+  document.getElementById('totalGuests').textContent = total;
+  document.getElementById('confirmedGuests').textContent = confirmed;
+  document.getElementById('pendingGuests').textContent = pending;
+  document.getElementById('totalGroups').textContent = groups.size;
+}
+
+function getConfirmationLink(guestId) {
+  return `${window.location.origin}/qrcode/confirmar-presenca/?guest_id=${encodeURIComponent(guestId)}`;
+}
+
+function buildGuestMessage(guest) {
+  const template = document.getElementById('messageTemplate').value;
+  const link = getConfirmationLink(guest.id);
+  return template
+    .replaceAll('{{nome}}', guest.guest_name || '')
+    .replaceAll('{{grupo}}', guest.group_name || '')
+    .replaceAll('{{evento}}', currentEventData?.name || '')
+    .replaceAll('{{data}}', formatDateBR(currentEventData?.event_date) || '')
+    .replaceAll('{{hora}}', formatTime(currentEventData?.event_time) || '')
+    .replaceAll('{{local}}', currentEventData?.location || '')
+    .replaceAll('{{link}}', link);
+}
+
+async function copyConfirmationLink(guestId) {
+  const link = getConfirmationLink(guestId);
+  await navigator.clipboard.writeText(link);
+  showMessage('Link de confirmação copiado.', 'success');
+}
+
+function openWhatsApp(guestId, markAsSent = true) {
+  const guest = guests.find(item => item.id === guestId);
+  if (!guest) return false;
+
+  const phone = normalizePhone(guest.whatsapp);
+  if (!phone) { showMessage('Este convidado não possui WhatsApp cadastrado.', 'error'); return false; }
+
+  const message = encodeURIComponent(buildGuestMessage(guest));
+  window.open(`https://wa.me/55${phone}?text=${message}`, '_blank');
+
+  if (markAsSent) markMessageSentSilent(guest.id);
+  return true;
+}
+
+function getPendingToSend() {
+  return guests.filter(item => !item.confirmed && !item.message_sent && normalizePhone(item.whatsapp));
+}
+
+function openNextPending() {
+  const pending = getPendingToSend();
+  if (pending.length === 0) { showMessage('Nenhum convidado pendente disponível para envio.', 'info'); return; }
+  openWhatsApp(pending[0].id, true);
+  showMessage(`Abrindo WhatsApp para: ${pending[0].guest_name}`, 'info');
+}
+
+async function startSafeBatchSend() {
+  if (batchSending) return;
+
+  let pending = getPendingToSend();
+  if (pending.length === 0) { showMessage('Nenhum convidado pendente com WhatsApp disponível para envio.', 'info'); return; }
+
+  const batchLimit = Number(document.getElementById('batchLimit').value);
+  const delaySeconds = Number(document.getElementById('delaySeconds').value);
+  const pauseMinutes = Number(document.getElementById('pauseMinutes').value);
+  const selected = pending.slice(0, batchLimit);
+
+  const ok = confirm(
+    `Envio protegido\n\nSerão abertas ${selected.length} conversas do WhatsApp neste lote.\nIntervalo: ${delaySeconds}s entre mensagens.\nPausa recomendada depois: ${pauseMinutes} minuto(s).\n\nNão feche esta aba durante o envio. Deseja iniciar?`
+  );
+
+  if (!ok) return;
+
+  batchSending = true;
+  stopRequested = false;
+  document.getElementById('safeSendButton').disabled = true;
+  document.getElementById('stopSendButton').disabled = false;
+  showSendProgress(true, 'Iniciando envio protegido...', 'Preparando contatos...', 0);
+
+  for (let i = 0; i < selected.length; i++) {
+    if (stopRequested) break;
+
+    const guest = selected[i];
+    openWhatsApp(guest.id, true);
+    await markMessageSentSilent(guest.id);
+
+    const percent = Math.round(((i + 1) / selected.length) * 100);
+    showSendProgress(true, `Enviando ${i + 1} de ${selected.length}`, `Contato atual: ${guest.guest_name}. Próxima mensagem em ${delaySeconds}s.`, percent);
+
+    await sleep(delaySeconds * 1000);
+  }
+
+  await loadGuests();
+
+  if (stopRequested) {
+    showMessage('Envio interrompido pelo usuário.', 'warning');
+    showSendProgress(true, 'Envio interrompido', 'Você pode continuar depois usando o mesmo botão.', 100);
+  } else {
+    showMessage(`Lote finalizado. Faça uma pausa de ${pauseMinutes} minuto(s) antes do próximo lote.`, 'success');
+    showSendProgress(true, 'Lote finalizado', `Pausa recomendada: ${pauseMinutes} minuto(s). Depois disso, envie o próximo lote.`, 100);
+  }
+
+  batchSending = false;
+  document.getElementById('safeSendButton').disabled = false;
+  document.getElementById('stopSendButton').disabled = true;
+}
+
+function stopBatchSend() { stopRequested = true; }
+
+async function resetMessageSentForPending() {
+  const ok = confirm('Isso vai permitir reenviar mensagens para convidados pendentes que já estavam marcados como mensagem enviada. Deseja continuar?');
+  if (!ok) return;
+
+  const { error } = await supabaseClient
+    .from('event_guests')
+    .update({ message_sent: false, message_sent_at: null })
+    .eq('event_id', currentEventId)
+    .eq('confirmed', false);
+
+  if (error) { showMessage('Erro ao liberar reenvio: ' + error.message, 'error'); return; }
+  await loadGuests();
+  showMessage('Reenvio liberado para convidados pendentes.', 'success');
+}
+
+async function markMessageSent(guestId) {
+  const { error } = await supabaseClient
+    .from('event_guests')
+    .update({ message_sent: true, message_sent_at: new Date().toISOString() })
+    .eq('id', guestId);
+
+  if (error) { showMessage('Erro ao marcar mensagem como enviada: ' + error.message, 'error'); return; }
+  await loadGuests();
+  showMessage('Mensagem marcada como enviada.', 'success');
+}
+
+async function markMessageSentSilent(guestId) {
+  await supabaseClient
+    .from('event_guests')
+    .update({ message_sent: true, message_sent_at: new Date().toISOString() })
+    .eq('id', guestId);
+}
+
+function showSendProgress(active, title, text, percent) {
+  const box = document.getElementById('sendProgress');
+  box.classList.toggle('active', active);
+  document.getElementById('sendProgressTitle').textContent = title;
+  document.getElementById('sendProgressText').textContent = text;
+  document.getElementById('sendProgressFill').style.width = `${percent}%`;
+}
+
+function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
+function normalizePhone(value) { if (!value) return ''; return String(value).replace(/\D/g, '').replace(/^55/, '').slice(0, 11); }
+function formatPhoneBR(value) { const phone = normalizePhone(value); if (!phone) return ''; if (phone.length === 11) return phone.replace(/^(\d{2})(\d{5})(\d{4})$/, '($1) $2-$3'); if (phone.length === 10) return phone.replace(/^(\d{2})(\d{4})(\d{4})$/, '($1) $2-$3'); return phone; }
+function normalizeText(value) { return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase(); }
+function formatDateBR(dateString) { if (!dateString) return ''; const parts = String(dateString).split('-'); if (parts.length !== 3) return dateString; return `${parts[2]}/${parts[1]}/${parts[0]}`; }
+function formatTime(timeString) { if (!timeString) return ''; return String(timeString).substring(0, 5); }
+function formatDateTimeBR(dateString) { if (!dateString) return ''; const date = new Date(dateString); if (Number.isNaN(date.getTime())) return dateString; return date.toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }); }
+function escapeHTML(value) { return String(value || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); }
+function showMessage(text, type) { const message = document.getElementById('message'); message.textContent = text; message.className = `message ${type}`; setTimeout(() => { message.className = 'message'; message.textContent = ''; }, 5000); }
+</script>
+</body>
+</html>
