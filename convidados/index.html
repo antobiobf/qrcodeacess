@@ -292,6 +292,64 @@
       display: block;
     }
 
+    .send-log-box {
+      display: none;
+      margin-top: 18px;
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 16px;
+      padding: 16px;
+    }
+
+    .send-log-box.active {
+      display: block;
+    }
+
+    .send-log-box h3 {
+      font-size: 16px;
+      margin-bottom: 12px;
+    }
+
+    .send-log-list {
+      display: grid;
+      gap: 10px;
+      max-height: 280px;
+      overflow: auto;
+    }
+
+    .send-log-item {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 10px;
+      align-items: center;
+      background: white;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 10px;
+      font-size: 13px;
+    }
+
+    .send-log-item.success {
+      border-color: #86efac;
+      background: #f0fdf4;
+    }
+
+    .send-log-item.error {
+      border-color: #fecaca;
+      background: #fef2f2;
+    }
+
+    .send-log-item.info {
+      border-color: #bfdbfe;
+      background: #eff6ff;
+    }
+
+    .send-log-empty {
+      color: #6b7280;
+      font-size: 13px;
+      padding: 8px;
+    }
+
     .progress-bar {
       height: 14px;
       border-radius: 999px;
@@ -453,6 +511,31 @@
     </div>
 
     <div class="card">
+      <h2 style="margin-bottom:18px;">Adicionar convidado avulso</h2>
+
+      <div class="grid-3">
+        <div class="form-group">
+          <label for="singleGuestName">Nome do Convidado</label>
+          <input id="singleGuestName" type="text" placeholder="Ex: Antônio" />
+        </div>
+
+        <div class="form-group">
+          <label for="singleGuestGroup">Nome do Grupo</label>
+          <input id="singleGuestGroup" type="text" placeholder="Ex: Mirante" />
+        </div>
+
+        <div class="form-group">
+          <label for="singleGuestWhatsapp">WhatsApp</label>
+          <input id="singleGuestWhatsapp" type="text" placeholder="Ex: 81 99999-9999" />
+        </div>
+      </div>
+
+      <div style="margin-top:16px;">
+        <button id="addSingleGuestButton" class="btn-primary" onclick="addSingleGuest()">Adicionar convidado</button>
+      </div>
+    </div>
+
+    <div class="card">
       <h2 style="margin-bottom:18px;">Importar planilha</h2>
       <div class="import-section">
         <div class="form-group">
@@ -543,6 +626,13 @@ Esperamos você para viver esse momento incrível conosco! 🚀</textarea>
         <strong id="sendProgressTitle">Preparando envio...</strong>
         <p id="sendProgressText" style="margin-top:8px;">-</p>
         <div class="progress-bar"><div class="progress-fill" id="sendProgressFill"></div></div>
+      </div>
+
+      <div id="sendLogBox" class="send-log-box">
+        <h3>Histórico de envio</h3>
+        <div id="sendLogList" class="send-log-list">
+          <div class="send-log-empty">Nenhuma mensagem enviada nesta sessão.</div>
+        </div>
       </div>
     </div>
 
@@ -685,6 +775,57 @@ async function loadGuests() {
   guests = data || [];
   renderGuests();
   updateSummary();
+}
+
+async function addSingleGuest() {
+  const nameInput = document.getElementById('singleGuestName');
+  const groupInput = document.getElementById('singleGuestGroup');
+  const whatsappInput = document.getElementById('singleGuestWhatsapp');
+  const button = document.getElementById('addSingleGuestButton');
+
+  const guestName = nameInput.value.trim();
+  const groupName = groupInput.value.trim();
+  const whatsapp = normalizePhone(whatsappInput.value);
+
+  if (!guestName) {
+    showMessage('Informe o nome do convidado.', 'error');
+    return;
+  }
+
+  if (!whatsapp) {
+    showMessage('Informe o WhatsApp do convidado.', 'error');
+    return;
+  }
+
+  button.disabled = true;
+  button.textContent = 'Adicionando...';
+
+  const { error } = await supabaseClient
+    .from('event_guests')
+    .insert({
+      event_id: currentEventId,
+      guest_name: guestName,
+      group_name: groupName || null,
+      whatsapp,
+      confirmed: false,
+      message_sent: false,
+      last_send_error: null
+    });
+
+  button.disabled = false;
+  button.textContent = 'Adicionar convidado';
+
+  if (error) {
+    showMessage('Erro ao adicionar convidado: ' + error.message, 'error');
+    return;
+  }
+
+  nameInput.value = '';
+  groupInput.value = '';
+  whatsappInput.value = '';
+
+  await loadGuests();
+  showMessage('Convidado adicionado com sucesso.', 'success');
 }
 
 async function importSpreadsheet() {
@@ -933,13 +1074,17 @@ async function sendSingleGuestZAPI(guestId) {
   const guest = guests.find(item => item.id === guestId);
   if (!guest) return;
 
+  addSendLog('info', guest.guest_name, 'Enviando mensagem...');
+
   try {
     await sendGuestZAPI(guest);
     await loadGuests();
+    addSendLog('success', guest.guest_name, 'Mensagem enviada com sucesso.');
     showMessage(`Mensagem enviada para ${guest.guest_name}.`, 'success');
   } catch (error) {
     await saveSendError(guest.id, error.message);
     await loadGuests();
+    addSendLog('error', guest.guest_name, error.message);
     showMessage('Erro ao enviar Z-API: ' + error.message, 'error');
   }
 }
@@ -1020,11 +1165,14 @@ async function startZAPIBatchSend() {
     const guest = selected[i];
 
     try {
+      addSendLog('info', guest.guest_name, `Enviando ${i + 1} de ${selected.length}...`);
       await sendGuestZAPI(guest);
       successCount++;
+      addSendLog('success', guest.guest_name, 'Mensagem enviada com sucesso.');
     } catch (error) {
       errorCount++;
       await saveSendError(guest.id, error.message);
+      addSendLog('error', guest.guest_name, error.message);
       console.error('Erro ao enviar para', guest.guest_name, error);
     }
 
@@ -1093,6 +1241,36 @@ async function markMessageSent(guestId) {
 
   await loadGuests();
   showMessage('Mensagem marcada como enviada.', 'success');
+}
+
+function addSendLog(type, guestName, text) {
+  const box = document.getElementById('sendLogBox');
+  const list = document.getElementById('sendLogList');
+
+  box.classList.add('active');
+
+  const empty = list.querySelector('.send-log-empty');
+  if (empty) empty.remove();
+
+  const icon = type === 'success' ? '✅' : type === 'error' ? '❌' : '⏳';
+  const time = new Date().toLocaleTimeString('pt-BR', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  });
+
+  const item = document.createElement('div');
+  item.className = `send-log-item ${type}`;
+  item.innerHTML = `
+    <strong>${icon}</strong>
+    <div>
+      <strong>${escapeHTML(guestName || 'Convidado')}</strong><br>
+      <span>${escapeHTML(text || '')}</span>
+    </div>
+    <span>${time}</span>
+  `;
+
+  list.prepend(item);
 }
 
 function showSendProgress(active, title, text, percent) {

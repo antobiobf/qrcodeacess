@@ -3,70 +3,384 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gestão de Convidados - Envio Seguro</title>
+  <title>Gestão de Convidados - Z-API</title>
+
+  <!--
+    SQL NECESSÁRIO
+
+    create table if not exists public.event_guests (
+      id uuid primary key default gen_random_uuid(),
+      event_id uuid not null references public.events(id) on delete cascade,
+      guest_name text not null,
+      group_name text,
+      whatsapp text,
+      confirmed boolean default false,
+      confirmed_at timestamptz null,
+      message_sent boolean default false,
+      message_sent_at timestamptz null,
+      last_send_error text null,
+      created_at timestamptz not null default now()
+    );
+
+    alter table public.event_guests
+    add column if not exists last_send_error text;
+
+    alter table public.event_guests enable row level security;
+
+    create policy "Permitir leitura anonima convidados"
+    on public.event_guests
+    for select
+    to anon
+    using (true);
+
+    create policy "Permitir insercao anonima convidados"
+    on public.event_guests
+    for insert
+    to anon
+    with check (true);
+
+    create policy "Permitir update anonimo convidados"
+    on public.event_guests
+    for update
+    to anon
+    using (true)
+    with check (true);
+  -->
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
   <style>
-    * { margin:0; padding:0; box-sizing:border-box; font-family:Arial,sans-serif; }
-    body { background:#f3f4f6; color:#111827; padding:20px; }
-    .container { max-width:1400px; margin:0 auto; }
-    .header { position:relative; background:linear-gradient(135deg,#111827,#1e3a8a); color:#fff; border-radius:24px; padding:30px; margin-bottom:24px; box-shadow:0 12px 32px rgba(17,24,39,.18); }
-    .header h1 { font-size:36px; margin-bottom:10px; padding-right:90px; }
-    .header p { color:#dbeafe; font-size:17px; padding-right:90px; }
-    .header-menu { position:absolute; right:22px; top:22px; display:flex; gap:10px; }
-    .icon-button { width:44px; height:44px; border-radius:14px; border:1px solid rgba(255,255,255,.18); background:rgba(255,255,255,.1); color:white; font-size:18px; cursor:pointer; }
-    .card,.panel { background:#fff; border-radius:20px; padding:24px; margin-bottom:24px; box-shadow:0 8px 24px rgba(0,0,0,.06); }
-    .grid-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:24px; }
-    .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
-    .info-box { background:#fff; border-radius:18px; padding:18px; box-shadow:0 8px 24px rgba(0,0,0,.06); }
-    .info-box span { display:block; color:#6b7280; font-size:13px; margin-bottom:6px; }
-    .info-box strong { font-size:24px; }
-    .summary-box strong { font-size:34px; }
-    .form-group { display:flex; flex-direction:column; gap:8px; }
-    label { font-weight:bold; font-size:14px; }
-    input,textarea,select { width:100%; padding:14px; border:1px solid #d1d5db; border-radius:12px; font-size:15px; outline:none; background:#fff; }
-    textarea { min-height:260px; resize:vertical; line-height:1.45; }
-    input:focus,textarea:focus,select:focus { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,.14); }
-    button,.btn-link { border:none; border-radius:12px; padding:13px 16px; font-weight:bold; cursor:pointer; font-size:14px; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; transition:.2s; white-space:nowrap; }
-    button:disabled { opacity:.6; cursor:not-allowed; }
-    .btn-primary { background:#2563eb; color:white; }
-    .btn-success { background:#16a34a; color:white; }
-    .btn-warning { background:#f59e0b; color:white; }
-    .btn-danger { background:#dc2626; color:white; }
-    .btn-secondary { background:#e5e7eb; color:#111827; }
-    .btn-dark { background:#111827; color:white; }
-    .message { display:none; padding:14px; border-radius:14px; margin-bottom:18px; font-size:14px; }
-    .message.success { display:block; background:#dcfce7; color:#166534; }
-    .message.error { display:block; background:#fee2e2; color:#991b1b; }
-    .message.info { display:block; background:#dbeafe; color:#1e40af; }
-    .message.warning { display:block; background:#fef3c7; color:#92400e; }
-    .config-box { display:none; }
-    .import-section { display:grid; grid-template-columns:1fr 230px; gap:14px; align-items:center; }
-    .import-section button { height:54px; }
-    .safe-send-box { border:1px solid #fde68a; background:#fffbeb; border-radius:18px; padding:18px; margin-bottom:18px; }
-    .safe-send-box h3 { color:#92400e; margin-bottom:8px; }
-    .safe-send-box p { color:#92400e; line-height:1.45; font-size:14px; }
-    .send-controls { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-top:16px; }
-    .send-progress { display:none; margin-top:18px; padding:16px; border-radius:16px; background:#eff6ff; border:1px solid #bfdbfe; color:#1e3a8a; }
-    .send-progress.active { display:block; }
-    .progress-bar { height:14px; border-radius:999px; background:#dbeafe; overflow:hidden; margin-top:10px; }
-    .progress-fill { height:100%; width:0%; background:#2563eb; transition:.3s; }
-    .tools { display:grid; grid-template-columns:2fr auto auto; gap:14px; align-items:end; }
-    table { width:100%; border-collapse:collapse; font-size:14px; }
-    th,td { padding:12px; text-align:left; border-bottom:1px solid #e5e7eb; vertical-align:top; }
-    th { color:#6b7280; font-size:12px; text-transform:uppercase; }
-    .table-actions { display:flex; gap:8px; flex-wrap:wrap; }
-    .badge { padding:7px 10px; border-radius:999px; font-size:12px; font-weight:bold; white-space:nowrap; }
-    .badge-green { background:#dcfce7; color:#166534; }
-    .badge-yellow { background:#fef3c7; color:#92400e; }
-    .badge-gray { background:#f3f4f6; color:#4b5563; }
-    .small-text { color:#6b7280; font-size:13px; line-height:1.45; margin-top:8px; }
-    .empty-state { text-align:center; padding:40px 20px; color:#6b7280; background:#fff; border:1px dashed #d1d5db; border-radius:18px; }
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: Arial, sans-serif;
+    }
 
-    @media(max-width:900px){
-      body{padding:12px}.grid-4,.grid-2,.send-controls,.tools,.import-section{grid-template-columns:1fr}.header h1{font-size:26px}button,.btn-link{width:100%}table{display:block;overflow-x:auto}
+    body {
+      background: #f3f4f6;
+      color: #111827;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .header {
+      position: relative;
+      background: linear-gradient(135deg, #111827, #1e3a8a);
+      color: white;
+      border-radius: 24px;
+      padding: 30px;
+      margin-bottom: 24px;
+      box-shadow: 0 12px 32px rgba(17, 24, 39, .18);
+    }
+
+    .header h1 {
+      font-size: 36px;
+      margin-bottom: 10px;
+      padding-right: 90px;
+    }
+
+    .header p {
+      color: #dbeafe;
+      font-size: 17px;
+      padding-right: 90px;
+    }
+
+    .header-menu {
+      position: absolute;
+      right: 22px;
+      top: 22px;
+      display: flex;
+      gap: 10px;
+    }
+
+    .icon-button {
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, .18);
+      background: rgba(255, 255, 255, .1);
+      color: white;
+      font-size: 18px;
+      cursor: pointer;
+    }
+
+    .card,
+    .panel {
+      background: white;
+      border-radius: 20px;
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, .06);
+    }
+
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .info-box {
+      background: white;
+      border-radius: 18px;
+      padding: 18px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, .06);
+    }
+
+    .info-box span {
+      display: block;
+      color: #6b7280;
+      font-size: 13px;
+      margin-bottom: 6px;
+    }
+
+    .info-box strong {
+      font-size: 24px;
+    }
+
+    .summary-box strong {
+      font-size: 34px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    label {
+      font-weight: bold;
+      font-size: 14px;
+    }
+
+    input,
+    textarea,
+    select {
+      width: 100%;
+      padding: 14px;
+      border: 1px solid #d1d5db;
+      border-radius: 12px;
+      font-size: 15px;
+      outline: none;
+      background: white;
+    }
+
+    textarea {
+      min-height: 260px;
+      resize: vertical;
+      line-height: 1.45;
+    }
+
+    input:focus,
+    textarea:focus,
+    select:focus {
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, .14);
+    }
+
+    button,
+    .btn-link {
+      border: none;
+      border-radius: 12px;
+      padding: 13px 16px;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 14px;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: .2s;
+      white-space: nowrap;
+    }
+
+    button:disabled {
+      opacity: .6;
+      cursor: not-allowed;
+    }
+
+    .btn-primary { background: #2563eb; color: white; }
+    .btn-success { background: #16a34a; color: white; }
+    .btn-warning { background: #f59e0b; color: white; }
+    .btn-danger { background: #dc2626; color: white; }
+    .btn-secondary { background: #e5e7eb; color: #111827; }
+    .btn-dark { background: #111827; color: white; }
+
+    .message {
+      display: none;
+      padding: 14px;
+      border-radius: 14px;
+      margin-bottom: 18px;
+      font-size: 14px;
+    }
+
+    .message.success { display: block; background: #dcfce7; color: #166534; }
+    .message.error { display: block; background: #fee2e2; color: #991b1b; }
+    .message.info { display: block; background: #dbeafe; color: #1e40af; }
+    .message.warning { display: block; background: #fef3c7; color: #92400e; }
+
+    .config-box {
+      display: none;
+    }
+
+    .import-section {
+      display: grid;
+      grid-template-columns: 1fr 230px;
+      gap: 14px;
+      align-items: center;
+    }
+
+    .import-section button {
+      height: 54px;
+    }
+
+    .safe-send-box {
+      border: 1px solid #fde68a;
+      background: #fffbeb;
+      border-radius: 18px;
+      padding: 18px;
+      margin-bottom: 18px;
+    }
+
+    .safe-send-box h3 {
+      color: #92400e;
+      margin-bottom: 8px;
+    }
+
+    .safe-send-box p {
+      color: #92400e;
+      line-height: 1.45;
+      font-size: 14px;
+    }
+
+    .send-controls {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-top: 16px;
+    }
+
+    .send-progress {
+      display: none;
+      margin-top: 18px;
+      padding: 16px;
+      border-radius: 16px;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      color: #1e3a8a;
+    }
+
+    .send-progress.active {
+      display: block;
+    }
+
+    .progress-bar {
+      height: 14px;
+      border-radius: 999px;
+      background: #dbeafe;
+      overflow: hidden;
+      margin-top: 10px;
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: #2563eb;
+      transition: .3s;
+    }
+
+    .tools {
+      display: grid;
+      grid-template-columns: 2fr auto auto;
+      gap: 14px;
+      align-items: end;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    th,
+    td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid #e5e7eb;
+      vertical-align: top;
+    }
+
+    th {
+      color: #6b7280;
+      font-size: 12px;
+      text-transform: uppercase;
+    }
+
+    .table-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      padding: 7px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: bold;
+      white-space: nowrap;
+    }
+
+    .badge-green { background: #dcfce7; color: #166534; }
+    .badge-yellow { background: #fef3c7; color: #92400e; }
+    .badge-gray { background: #f3f4f6; color: #4b5563; }
+    .badge-red { background: #fee2e2; color: #991b1b; }
+
+    .small-text {
+      color: #6b7280;
+      font-size: 13px;
+      line-height: 1.45;
+      margin-top: 8px;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: #6b7280;
+      background: white;
+      border: 1px dashed #d1d5db;
+      border-radius: 18px;
+    }
+
+    @media(max-width: 900px) {
+      body { padding: 12px; }
+      .grid-4,
+      .grid-3,
+      .grid-2,
+      .send-controls,
+      .tools,
+      .import-section { grid-template-columns: 1fr; }
+      .header h1 { font-size: 26px; }
+      button,
+      .btn-link { width: 100%; }
+      table { display: block; overflow-x: auto; }
     }
   </style>
 </head>
@@ -78,12 +392,15 @@
         <button class="icon-button" onclick="toggleConfig()" title="Configurações">⚙️</button>
       </div>
       <h1>Gestão de Convidados</h1>
-      <p>Importe convidados, envie confirmações com segurança e acompanhe presenças.</p>
+      <p>Importe convidados, envie confirmações pela Z-API e acompanhe presenças.</p>
     </div>
 
     <div id="message" class="message"></div>
 
     <div class="card config-box" id="configBox">
+      <h2 style="margin-bottom:18px;">Configurações</h2>
+
+      <h3 style="margin-bottom:12px;">Supabase</h3>
       <div class="grid-2">
         <div class="form-group">
           <label for="supabaseUrl">Supabase URL</label>
@@ -94,9 +411,31 @@
           <input id="supabaseKey" type="password" placeholder="Cole sua anon/public key" />
         </div>
       </div>
-      <div style="margin-top:16px;">
-        <button class="btn-primary" onclick="saveConfig()">Salvar e conectar</button>
+
+      <h3 style="margin:22px 0 12px;">Z-API</h3>
+      <div class="grid-3">
+        <div class="form-group">
+          <label for="zapiInstanceId">Instance ID</label>
+          <input id="zapiInstanceId" type="text" placeholder="ID da instância Z-API" />
+        </div>
+        <div class="form-group">
+          <label for="zapiToken">Token da Instância</label>
+          <input id="zapiToken" type="password" placeholder="Token da instância" />
+        </div>
+        <div class="form-group">
+          <label for="zapiClientToken">Client-Token</label>
+          <input id="zapiClientToken" type="password" placeholder="Client-Token da conta" />
+        </div>
       </div>
+
+      <div style="margin-top:16px; display:flex; gap:12px; flex-wrap:wrap;">
+        <button class="btn-primary" onclick="saveConfig()">Salvar configurações</button>
+        <button class="btn-secondary" onclick="testZAPIConfig()">Testar configuração</button>
+      </div>
+
+      <p class="small-text">
+        Atenção: deixar tokens no HTML facilita o teste, mas em produção o ideal é enviar pela Z-API usando backend/proxy para proteger suas chaves.
+      </p>
     </div>
 
     <div class="grid-4">
@@ -151,51 +490,51 @@ Esperamos você para viver esse momento incrível conosco! 🚀</textarea>
     </div>
 
     <div class="card">
-      <h2 style="margin-bottom:18px;">Envio em lote protegido</h2>
+      <h2 style="margin-bottom:18px;">Envio em massa pela Z-API</h2>
 
       <div class="safe-send-box">
-        <h3>⚠️ Proteção contra bloqueio</h3>
-        <p>Esta tela evita envio agressivo: limita a quantidade por lote, aplica intervalo entre mensagens, pausa obrigatória entre lotes, pula quem já recebeu e exige confirmação antes de iniciar. Mesmo assim, evite mensagens para pessoas que não esperam seu contato.</p>
+        <h3>⚠️ Envio protegido</h3>
+        <p>O envio em massa usa lotes, intervalo entre mensagens, pula quem já recebeu e registra erros. Para reduzir risco de bloqueio, comece com lotes pequenos e aumente aos poucos.</p>
       </div>
 
       <div class="send-controls">
         <div class="form-group">
           <label for="batchLimit">Mensagens por lote</label>
           <select id="batchLimit">
+            <option value="5">5 - teste</option>
             <option value="10">10 - muito seguro</option>
-            <option value="15" selected>15 - seguro</option>
-            <option value="20">20 - moderado</option>
-            <option value="30">30 - maior risco</option>
+            <option value="20" selected>20 - seguro</option>
+            <option value="30">30 - moderado</option>
+            <option value="50">50 - maior risco</option>
           </select>
         </div>
 
         <div class="form-group">
           <label for="delaySeconds">Intervalo entre mensagens</label>
           <select id="delaySeconds">
-            <option value="8">8 segundos</option>
-            <option value="12" selected>12 segundos</option>
+            <option value="5">5 segundos</option>
+            <option value="8" selected>8 segundos</option>
+            <option value="12">12 segundos</option>
             <option value="20">20 segundos</option>
-            <option value="30">30 segundos</option>
           </select>
         </div>
 
         <div class="form-group">
-          <label for="pauseMinutes">Pausa após cada lote</label>
+          <label for="pauseMinutes">Pausa recomendada após lote</label>
           <select id="pauseMinutes">
             <option value="2">2 minutos</option>
             <option value="5" selected>5 minutos</option>
             <option value="10">10 minutos</option>
-            <option value="15">15 minutos</option>
           </select>
         </div>
 
         <div class="form-group">
           <label>&nbsp;</label>
-          <button id="safeSendButton" class="btn-success" onclick="startSafeBatchSend()">Iniciar envio seguro</button>
+          <button id="safeSendButton" class="btn-success" onclick="startZAPIBatchSend()">Iniciar envio em massa</button>
         </div>
       </div>
 
-      <div class="actions" style="display:flex;gap:12px;flex-wrap:wrap;margin-top:14px;">
+      <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:14px;">
         <button id="stopSendButton" class="btn-danger" onclick="stopBatchSend()" disabled>Parar envio</button>
         <button class="btn-secondary" onclick="resetMessageSentForPending()">Liberar reenvio dos pendentes</button>
       </div>
@@ -214,7 +553,7 @@ Esperamos você para viver esse momento incrível conosco! 🚀</textarea>
           <input id="searchInput" type="text" placeholder="Nome, grupo ou WhatsApp" oninput="renderGuests()" />
         </div>
         <button class="btn-secondary" onclick="loadGuests()">Atualizar lista</button>
-        <button class="btn-warning" onclick="openNextPending()">Abrir próximo pendente</button>
+        <button class="btn-warning" onclick="sendNextPendingZAPI()">Enviar próximo pendente</button>
       </div>
     </div>
 
@@ -232,11 +571,24 @@ let guests = [];
 let batchSending = false;
 let stopRequested = false;
 
-const savedUrl = localStorage.getItem('supabase_url') || 'https://pfyctxoikdrephjogdtm.supabase.co';
-const savedKey = localStorage.getItem('supabase_key') || 'sb_publishable_h_5hK_HTT-XJ4WUoOGzkGg_tqkBDLjv';
+const DEFAULT_SUPABASE_URL = 'https://pfyctxoikdrephjogdtm.supabase.co';
+const DEFAULT_SUPABASE_KEY = 'sb_publishable_h_5hK_HTT-XJ4WUoOGzkGg_tqkBDLjv';
+
+const DEFAULT_ZAPI_INSTANCE_ID = '3F32B148C8CA1249DCAE3222B0EDC9B1';
+const DEFAULT_ZAPI_TOKEN = '234C8842D08C0B205C20CC98';
+const DEFAULT_ZAPI_CLIENT_TOKEN = 'F1348d160382741d398e5d37761e89b6cS';
+
+const savedUrl = localStorage.getItem('supabase_url') || DEFAULT_SUPABASE_URL;
+const savedKey = localStorage.getItem('supabase_key') || DEFAULT_SUPABASE_KEY;
+const savedZapiInstanceId = localStorage.getItem('zapi_instance_id') || DEFAULT_ZAPI_INSTANCE_ID;
+const savedZapiToken = localStorage.getItem('zapi_token') || DEFAULT_ZAPI_TOKEN;
+const savedZapiClientToken = localStorage.getItem('zapi_client_token') || DEFAULT_ZAPI_CLIENT_TOKEN;
 
 document.getElementById('supabaseUrl').value = savedUrl;
 document.getElementById('supabaseKey').value = savedKey;
+document.getElementById('zapiInstanceId').value = savedZapiInstanceId;
+document.getElementById('zapiToken').value = savedZapiToken;
+document.getElementById('zapiClientToken').value = savedZapiClientToken;
 
 initializePage();
 
@@ -259,7 +611,9 @@ async function initializePage() {
   }
 }
 
-function goEvents() { window.location.href = '/qrcode/eventos/'; }
+function goEvents() {
+  window.location.href = '/qrcode/eventos/';
+}
 
 function toggleConfig() {
   const box = document.getElementById('configBox');
@@ -274,6 +628,9 @@ function connectSupabase(url, key) {
 async function saveConfig() {
   const url = document.getElementById('supabaseUrl').value.trim().replace('/rest/v1/', '').replace('/rest/v1', '');
   const key = document.getElementById('supabaseKey').value.trim();
+  const instanceId = document.getElementById('zapiInstanceId').value.trim();
+  const token = document.getElementById('zapiToken').value.trim();
+  const clientToken = document.getElementById('zapiClientToken').value.trim();
 
   if (!url || !key) {
     showMessage('Informe URL e chave do Supabase.', 'error');
@@ -282,10 +639,14 @@ async function saveConfig() {
 
   localStorage.setItem('supabase_url', url);
   localStorage.setItem('supabase_key', key);
+  localStorage.setItem('zapi_instance_id', instanceId);
+  localStorage.setItem('zapi_token', token);
+  localStorage.setItem('zapi_client_token', clientToken);
+
   connectSupabase(url, key);
   await loadEvent();
   await loadGuests();
-  showMessage('Supabase conectado com sucesso.', 'success');
+  showMessage('Configurações salvas com sucesso.', 'success');
 }
 
 async function loadEvent() {
@@ -331,8 +692,15 @@ async function importSpreadsheet() {
   const file = input.files[0];
   const button = document.getElementById('importButton');
 
-  if (!file) { showMessage('Selecione uma planilha para importar.', 'error'); return; }
-  if (!currentEventId) { showMessage('Evento não carregado.', 'error'); return; }
+  if (!file) {
+    showMessage('Selecione uma planilha para importar.', 'error');
+    return;
+  }
+
+  if (!currentEventId) {
+    showMessage('Evento não carregado.', 'error');
+    return;
+  }
 
   button.disabled = true;
   button.textContent = 'Importando...';
@@ -348,7 +716,10 @@ async function importSpreadsheet() {
 
     const { error } = await supabaseClient.from('event_guests').insert(guestsToInsert);
 
-    if (error) { showMessage('Erro ao importar convidados: ' + error.message, 'error'); return; }
+    if (error) {
+      showMessage('Erro ao importar convidados: ' + error.message, 'error');
+      return;
+    }
 
     input.value = '';
     await loadGuests();
@@ -371,7 +742,9 @@ function readSpreadsheet(file) {
         const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
         const rows = XLSX.utils.sheet_to_json(firstSheet, { defval: '' });
         resolve(rows);
-      } catch (error) { reject(error); }
+      } catch (error) {
+        reject(error);
+      }
     };
     reader.onerror = () => reject(new Error('Não foi possível ler o arquivo.'));
     reader.readAsArrayBuffer(file);
@@ -382,16 +755,29 @@ function normalizeRow(row) {
   const guestName = getValueByPossibleNames(row, ['Nome do Convidado', 'Nome', 'Convidado', 'guest_name']);
   const groupName = getValueByPossibleNames(row, ['Nome do Grupo', 'Grupo', 'group_name']);
   const whatsapp = getValueByPossibleNames(row, ['Whatsapp', 'WhatsApp', 'Telefone', 'Celular', 'whatsapp']);
-  return { event_id: currentEventId, guest_name: String(guestName || '').trim(), group_name: String(groupName || '').trim() || null, whatsapp: normalizePhone(whatsapp), confirmed: false, message_sent: false };
+
+  return {
+    event_id: currentEventId,
+    guest_name: String(guestName || '').trim(),
+    group_name: String(groupName || '').trim() || null,
+    whatsapp: normalizePhone(whatsapp),
+    confirmed: false,
+    message_sent: false,
+    last_send_error: null
+  };
 }
 
 function getValueByPossibleNames(row, names) {
   const normalizedMap = {};
-  Object.keys(row).forEach(key => { normalizedMap[normalizeText(key)] = row[key]; });
+  Object.keys(row).forEach(key => {
+    normalizedMap[normalizeText(key)] = row[key];
+  });
+
   for (const name of names) {
     const value = normalizedMap[normalizeText(name)];
     if (value !== undefined && value !== null && String(value).trim() !== '') return value;
   }
+
   return '';
 }
 
@@ -414,7 +800,14 @@ function renderGuests() {
     <table>
       <thead>
         <tr>
-          <th>Status</th><th>Mensagem</th><th>Convidado</th><th>Grupo</th><th>WhatsApp</th><th>Confirmado em</th><th>Ações</th>
+          <th>Status</th>
+          <th>Mensagem</th>
+          <th>Convidado</th>
+          <th>Grupo</th>
+          <th>WhatsApp</th>
+          <th>Confirmado em</th>
+          <th>Erro</th>
+          <th>Ações</th>
         </tr>
       </thead>
       <tbody>
@@ -426,10 +819,11 @@ function renderGuests() {
             <td>${escapeHTML(guest.group_name || '-')}</td>
             <td>${escapeHTML(formatPhoneBR(guest.whatsapp) || '-')}</td>
             <td>${formatDateTimeBR(guest.confirmed_at) || '-'}</td>
+            <td>${guest.last_send_error ? `<span class="badge badge-red">${escapeHTML(guest.last_send_error)}</span>` : '-'}</td>
             <td>
               <div class="table-actions">
                 <button class="btn-secondary" onclick="copyConfirmationLink('${guest.id}')">Copiar link</button>
-                <button class="btn-success" onclick="openWhatsApp('${guest.id}', true)">WhatsApp</button>
+                <button class="btn-success" onclick="sendSingleGuestZAPI('${guest.id}')">Enviar Z-API</button>
                 <button class="btn-dark" onclick="markMessageSent('${guest.id}')">Marcar enviado</button>
               </div>
             </td>
@@ -445,6 +839,7 @@ function updateSummary() {
   const confirmed = guests.filter(item => item.confirmed === true).length;
   const pending = total - confirmed;
   const groups = new Set(guests.map(item => item.group_name).filter(Boolean));
+
   document.getElementById('totalGuests').textContent = total;
   document.getElementById('confirmedGuests').textContent = confirmed;
   document.getElementById('pendingGuests').textContent = pending;
@@ -458,6 +853,7 @@ function getConfirmationLink(guestId) {
 function buildGuestMessage(guest) {
   const template = document.getElementById('messageTemplate').value;
   const link = getConfirmationLink(guest.id);
+
   return template
     .replaceAll('{{nome}}', guest.guest_name || '')
     .replaceAll('{{grupo}}', guest.group_name || '')
@@ -474,36 +870,129 @@ async function copyConfirmationLink(guestId) {
   showMessage('Link de confirmação copiado.', 'success');
 }
 
-function openWhatsApp(guestId, markAsSent = true) {
-  const guest = guests.find(item => item.id === guestId);
-  if (!guest) return false;
+function getZAPIConfig() {
+  return {
+    instanceId: document.getElementById('zapiInstanceId').value.trim() || DEFAULT_ZAPI_INSTANCE_ID,
+    token: document.getElementById('zapiToken').value.trim() || DEFAULT_ZAPI_TOKEN,
+    clientToken: document.getElementById('zapiClientToken').value.trim() || DEFAULT_ZAPI_CLIENT_TOKEN
+  };
+}
 
-  const phone = normalizePhone(guest.whatsapp);
-  if (!phone) { showMessage('Este convidado não possui WhatsApp cadastrado.', 'error'); return false; }
+function validateZAPIConfig() {
+  const config = getZAPIConfig();
+  if (!config.instanceId || !config.token || !config.clientToken) {
+    showMessage('Configure Instance ID, Token e Client-Token da Z-API.', 'error');
+    toggleConfig();
+    return null;
+  }
+  return config;
+}
 
-  const message = encodeURIComponent(buildGuestMessage(guest));
-  window.open(`https://wa.me/55${phone}?text=${message}`, '_blank');
+async function testZAPIConfig() {
+  const config = validateZAPIConfig();
+  if (!config) return;
+  showMessage('Configuração Z-API carregada. Faça um envio para um convidado de teste.', 'success');
+}
 
-  if (markAsSent) markMessageSentSilent(guest.id);
-  return true;
+async function sendTextZAPI(phone, message) {
+  const config = validateZAPIConfig();
+  if (!config) throw new Error('Z-API não configurada.');
+
+  const url = `https://api.z-api.io/instances/${encodeURIComponent(config.instanceId)}/token/${encodeURIComponent(config.token)}/send-text`;
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Client-Token': config.clientToken
+    },
+    body: JSON.stringify({
+      phone,
+      message
+    })
+  });
+
+  const result = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(result.message || result.error || result.errorMessage || `Erro Z-API HTTP ${response.status}`);
+  }
+
+  if (result.error) {
+    throw new Error(result.message || result.error || 'Erro retornado pela Z-API.');
+  }
+
+  return result;
 }
 
 function getPendingToSend() {
-  return guests.filter(item => !item.confirmed && !item.message_sent && normalizePhone(item.whatsapp));
+  return guests.filter(item => !item.confirmed && !item.message_sent && normalizePhoneWithDDI(item.whatsapp));
 }
 
-function openNextPending() {
+async function sendSingleGuestZAPI(guestId) {
+  const guest = guests.find(item => item.id === guestId);
+  if (!guest) return;
+
+  try {
+    await sendGuestZAPI(guest);
+    await loadGuests();
+    showMessage(`Mensagem enviada para ${guest.guest_name}.`, 'success');
+  } catch (error) {
+    await saveSendError(guest.id, error.message);
+    await loadGuests();
+    showMessage('Erro ao enviar Z-API: ' + error.message, 'error');
+  }
+}
+
+async function sendNextPendingZAPI() {
   const pending = getPendingToSend();
-  if (pending.length === 0) { showMessage('Nenhum convidado pendente disponível para envio.', 'info'); return; }
-  openWhatsApp(pending[0].id, true);
-  showMessage(`Abrindo WhatsApp para: ${pending[0].guest_name}`, 'info');
+  if (pending.length === 0) {
+    showMessage('Nenhum convidado pendente disponível para envio.', 'info');
+    return;
+  }
+
+  await sendSingleGuestZAPI(pending[0].id);
 }
 
-async function startSafeBatchSend() {
+async function sendGuestZAPI(guest) {
+  const phone = normalizePhoneWithDDI(guest.whatsapp);
+  if (!phone) throw new Error('Telefone inválido.');
+
+  const message = buildGuestMessage(guest);
+  const zapiResult = await sendTextZAPI(phone, message);
+
+  await supabaseClient
+    .from('event_guests')
+    .update({
+      message_sent: true,
+      message_sent_at: new Date().toISOString(),
+      last_send_error: null
+    })
+    .eq('id', guest.id);
+
+  return zapiResult;
+}
+
+async function saveSendError(guestId, errorMessage) {
+  await supabaseClient
+    .from('event_guests')
+    .update({
+      last_send_error: String(errorMessage || 'Erro desconhecido').substring(0, 250)
+    })
+    .eq('id', guestId);
+}
+
+async function startZAPIBatchSend() {
   if (batchSending) return;
 
-  let pending = getPendingToSend();
-  if (pending.length === 0) { showMessage('Nenhum convidado pendente com WhatsApp disponível para envio.', 'info'); return; }
+  const config = validateZAPIConfig();
+  if (!config) return;
+
+  const pending = getPendingToSend();
+  if (pending.length === 0) {
+    showMessage('Nenhum convidado pendente com WhatsApp disponível para envio.', 'info');
+    return;
+  }
 
   const batchLimit = Number(document.getElementById('batchLimit').value);
   const delaySeconds = Number(document.getElementById('delaySeconds').value);
@@ -511,7 +1000,7 @@ async function startSafeBatchSend() {
   const selected = pending.slice(0, batchLimit);
 
   const ok = confirm(
-    `Envio protegido\n\nSerão abertas ${selected.length} conversas do WhatsApp neste lote.\nIntervalo: ${delaySeconds}s entre mensagens.\nPausa recomendada depois: ${pauseMinutes} minuto(s).\n\nNão feche esta aba durante o envio. Deseja iniciar?`
+    `Envio em massa via Z-API\n\nSerão enviadas ${selected.length} mensagens neste lote.\nIntervalo: ${delaySeconds}s entre mensagens.\nPausa recomendada depois: ${pauseMinutes} minuto(s).\n\nDeseja iniciar?`
   );
 
   if (!ok) return;
@@ -520,17 +1009,27 @@ async function startSafeBatchSend() {
   stopRequested = false;
   document.getElementById('safeSendButton').disabled = true;
   document.getElementById('stopSendButton').disabled = false;
-  showSendProgress(true, 'Iniciando envio protegido...', 'Preparando contatos...', 0);
+  showSendProgress(true, 'Iniciando envio pela Z-API...', 'Preparando contatos...', 0);
+
+  let successCount = 0;
+  let errorCount = 0;
 
   for (let i = 0; i < selected.length; i++) {
     if (stopRequested) break;
 
     const guest = selected[i];
-    openWhatsApp(guest.id, true);
-    await markMessageSentSilent(guest.id);
+
+    try {
+      await sendGuestZAPI(guest);
+      successCount++;
+    } catch (error) {
+      errorCount++;
+      await saveSendError(guest.id, error.message);
+      console.error('Erro ao enviar para', guest.guest_name, error);
+    }
 
     const percent = Math.round(((i + 1) / selected.length) * 100);
-    showSendProgress(true, `Enviando ${i + 1} de ${selected.length}`, `Contato atual: ${guest.guest_name}. Próxima mensagem em ${delaySeconds}s.`, percent);
+    showSendProgress(true, `Enviando ${i + 1} de ${selected.length}`, `Sucesso: ${successCount} | Erros: ${errorCount} | Atual: ${guest.guest_name}`, percent);
 
     await sleep(delaySeconds * 1000);
   }
@@ -539,10 +1038,10 @@ async function startSafeBatchSend() {
 
   if (stopRequested) {
     showMessage('Envio interrompido pelo usuário.', 'warning');
-    showSendProgress(true, 'Envio interrompido', 'Você pode continuar depois usando o mesmo botão.', 100);
+    showSendProgress(true, 'Envio interrompido', `Sucesso: ${successCount} | Erros: ${errorCount}`, 100);
   } else {
-    showMessage(`Lote finalizado. Faça uma pausa de ${pauseMinutes} minuto(s) antes do próximo lote.`, 'success');
-    showSendProgress(true, 'Lote finalizado', `Pausa recomendada: ${pauseMinutes} minuto(s). Depois disso, envie o próximo lote.`, 100);
+    showMessage(`Lote finalizado. Enviadas: ${successCount}. Erros: ${errorCount}. Pausa recomendada: ${pauseMinutes} minuto(s).`, 'success');
+    showSendProgress(true, 'Lote finalizado', `Enviadas: ${successCount}. Erros: ${errorCount}.`, 100);
   }
 
   batchSending = false;
@@ -550,19 +1049,29 @@ async function startSafeBatchSend() {
   document.getElementById('stopSendButton').disabled = true;
 }
 
-function stopBatchSend() { stopRequested = true; }
+function stopBatchSend() {
+  stopRequested = true;
+}
 
 async function resetMessageSentForPending() {
-  const ok = confirm('Isso vai permitir reenviar mensagens para convidados pendentes que já estavam marcados como mensagem enviada. Deseja continuar?');
+  const ok = confirm('Isso vai permitir reenviar mensagens para convidados pendentes já marcados como mensagem enviada. Deseja continuar?');
   if (!ok) return;
 
   const { error } = await supabaseClient
     .from('event_guests')
-    .update({ message_sent: false, message_sent_at: null })
+    .update({
+      message_sent: false,
+      message_sent_at: null,
+      last_send_error: null
+    })
     .eq('event_id', currentEventId)
     .eq('confirmed', false);
 
-  if (error) { showMessage('Erro ao liberar reenvio: ' + error.message, 'error'); return; }
+  if (error) {
+    showMessage('Erro ao liberar reenvio: ' + error.message, 'error');
+    return;
+  }
+
   await loadGuests();
   showMessage('Reenvio liberado para convidados pendentes.', 'success');
 }
@@ -570,19 +1079,20 @@ async function resetMessageSentForPending() {
 async function markMessageSent(guestId) {
   const { error } = await supabaseClient
     .from('event_guests')
-    .update({ message_sent: true, message_sent_at: new Date().toISOString() })
+    .update({
+      message_sent: true,
+      message_sent_at: new Date().toISOString(),
+      last_send_error: null
+    })
     .eq('id', guestId);
 
-  if (error) { showMessage('Erro ao marcar mensagem como enviada: ' + error.message, 'error'); return; }
+  if (error) {
+    showMessage('Erro ao marcar mensagem como enviada: ' + error.message, 'error');
+    return;
+  }
+
   await loadGuests();
   showMessage('Mensagem marcada como enviada.', 'success');
-}
-
-async function markMessageSentSilent(guestId) {
-  await supabaseClient
-    .from('event_guests')
-    .update({ message_sent: true, message_sent_at: new Date().toISOString() })
-    .eq('id', guestId);
 }
 
 function showSendProgress(active, title, text, percent) {
@@ -593,15 +1103,80 @@ function showSendProgress(active, title, text, percent) {
   document.getElementById('sendProgressFill').style.width = `${percent}%`;
 }
 
-function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
-function normalizePhone(value) { if (!value) return ''; return String(value).replace(/\D/g, '').replace(/^55/, '').slice(0, 11); }
-function formatPhoneBR(value) { const phone = normalizePhone(value); if (!phone) return ''; if (phone.length === 11) return phone.replace(/^(\d{2})(\d{5})(\d{4})$/, '($1) $2-$3'); if (phone.length === 10) return phone.replace(/^(\d{2})(\d{4})(\d{4})$/, '($1) $2-$3'); return phone; }
-function normalizeText(value) { return String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]/g, '').toLowerCase(); }
-function formatDateBR(dateString) { if (!dateString) return ''; const parts = String(dateString).split('-'); if (parts.length !== 3) return dateString; return `${parts[2]}/${parts[1]}/${parts[0]}`; }
-function formatTime(timeString) { if (!timeString) return ''; return String(timeString).substring(0, 5); }
-function formatDateTimeBR(dateString) { if (!dateString) return ''; const date = new Date(dateString); if (Number.isNaN(date.getTime())) return dateString; return date.toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }); }
-function escapeHTML(value) { return String(value || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); }
-function showMessage(text, type) { const message = document.getElementById('message'); message.textContent = text; message.className = `message ${type}`; setTimeout(() => { message.className = 'message'; message.textContent = ''; }, 5000); }
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function normalizePhone(value) {
+  if (!value) return '';
+  return String(value).replace(/\D/g, '').replace(/^55/, '').slice(0, 11);
+}
+
+function normalizePhoneWithDDI(value) {
+  const phone = normalizePhone(value);
+  if (!phone) return '';
+  return `55${phone}`;
+}
+
+function formatPhoneBR(value) {
+  const phone = normalizePhone(value);
+  if (!phone) return '';
+  if (phone.length === 11) return phone.replace(/^(\d{2})(\d{5})(\d{4})$/, '($1) $2-$3');
+  if (phone.length === 10) return phone.replace(/^(\d{2})(\d{4})(\d{4})$/, '($1) $2-$3');
+  return phone;
+}
+
+function normalizeText(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9]/g, '')
+    .toLowerCase();
+}
+
+function formatDateBR(dateString) {
+  if (!dateString) return '';
+  const parts = String(dateString).split('-');
+  if (parts.length !== 3) return dateString;
+  return `${parts[2]}/${parts[1]}/${parts[0]}`;
+}
+
+function formatTime(timeString) {
+  if (!timeString) return '';
+  return String(timeString).substring(0, 5);
+}
+
+function formatDateTimeBR(dateString) {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) return dateString;
+  return date.toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
+function escapeHTML(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function showMessage(text, type) {
+  const message = document.getElementById('message');
+  message.textContent = text;
+  message.className = `message ${type}`;
+  setTimeout(() => {
+    message.className = 'message';
+    message.textContent = '';
+  }, 5000);
+}
 </script>
 </body>
 </html>
