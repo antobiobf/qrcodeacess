@@ -4,48 +4,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gerador de QR Codes - Controle de Acesso</title>
+  <title>Convidou - Controle de acesso para eventos pelo celular</title>
 
-  <!--
-    SQL / ALTER TABLE PARA O SUPABASE
-
-    create table if not exists public.access_codes (
-      id uuid primary key default gen_random_uuid(),
-      event_name text not null,
-      event_date text,
-      event_time text,
-      ticket_type text default 'mesa',
-      customer_name text,
-      customer_email text,
-      customer_whatsapp text,
-      accessed boolean default false,
-      accessed_at timestamptz null,
-      table_number integer,
-      seat_number integer,
-      qr_code text not null unique,
-      status text not null default 'pending',
-      used_at timestamptz null,
-      created_at timestamptz not null default now()
-    );
-
-    alter table public.access_codes
-    add column if not exists event_id uuid references public.events(id),
-    add column if not exists event_date text,
-    add column if not exists event_time text,
-    add column if not exists ticket_type text default 'mesa',
-    add column if not exists customer_name text,
-    add column if not exists customer_email text,
-    add column if not exists customer_whatsapp text,
-    add column if not exists accessed boolean default false,
-    add column if not exists accessed_at timestamptz;
-
-    alter table public.access_codes
-    alter column table_number drop not null,
-    alter column seat_number drop not null;
-  -->
-
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode/1.5.1/qrcode.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
@@ -53,1273 +13,1703 @@
       box-sizing: border-box;
       margin: 0;
       padding: 0;
-      font-family: Arial, sans-serif;
+      font-family: Arial, sans-serif
+    }
+
+    :root {
+      --dark: #0f172a;
+      --blue: #2563eb;
+      --green: #16a34a;
+      --text: #111827;
+      --muted: #64748b;
+      --line: #e5e7eb;
+      --bg: #f3f4f6
+    }
+
+    html {
+      scroll-behavior: smooth
     }
 
     body {
-      background: #f3f4f6;
-      color: #111827;
-      padding: 20px;
+      min-height: 100vh;
+      background: radial-gradient(circle at top left, rgba(37, 99, 235, .13), transparent 34%), radial-gradient(circle at 90% 20%, rgba(22, 163, 74, .10), transparent 30%), var(--bg);
+      color: var(--text)
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none
     }
 
     .container {
-      max-width: 1200px;
+      max-width: 1240px;
       margin: 0 auto;
+      padding: 20px
     }
 
-    .header {
-      position: relative;
-      background: #111827;
-      color: #ffffff;
-      padding: 24px;
-      border-radius: 16px;
-      margin-bottom: 24px;
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      backdrop-filter: blur(18px);
+      background: rgba(243, 244, 246, .78);
+      border-bottom: 1px solid rgba(226, 232, 240, .7)
     }
 
-    .header h1 {
-      font-size: 28px;
-      margin-bottom: 8px;
-      padding-right: 54px;
-    }
-
-    .header p {
-      color: #d1d5db;
-      font-size: 15px;
-      padding-right: 54px;
-    }
-
-    .header-menu {
-      position: absolute;
-      top: 18px;
-      right: 18px;
+    .nav-inner {
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 14px 20px;
       display: flex;
-      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px
     }
 
-    .config-menu-button {
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      color: white;
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 900;
+      color: var(--dark);
+      font-size: 20px
+    }
+
+    .brand-mark {
       width: 42px;
       height: 42px;
-      border-radius: 12px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, var(--blue), var(--green));
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 18px;
-      cursor: pointer;
-      transition: 0.2s;
-      backdrop-filter: blur(10px);
+      color: white;
+      box-shadow: 0 12px 24px rgba(37, 99, 235, .25)
     }
 
-    .config-menu-button:hover {
-      background: rgba(255, 255, 255, 0.16);
-      transform: scale(1.03);
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 800
+    }
+
+    .nav-links a:not(.btn):hover {
+      color: var(--blue)
+    }
+
+    button,
+    .btn {
+      border: none;
+      border-radius: 16px;
+      padding: 14px 18px;
+      font-weight: 900;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      transition: .22s;
+      font-size: 15px;
+      white-space: nowrap;
+      text-decoration: none
+    }
+
+    button:hover,
+    .btn:hover {
+      transform: translateY(-1px);
+      filter: brightness(1.02)
+    }
+
+    button:disabled {
+      opacity: .6;
+      cursor: not-allowed;
+      transform: none
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--blue), #60a5fa);
+      color: white;
+      box-shadow: 0 14px 28px rgba(37, 99, 235, .26)
+    }
+
+    .btn-success {
+      background: linear-gradient(135deg, var(--green), #22c55e);
+      color: white;
+      box-shadow: 0 14px 28px rgba(22, 163, 74, .22)
+    }
+
+    .btn-dark {
+      background: var(--dark);
+      color: white;
+      box-shadow: 0 14px 28px rgba(15, 23, 42, .20)
+    }
+
+    .btn-light {
+      background: white;
+      color: var(--dark);
+      border: 1px solid var(--line)
+    }
+
+    .hero {
+      min-height: 92vh;
+      position: relative;
+      overflow: hidden;
+      margin-top: 20px;
+      border-radius: 34px;
+      background: linear-gradient(rgba(2, 6, 23, .72), rgba(15, 23, 42, .72)), url('https://images.unsplash.com/photo-1516306580123-e6e52b1b7b5f?q=80&w=2200&auto=format&fit=crop') center center/cover fixed no-repeat;
+      color: white;
+      padding: 80px 42px;
+      display: flex;
+      align-items: center;
+      box-shadow: 0 28px 70px rgba(15, 23, 42, .25)
+    }
+
+    .hero::before {
+      content: '';
+      position: absolute;
+      width: 320px;
+      height: 320px;
+      top: -130px;
+      right: -110px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, .08);
+      backdrop-filter: blur(2px)
+    }
+
+    .hero::after {
+      content: '';
+      position: absolute;
+      width: 460px;
+      height: 460px;
+      left: 40%;
+      bottom: -280px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, .045)
+    }
+
+    .hero-grid {
+      width: 100%;
+      position: relative;
+      z-index: 2;
+      display: grid;
+      grid-template-columns: 1.1fr .9fr;
+      gap: 36px;
+      align-items: center
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 15px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, .12);
+      border: 1px solid rgba(255, 255, 255, .14);
+      color: #dbeafe;
+      font-size: 13px;
+      font-weight: 800;
+      margin-bottom: 20px;
+      backdrop-filter: blur(10px)
+    }
+
+    .hero h1 {
+      font-size: clamp(42px, 6vw, 72px);
+      line-height: .96;
+      letter-spacing: -2.5px;
+      margin-bottom: 22px;
+      max-width: 760px
+    }
+
+    .hero p {
+      color: rgba(255, 255, 255, .84);
+      font-size: 20px;
+      line-height: 1.55;
+      max-width: 720px;
+      margin-bottom: 26px
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-bottom: 16px
+    }
+
+    .hero-social-proof {
+      color: #dbeafe;
+      font-size: 14px;
+      margin-bottom: 24px
+    }
+
+    .hero-proof {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap
+    }
+
+    .proof-pill {
+      background: rgba(255, 255, 255, .10);
+      border: 1px solid rgba(255, 255, 255, .13);
+      border-radius: 16px;
+      padding: 12px 14px;
+      color: #dbeafe;
+      font-size: 13px;
+      font-weight: 800
+    }
+
+    .phone-video {
+      width: min(330px, 100%);
+      margin: 0 auto;
+      aspect-ratio: 9/16;
+      border-radius: 42px;
+      background: linear-gradient(145deg, #020617, #111827), #111827;
+      border: 10px solid rgba(255, 255, 255, .14);
+      box-shadow: 0 28px 70px rgba(0, 0, 0, .42);
+      padding: 18px;
+      position: relative;
+      overflow: hidden
+    }
+
+    .phone-video::before {
+      content: '';
+      position: absolute;
+      top: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 92px;
+      height: 24px;
+      background: #020617;
+      border-radius: 999px;
+      z-index: 4
+    }
+
+    .phone-screen {
+      height: 100%;
+      border-radius: 30px;
+      background: radial-gradient(circle at top, rgba(37, 99, 235, .45), transparent 42%), linear-gradient(180deg, #111827, #020617);
+      padding: 48px 18px 18px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      color: white
+    }
+
+    .video-placeholder {
+      border: 1px dashed rgba(255, 255, 255, .25);
+      border-radius: 24px;
+      padding: 18px;
+      min-height: 250px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      background: rgba(255, 255, 255, .06)
+    }
+
+    .video-placeholder strong {
+      font-size: 20px;
+      display: block;
+      margin-bottom: 10px
+    }
+
+    .phone-stats {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px
+    }
+
+    .phone-stat {
+      background: rgba(255, 255, 255, .10);
+      border: 1px solid rgba(255, 255, 255, .12);
+      border-radius: 18px;
+      padding: 12px
+    }
+
+    .phone-stat span {
+      color: #bfdbfe;
+      font-size: 12px;
+      display: block;
+      margin-bottom: 4px
+    }
+
+    .phone-stat strong {
+      font-size: 22px
+    }
+
+    .section {
+      padding: 50px 0 0
+    }
+
+    .section-head {
+      text-align: center;
+      max-width: 820px;
+      margin: 0 auto 28px
+    }
+
+    .section-head h2 {
+      font-size: clamp(32px, 4vw, 52px);
+      letter-spacing: -1.8px;
+      color: var(--dark);
+      margin-bottom: 14px
+    }
+
+    .section-head p {
+      color: var(--muted);
+      font-size: 18px;
+      line-height: 1.55
+    }
+
+    .grid-3,
+    .grid-4,
+    .grid-2 {
+      display: grid;
+      gap: 20px
+    }
+
+    .grid-3 {
+      grid-template-columns: repeat(3, 1fr)
+    }
+
+    .grid-4 {
+      grid-template-columns: repeat(4, 1fr)
+    }
+
+    .grid-2 {
+      grid-template-columns: repeat(2, 1fr)
     }
 
     .card {
-      background: #ffffff;
-      border-radius: 16px;
-      padding: 24px;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
-      margin-bottom: 24px;
+      background: rgba(255, 255, 255, .94);
+      border: 1px solid rgba(226, 232, 240, .9);
+      box-shadow: 0 16px 42px rgba(15, 23, 42, .08);
+      border-radius: 26px;
+      padding: 26px
     }
 
-    .config-box {
-      border: 1px solid #e5e7eb;
-      background: #f9fafb;
-      margin-bottom: 24px;
+    .feature-card {
+      position: relative;
+      overflow: hidden;
+      min-height: 230px
     }
 
-    .form-grid,
-    .config-grid {
+    .feature-card::after {
+      content: '';
+      position: absolute;
+      width: 120px;
+      height: 120px;
+      border-radius: 999px;
+      top: -55px;
+      right: -55px;
+      background: rgba(37, 99, 235, .08)
+    }
+
+    .feature-icon {
+      width: 52px;
+      height: 52px;
+      border-radius: 18px;
+      background: linear-gradient(135deg, var(--blue), #60a5fa);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      margin-bottom: 18px;
+      box-shadow: 0 12px 24px rgba(37, 99, 235, .23)
+    }
+
+    .feature-card h3,
+    .testimonial h3,
+    .pricing-card h3 {
+      font-size: 22px;
+      letter-spacing: -.5px;
+      margin-bottom: 10px;
+      color: var(--dark)
+    }
+
+    .feature-card p,
+    .testimonial p,
+    .pricing-card p {
+      color: var(--muted);
+      line-height: 1.55;
+      font-size: 15px
+    }
+
+    .stats-section {
+      position: relative;
+      overflow: hidden;
+      border-radius: 36px;
+      min-height: 420px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(rgba(15, 23, 42, .68), rgba(15, 23, 42, .68)), url('https://images.unsplash.com/photo-1544986581-efac024faf62?q=80&w=2200&auto=format&fit=crop') center/cover fixed no-repeat;
+      box-shadow: 0 30px 70px rgba(15, 23, 42, .18)
+    }
+
+    .stats-section::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, rgba(37, 99, 235, .18), rgba(22, 163, 74, .18))
+    }
+
+    .stats-grid {
+      position: relative;
+      z-index: 2;
+      width: 100%;
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 16px;
-      margin-bottom: 20px;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 26px;
+      padding: 50px
     }
 
-    .config-grid {
-      grid-template-columns: repeat(2, 1fr);
+    .stat-item {
+      text-align: center;
+      color: white
+    }
+
+    .stat-number {
+      font-size: 58px;
+      font-weight: 900;
+      line-height: 1
+    }
+
+    .stat-label {
+      margin-top: 12px;
+      font-size: 18px;
+      font-weight: 700;
+      color: #dbeafe
+    }
+
+    .tech-showcase {
+      display: grid;
+      grid-template-columns: .9fr 1.1fr;
+      gap: 24px;
+      align-items: center;
+      background: linear-gradient(135deg, #0f172a, #1e3a8a);
+      color: white;
+      border-radius: 34px;
+      padding: 34px;
+      overflow: hidden;
+      position: relative;
+      box-shadow: 0 28px 70px rgba(15, 23, 42, .20)
+    }
+
+    .tech-visual {
+      min-height: 340px;
+      border-radius: 28px;
+      background: linear-gradient(135deg, rgba(15, 23, 42, .62), rgba(30, 58, 138, .45)), url('https://images.unsplash.com/photo-1567608198472-6796ad9466a5?q=80&w=1600&auto=format&fit=crop') center/cover no-repeat;
+      border: 1px solid rgba(255, 255, 255, .14);
+      position: relative;
+      overflow: hidden
+    }
+
+    .tech-visual::before {
+      content: '';
+      position: absolute;
+      inset: 38px;
+      border: 1px solid rgba(255, 255, 255, .13);
+      border-radius: 24px;
+      background: linear-gradient(90deg, rgba(255, 255, 255, .04) 1px, transparent 1px), linear-gradient(rgba(255, 255, 255, .04) 1px, transparent 1px);
+      background-size: 28px 28px
+    }
+
+    .tech-card-float {
+      position: absolute;
+      background: rgba(255, 255, 255, .12);
+      border: 1px solid rgba(255, 255, 255, .15);
+      backdrop-filter: blur(14px);
+      color: white;
+      border-radius: 18px;
+      padding: 16px;
+      box-shadow: 0 18px 40px rgba(0, 0, 0, .18)
+    }
+
+    .float-1 {
+      top: 42px;
+      left: 34px
+    }
+
+    .float-2 {
+      right: 34px;
+      top: 130px
+    }
+
+    .float-3 {
+      left: 70px;
+      bottom: 42px
+    }
+
+    .tech-content h2 {
+      font-size: clamp(32px, 4vw, 54px);
+      letter-spacing: -1.8px;
+      line-height: 1.05;
+      margin-bottom: 16px
+    }
+
+    .tech-content p {
+      color: rgba(255, 255, 255, .82);
+      font-size: 18px;
+      line-height: 1.55;
+      margin-bottom: 22px
+    }
+
+    .check-list {
+      display: grid;
+      gap: 12px
+    }
+
+    .check-item {
+      display: flex;
+      gap: 10px;
+      color: rgba(255, 255, 255, .9);
+      font-weight: 800
+    }
+
+    .pricing-card {
+      position: relative;
+      overflow: hidden
+    }
+
+    .pricing-card.highlight {
+      border: 2px solid var(--green);
+      background: linear-gradient(135deg, #f0fdf4, white)
+    }
+
+    .price {
+      font-size: 42px;
+      font-weight: 900;
+      letter-spacing: -1.4px;
+      color: var(--dark);
+      margin: 18px 0
+    }
+
+    .price small {
+      font-size: 14px;
+      color: var(--muted);
+      font-weight: 800
+    }
+
+    .testimonial {
+      min-height: 240px
+    }
+
+    .stars {
+      color: #f59e0b;
+      font-size: 20px;
+      margin-bottom: 14px
+    }
+
+    .lead-zone {
+      display: grid;
+      grid-template-columns: 1fr .9fr;
+      gap: 24px;
+      align-items: start
+    }
+
+    .lead-card {
+      position: sticky;
+      top: 92px;
+      background: white;
+      border-radius: 30px;
+      padding: 28px;
+      box-shadow: 0 28px 70px rgba(15, 23, 42, .14);
+      border: 1px solid #e5e7eb
+    }
+
+    .lead-card h2 {
+      font-size: 30px;
+      letter-spacing: -1px;
+      margin-bottom: 8px;
+      color: var(--dark)
+    }
+
+    .lead-card p {
+      color: var(--muted);
+      line-height: 1.5;
+      margin-bottom: 20px
+    }
+
+    .form-step {
+      display: none
+    }
+
+    .form-step.active {
+      display: block
     }
 
     .form-group {
       display: flex;
       flex-direction: column;
       gap: 8px;
+      margin-bottom: 14px
     }
 
     label {
-      font-weight: bold;
       font-size: 14px;
+      font-weight: 900;
+      color: var(--dark)
     }
 
-    input,
-    select {
-      padding: 13px 14px;
+    input {
+      width: 100%;
+      padding: 16px;
       border: 1px solid #d1d5db;
-      border-radius: 10px;
+      border-radius: 16px;
       font-size: 15px;
       outline: none;
-      background: white;
+      transition: .2s;
+      background: white
     }
 
-    input:focus,
-    select:focus {
-      border-color: #2563eb;
-      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    input:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, .12)
     }
 
-    .actions {
-      display: flex;
-      gap: 12px;
-      flex-wrap: wrap;
+    .code-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 8px;
+      margin-bottom: 14px
     }
 
-    button {
-      border: none;
-      border-radius: 10px;
-      padding: 13px 18px;
-      font-size: 15px;
-      font-weight: bold;
-      cursor: pointer;
-      transition: 0.2s;
-    }
-
-    button:disabled {
-      opacity: 0.6;
-      cursor: not-allowed;
-    }
-
-    .btn-primary {
-      background: #2563eb;
-      color: white;
-    }
-
-    .btn-primary:hover {
-      background: #1d4ed8;
-    }
-
-    .btn-secondary {
-      background: #e5e7eb;
-      color: #111827;
-    }
-
-    .btn-secondary:hover {
-      background: #d1d5db;
+    .code-grid input {
+      text-align: center;
+      font-size: 22px;
+      font-weight: 900;
+      padding: 14px 6px
     }
 
     .message {
-      margin-top: 16px;
-      padding: 12px;
-      border-radius: 10px;
       display: none;
+      padding: 14px 16px;
+      border-radius: 16px;
+      margin: 14px 0;
       font-size: 14px;
+      font-weight: 800;
+      line-height: 1.4
     }
 
     .message.success {
       display: block;
       background: #dcfce7;
-      color: #166534;
+      color: #166534
     }
 
     .message.error {
       display: block;
       background: #fee2e2;
-      color: #991b1b;
+      color: #991b1b
     }
 
     .message.info {
       display: block;
       background: #dbeafe;
-      color: #1e40af;
+      color: #1e40af
     }
 
-    .summary {
+    .message.warning {
+      display: block;
+      background: #fef3c7;
+      color: #92400e
+    }
+
+    .progress-steps {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 16px;
-      margin-bottom: 24px;
+      gap: 8px;
+      margin-bottom: 22px
     }
 
-    .summary-box {
-      background: #ffffff;
-      border-radius: 14px;
-      padding: 18px;
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
-    }
-
-    .summary-box span {
-      display: block;
-      color: #6b7280;
-      font-size: 14px;
-      margin-bottom: 6px;
-    }
-
-    .summary-box strong {
-      font-size: 26px;
-    }
-
-    .search-box {
-      margin-bottom: 18px;
-    }
-
-    .search-box input {
-      width: 100%;
-      font-size: 16px;
-      padding: 16px;
-      border-radius: 14px;
-    }
-
-    .tabs-nav {
-      display: flex;
-      gap: 12px;
-      margin-bottom: 24px;
-      flex-wrap: wrap;
-    }
-
-    .tab-button {
-      background: #e5e7eb;
-      color: #111827;
+    .step-pill {
+      height: 8px;
       border-radius: 999px;
-      padding: 12px 18px;
-      font-size: 15px;
-      font-weight: bold;
+      background: #e5e7eb
     }
 
-    .tab-button.active {
-      background: #2563eb;
-      color: white;
-    }
-
-    .table-section {
-      margin-bottom: 28px;
-    }
-
-    .table-title {
-      font-size: 20px;
-      margin-bottom: 14px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      flex-wrap: wrap;
-    }
-
-    .qr-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-      gap: 18px;
-    }
-
-    .qr-card {
-      position: relative;
-      background: #ffffff;
-      border-radius: 16px;
-      padding: 18px;
-      text-align: center;
-      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
-      border: 1px solid #e5e7eb;
-    }
-
-    .qr-card canvas {
-      width: 150px !important;
-      height: 150px !important;
-      margin-bottom: 12px;
-    }
-
-    .qr-code-text {
-      font-weight: bold;
-      font-size: 14px;
-      word-break: break-all;
-      background: #f3f4f6;
-      padding: 8px;
-      border-radius: 8px;
-      margin-bottom: 10px;
-    }
-
-    .qr-info {
-      font-size: 13px;
-      color: #6b7280;
-      margin-bottom: 12px;
-      min-height: 34px;
-    }
-
-    .qr-card.used {
-      border: 2px solid #dc2626;
-      background: #fef2f2;
-    }
-
-    .used-badge {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      background: #dc2626;
-      color: white;
-      padding: 6px 10px;
-      border-radius: 999px;
-      font-size: 11px;
-      font-weight: bold;
-    }
-
-    .qr-card.used .qr-code-text {
-      background: #fee2e2;
-      color: #991b1b;
-    }
-
-    .qr-card button {
-      width: 100%;
-      padding: 10px;
-      font-size: 13px;
-    }
-
-    .empty-state {
-      text-align: center;
-      padding: 40px 20px;
-      color: #6b7280;
-      background: #ffffff;
-      border-radius: 16px;
-      border: 1px dashed #d1d5db;
+    .step-pill.active {
+      background: linear-gradient(90deg, var(--blue), var(--green))
     }
 
     .small-text {
-      color: #6b7280;
       font-size: 13px;
-      line-height: 1.4;
-      margin-top: 8px;
+      line-height: 1.45;
+      color: var(--muted);
+      margin-top: 10px
     }
 
-    @media (max-width: 768px) {
-      body {
-        padding: 12px;
+    .login-modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(2, 6, 23, .72);
+      backdrop-filter: blur(10px);
+      z-index: 100;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px
+    }
+
+    .login-modal-overlay.active {
+      display: flex
+    }
+
+    .login-modal {
+      width: min(460px, 100%);
+      background: white;
+      border-radius: 28px;
+      padding: 28px;
+      box-shadow: 0 30px 80px rgba(0, 0, 0, .32);
+      border: 1px solid rgba(226, 232, 240, .9);
+      position: relative
+    }
+
+    .login-modal h2 {
+      font-size: 30px;
+      letter-spacing: -1px;
+      color: var(--dark);
+      margin-bottom: 8px
+    }
+
+    .login-modal p {
+      color: var(--muted);
+      line-height: 1.45;
+      margin-bottom: 20px
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 18px;
+      right: 18px;
+      width: 40px;
+      height: 40px;
+      border-radius: 14px;
+      background: #f3f4f6;
+      color: var(--dark);
+      padding: 0;
+      font-size: 18px
+    }
+
+    .footer {
+      margin-top: 60px;
+      padding: 30px 0;
+      color: var(--muted);
+      text-align: center;
+      font-size: 14px
+    }
+
+    @media(max-width:980px) {
+      .nav-links {
+        display: none
       }
 
-      .form-grid,
-      .config-grid,
-      .summary {
+      .hero-grid,
+      .tech-showcase,
+      .lead-zone,
+      .grid-2,
+      .grid-3,
+      .grid-4 {
+        grid-template-columns: 1fr
+      }
+
+      .hero {
+        padding: 28px;
+        border-radius: 28px
+      }
+
+      .lead-card {
+        position: static
+      }
+
+      .phone-video {
+        width: min(290px, 100%)
+      }
+
+      .tech-showcase {
+        padding: 26px
+      }
+
+      .stats-grid {
+        grid-template-columns: 1fr 1fr !important;
+        padding: 34px !important
+      }
+    }
+
+    @media(max-width:620px) {
+      .stats-grid {
+        grid-template-columns: 1fr !important
+      }
+
+      .container {
+        padding: 12px
+      }
+
+      .nav-inner {
+        padding: 12px
+      }
+
+      .brand {
+        font-size: 17px
+      }
+
+      .hero h1 {
+        font-size: 40px
+      }
+
+      .hero p {
+        font-size: 16px
+      }
+
+      .hero-actions .btn,
+      .hero-actions button {
+        width: 100%
+      }
+
+      .card,
+      .lead-card {
+        padding: 22px
+      }
+
+      .code-grid {
+        gap: 6px
+      }
+    }
+
+    /* =========================
+   CONTATO
+========================= */
+
+    .contact-section {
+      display: grid;
+      grid-template-columns: 1.1fr 1fr;
+      gap: 32px;
+      align-items: stretch;
+    }
+
+    .contact-info {
+      background: #fff;
+      border-radius: 32px;
+      padding: 42px;
+      box-shadow: 0 20px 60px rgba(15, 23, 42, .08);
+    }
+
+    .contact-info h2 {
+      font-size: clamp(34px, 4vw, 56px);
+      line-height: 1.05;
+      margin: 18px 0;
+      letter-spacing: -2px;
+      color: #0f172a;
+    }
+
+    .contact-info p {
+      font-size: 18px;
+      line-height: 1.7;
+      color: #64748b;
+      margin-bottom: 28px;
+    }
+
+    .contact-cards {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      margin-bottom: 32px;
+    }
+
+    .contact-card {
+      display: flex;
+      align-items: flex-start;
+      gap: 16px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 22px;
+      padding: 18px;
+    }
+
+    .contact-icon {
+      width: 54px;
+      height: 54px;
+      border-radius: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #2563eb, #06b6d4);
+      color: #fff;
+      font-size: 22px;
+      flex-shrink: 0;
+    }
+
+    .contact-card strong {
+      display: block;
+      color: #0f172a;
+      font-size: 16px;
+      margin-bottom: 4px;
+    }
+
+    .contact-card span {
+      color: #64748b;
+      line-height: 1.6;
+    }
+
+    .contact-actions {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .contact-map {
+      overflow: hidden;
+      border-radius: 32px;
+      min-height: 100%;
+      box-shadow: 0 20px 60px rgba(15, 23, 42, .08);
+    }
+
+    .contact-map iframe {
+      width: 100%;
+      height: 100%;
+      min-height: 620px;
+      border: 0;
+    }
+
+    /* RESPONSIVO */
+
+    @media(max-width:980px) {
+
+      .contact-section {
         grid-template-columns: 1fr;
       }
 
-      .header h1 {
-        font-size: 23px;
+      .contact-map iframe {
+        min-height: 420px;
       }
 
-      .card {
-        padding: 18px;
-      }
-
-      .actions button {
-        width: 100%;
-      }
     }
   </style>
 </head>
 
 <body>
-  <div class="container">
-    <div class="header">
-      <div class="header-menu">
-        <button class="config-menu-button" onclick="toggleConfig()" title="Configurações">
-          ⚙️
-        </button>
-      </div>
-
-      <h1>Gerador de QR Codes</h1>
-      <p>Crie QR Codes por mesa ou ingressos individuais e salve tudo no Supabase.</p>
-    </div>
-
-    <div class="card config-box" id="configContainer" style="display:none;">
-      <div class="config-grid">
-        <div class="form-group">
-          <label for="supabaseUrl">Supabase URL</label>
-          <input type="text" id="supabaseUrl" placeholder="https://xxxx.supabase.co" />
-        </div>
-
-        <div class="form-group">
-          <label for="supabaseKey">Supabase Anon Key</label>
-          <input type="password" id="supabaseKey" placeholder="Cole sua anon public key" />
-        </div>
-
-        <div class="form-group">
-          <label for="eventName">Nome do evento</label>
-          <input type="text" id="eventName" placeholder="Ex: Geraldinho" />
-        </div>
-
-        <div class="form-group">
-          <label for="eventDate">Data do evento</label>
-          <input type="date" id="eventDate" />
-        </div>
-
-        <div class="form-group">
-          <label for="eventTime">Hora do evento</label>
-          <input type="time" id="eventTime" />
-        </div>
-
-        <div class="form-group">
-          <label for="eventLocation">Local do evento</label>
-          <input type="text" id="eventLocation" placeholder="Ex: Mirante do Paço" />
-        </div>
-      </div>
-
-      <div class="actions">
-        <button class="btn-primary" onclick="saveSupabaseConfig()">Conectar Supabase</button>
-        <button class="btn-secondary" onclick="loadCodesFromSupabase()">Atualizar lista</button>
-      </div>
-
-      <p class="small-text">
-        Use a URL do projeto e a chave anon/public do Supabase. A tabela precisa se chamar
-        <strong>access_codes</strong>.
-      </p>
-    </div>
-
-    <div class="card">
-      <div class="form-grid">
-        <div class="form-group">
-          <label for="ticketType">Tipo de QR Code</label>
-          <select id="ticketType" onchange="toggleTicketType()">
-            <option value="mesa">Mesa</option>
-            <option value="individual">Ingresso individual</option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label for="customerName">Nome</label>
-          <input type="text" id="customerName" placeholder="Ex: Antônio" />
-        </div>
-
-        <div class="form-group">
-          <label for="customerEmail">E-mail</label>
-          <input type="email" id="customerEmail" placeholder="Ex: cliente@email.com" />
-        </div>
-
-        <div class="form-group">
-          <label for="customerWhatsapp">WhatsApp</label>
-          <input type="text" id="customerWhatsapp" placeholder="Ex: 81999999999" />
-        </div>
-
-        <div class="form-group mesa-field">
-          <label for="tableNumber">Número da mesa</label>
-          <input type="number" id="tableNumber" placeholder="Ex: 1" min="1" />
-        </div>
-
-        <div class="form-group mesa-field">
-          <label for="guestQuantity">Quantidade de lugares</label>
-          <input type="number" id="guestQuantity" placeholder="Ex: 4" min="1" max="50" />
-        </div>
-      </div>
-
-      <div class="actions">
-        <button class="btn-primary" id="generateButton" onclick="generateQRCodes()">Gerar QR Codes</button>
-        <button class="btn-secondary" onclick="downloadAllQRCodes()">Baixar todos</button>
-      </div>
-
-      <div id="message" class="message"></div>
-    </div>
-
-    <div class="summary">
-      <div class="summary-box">
-        <span>Mesas criadas</span>
-        <strong id="totalTables">0</strong>
-      </div>
-      <div class="summary-box">
-        <span>QR Codes - Mesa</span>
-        <strong id="totalCodes">0</strong>
-      </div>
-      <div class="summary-box">
-        <span>QR Codes - Individuais</span>
-        <strong id="totalIndividual">0</strong>
+  <nav class="nav">
+    <div class="nav-inner">
+      <a href="#top" class="brand"><span class="brand-mark">✓</span><span>Convidou</span></a>
+      <div class="nav-links">
+        <a href="#funcionalidades">Funcionalidades</a>
+        <a href="#precos">Preço</a>
+        <a href="#depoimentos">Depoimentos</a>
+        <button class="btn btn-light" onclick="openLoginModal()">Área do usuário</button>
+        <a href="#comece" class="btn btn-primary">Teste grátis</a>
       </div>
     </div>
+  </nav>
 
-    <div class="card search-box">
-      <div class="form-group">
-        <label for="searchInput">Buscar QR Code</label>
-        <input type="text" id="searchInput" placeholder="Busque por nome, e-mail, WhatsApp, mesa ou código do QR Code"
-          oninput="handleSearchInput()" />
-      </div>
+  <div id="loginModal" class="login-modal-overlay" onclick="closeLoginModalOnOverlay(event)">
+    <div class="login-modal" onclick="event.stopPropagation()">
+      <button class="modal-close" onclick="closeLoginModal()" title="Fechar">×</button>
+      <h2>Área do usuário</h2>
+      <p>Entre com seu e-mail e senha para acessar seus eventos cadastrados.</p>
+      <div id="loginMessage" class="message"></div>
+      <div class="form-group"><label for="loginEmail">E-mail</label><input id="loginEmail" type="email"
+          placeholder="seuemail@exemplo.com" autocomplete="email" /></div>
+      <div class="form-group"><label for="loginPassword">Senha</label><input id="loginPassword" type="password"
+          placeholder="Digite sua senha" autocomplete="current-password" /></div>
+      <button id="loginButton" class="btn-success" style="width:100%;" onclick="loginUser()">Entrar nos meus
+        eventos</button>
+      <button class="btn-light" style="width:100%;margin-top:10px;" onclick="goToSignupFromLogin()">Ainda não tenho
+        conta</button>
     </div>
-
-    <div class="tabs-nav">
-      <button class="tab-button active" id="tabMesa" onclick="setActiveTab('mesa')">QR Codes de mesa</button>
-      <button class="tab-button" id="tabIndividual" onclick="setActiveTab('individual')">Ingressos individuais</button>
-    </div>
-
-    <div id="qrContainer"></div>
   </div>
+
+  <main id="top" class="container">
+    <section class="hero">
+      <div class="hero-grid">
+        <div>
+          <span class="badge">📍 Recife Antigo • Porto Digital • Tecnologia para eventos</span>
+          <h1>Controle convidados e mesas do seu evento com um único celular.</h1>
+          <p>Uma plataforma moderna para eventos criada com mentalidade tecnológica. Convide, confirme presença, envie
+            QR Codes e controle o acesso do seu evento com praticidade, segurança e organização.</p>
+          <div class="hero-actions">
+            <a href="#comece" class="btn btn-success">Baixar agora e testar grátis</a>
+            <button class="btn btn-light" onclick="openLoginModal()">Entrar na área do usuário</button>
+            <a href="#video" class="btn btn-light">Ver como funciona</a>
+          </div>
+          <p class="hero-social-proof">Mais de <strong>10.000 convidados</strong> já foram gerenciados com o Convidou.
+          </p>
+          <div class="hero-proof">
+            <div class="proof-pill">✅ Sem lista em papel</div>
+            <div class="proof-pill">✅ QR Code individual</div>
+            <div class="proof-pill">✅ Controle de mesas</div>
+            <div class="proof-pill">✅ Dashboard em tempo real</div>
+          </div>
+        </div>
+        <div id="video" class="phone-video">
+          <div class="phone-screen">
+            <div class="video-placeholder">
+              <div><strong>Espaço para vídeo vertical</strong>
+                <p style="color:#bfdbfe;line-height:1.5;">Mostre em formato celular como importar convidados, enviar
+                  convites, controlar mesas e bipar QR Codes na entrada.</p>
+              </div>
+            </div>
+            <div class="phone-stats">
+              <div class="phone-stat"><span>Confirmados</span><strong>84%</strong></div>
+              <div class="phone-stat"><span>Bipados</span><strong>128</strong></div>
+              <div class="phone-stat"><span>Mesas</span><strong>32</strong></div>
+              <div class="phone-stat"><span>Plano</span><strong>Free</strong></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+
+    <section class="section" id="funcionalidades">
+      <div class="section-head">
+        <h2>Tudo que um controle de acesso moderno precisa.</h2>
+        <p>Do convite à entrada no evento, o Convidou organiza o processo inteiro para você não perder tempo, nem
+          convidado.</p>
+      </div>
+      <div class="grid-3">
+        <div class="card feature-card">
+          <div class="feature-icon">👥</div>
+          <h3>Gestão de convidados</h3>
+          <p>Importe planilhas, cadastre convidados avulsos, organize por grupos e acompanhe confirmados e pendentes.
+          </p>
+        </div>
+        <div class="card feature-card">
+          <div class="feature-icon">💬</div>
+          <h3>Convite pelo WhatsApp</h3>
+          <p>Envie mensagem personalizada com data, hora, local, link de confirmação e convite visual do evento.</p>
+        </div>
+        <div class="card feature-card">
+          <div class="feature-icon">🍽️</div>
+          <h3>Controle de mesas</h3>
+          <p>Crie QR Codes por mesa, organize lugares e controle convidados com mais praticidade na recepção.</p>
+        </div>
+        <div class="card feature-card">
+          <div class="feature-icon">🎟️</div>
+          <h3>QR Code individual</h3>
+          <p>Quando o convidado confirma, o sistema gera o ingresso individual e reduz erros na portaria.</p>
+        </div>
+        <div class="card feature-card">
+          <div class="feature-icon">📲</div>
+          <h3>Bipagem no celular</h3>
+          <p>Controle a entrada usando apenas um celular. Valide o QR Code e evite uso duplicado de convite.</p>
+        </div>
+        <div class="card feature-card">
+          <div class="feature-icon">📊</div>
+          <h3>Dashboard em tempo real</h3>
+          <p>Veja acessos por dia, convidados confirmados, pendentes, mesas e histórico de entrada.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="tech-showcase">
+        <div class="tech-visual" aria-label="Imagem aérea do Recife Antigo e Porto Digital">
+
+          <div class="tech-card-float float-1" style="top:90px;"><strong>QR validado</strong><br><small>Entrada
+              liberada</small></div>
+          <div class="tech-card-float float-2"><strong>WhatsApp enviado</strong><br><small>Convite + texto</small></div>
+          <div class="tech-card-float float-3"><strong>Mesas controladas</strong><br><small>Organização prática</small>
+          </div>
+        </div>
+        <div class="tech-content">
+          <h2>Tecnologia criada no coração da inovação brasileira.</h2>
+          <p>Inspirado no ambiente moderno e tecnológico do Recife Antigo e do Porto Digital, o Convidou transforma
+            qualquer evento em uma operação organizada, elegante e segura.</p>
+          <div class="check-list">
+            <div class="check-item">✅ Confirmação de presença com link único</div>
+            <div class="check-item">✅ Convite visual enviado antes da mensagem</div>
+            <div class="check-item">✅ Controle de acesso individual ou por mesa</div>
+            <div class="check-item">✅ Ideal para aniversários, shows, festas, empresas e eventos privados</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="precos">
+      <div class="section-head">
+        <h2>Comece grátis e pague só quando crescer.</h2>
+        <p>Eventos até 50 convidados são gratuitos. Teste agora e veja como é simples controlar seus convidados pelo
+          celular.</p>
+      </div>
+      <div class="grid-4">
+        <div class="card pricing-card highlight">
+          <h3>FREE</h3>
+          <p>Para testar e validar seu primeiro evento.</p>
+          <div class="price">R$ 0 <small>até 50 convidados</small></div><a href="#comece"
+            class="btn btn-success">Começar grátis</a>
+        </div>
+        <div class="card pricing-card">
+          <h3>STARTER</h3>
+          <p>Para eventos pequenos com mais convidados.</p>
+          <div class="price">R$ 0,99 <small>por convidado até 100</small></div><a href="#comece"
+            class="btn btn-primary">Criar evento</a>
+        </div>
+        <div class="card pricing-card">
+          <h3>PRO</h3>
+          <p>Para eventos médios com maior volume.</p>
+          <div class="price">R$ 0,80 <small>por convidado até 200</small></div><a href="#comece"
+            class="btn btn-primary">Criar evento</a>
+        </div>
+        <div class="card pricing-card">
+          <h3>BUSINESS+</h3>
+          <p>Para grandes operações e listas maiores.</p>
+          <div class="price">R$ 0,70 <small>até 500 ou R$ 0,60 acima</small></div><a href="#comece"
+            class="btn btn-dark">Falar com equipe</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="tech-showcase" style="background:linear-gradient(135deg,#052e16,#14532d);">
+        <div>
+          <div class="badge">🤝 Programa para parceiros e organizadores</div>
+          <h2 style="font-size:clamp(34px,4vw,56px);line-height:1.05;margin-bottom:18px;letter-spacing:-1.8px;">
+            Trabalha com eventos? Transforme o Convidou em mais um serviço do seu negócio.
+          </h2>
+
+          <p style="color:rgba(255,255,255,.84);font-size:18px;line-height:1.7;margin-bottom:24px;">
+            Produtores, cerimoniais, assessorias, organizadores de evento e empresas do segmento podem utilizar o
+            Convidou para entregar uma experiência mais profissional aos seus clientes.
+          </p>
+
+          <div class="check-list" style="margin-bottom:26px;">
+            <div class="check-item">✅ Aumente sua oferta de serviços para eventos</div>
+            <div class="check-item">✅ Tenha contato direto com os convidados do seu cliente</div>
+            <div class="check-item">✅ Organize mesas, convites e confirmações em um único lugar</div>
+            <div class="check-item">✅ Controle acessos e entradas em tempo real pelo celular</div>
+            <div class="check-item">✅ Gere mais valor e profissionalismo para sua entrega</div>
+          </div>
+
+          <div style="display:flex;gap:14px;flex-wrap:wrap;">
+            <a href="https://wa.me/5581991094799?text=Olá!%20Tenho%20interesse%20nas%20condições%20especiais%20para%20organizadores%20de%20eventos."
+              target="_blank" class="btn btn-success" style="font-size:16px;padding:16px 24px;">
+              💬 Falar no WhatsApp
+            </a>
+
+            <a href="#comece" class="btn btn-light">
+              Testar gratuitamente
+            </a>
+          </div>
+        </div>
+
+        <div class="tech-visual"
+          style="background:linear-gradient(rgba(15,23,42,.55),rgba(15,23,42,.55)),url('https://images.unsplash.com/photo-1511578314322-379afb476865?q=80&w=1600&auto=format&fit=crop') center/cover no-repeat;min-height:420px;">
+          <div class="tech-card-float float-1">
+            <strong>Eventos premium</strong><br>
+            <small>Mais organização e controle</small>
+          </div>
+
+          <div class="tech-card-float float-2">
+            <strong>WhatsApp integrado</strong><br>
+            <small>Contato rápido com convidados</small>
+          </div>
+
+          <div class="tech-card-float float-3">
+            <strong>Mais serviços</strong><br>
+            <small>Mais valor agregado ao cliente</small>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="depoimentos">
+      <div class="section-head">
+        <h2>Quem usa, não quer voltar para lista manual.</h2>
+        <p>Depoimentos de quem já entendeu que controle de acesso precisa ser simples, rápido e seguro.</p>
+      </div>
+      <div class="grid-3">
+        <div class="card testimonial">
+          <div class="stars">★★★★★</div>
+          <h3>“A entrada ficou muito mais rápida.”</h3>
+          <p>“Antes a equipe conferia nome por nome. Com o QR Code, a fila andou muito mais rápido e tivemos controle de
+            quem entrou.”</p>
+          <p class="small-text"><strong>Mariana S.</strong> · Evento corporativo</p>
+        </div>
+        <div class="card testimonial">
+          <div class="stars">★★★★★</div>
+          <h3>“Enviei tudo pelo WhatsApp.”</h3>
+          <p>“Subi a planilha, mandei os convites e acompanhei quem confirmou. Foi simples até para quem não entende de
+            tecnologia.”</p>
+          <p class="small-text"><strong>Rafael M.</strong> · Festa privada</p>
+        </div>
+        <div class="card testimonial">
+          <div class="stars">★★★★★</div>
+          <h3>“Controle real na portaria.”</h3>
+          <p>“O sistema mostrou quando um ingresso já tinha sido usado. Isso evitou duplicidade e deu segurança para a
+            organização.”</p>
+          <p class="small-text"><strong>Juliana A.</strong> · Produção de eventos</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" style="padding-top:30px;">
+      <div class="stats-section">
+        <div class="stats-grid">
+          <div class="stat-item">
+            <div class="stat-number">+10K</div>
+            <div class="stat-label">Convidados gerenciados</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-number">98%</div>
+            <div class="stat-label">Confirmação entregue</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-number">+170</div>
+            <div class="stat-label">Eventos organizados</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-number">24h</div>
+            <div class="stat-label">Controle em tempo real</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+
+    <section class="section" id="comece">
+      <div class="lead-zone">
+        <div class="section-head" style="text-align:left;margin:0;max-width:100%;">
+          <h2>Cadastre-se agora e teste grátis.</h2>
+          <p>Comece informando seu e-mail. Se você já tiver cadastro, seus dados serão carregados e você será
+            direcionado para seus eventos. Se for novo, confirme o WhatsApp e crie sua senha.</p>
+          <div class="grid-2" style="margin-top:24px;">
+            <div class="card feature-card">
+              <div class="feature-icon">⚡</div>
+              <h3>Ativação rápida</h3>
+              <p>Você sai da landing page com usuário pronto para criar seu evento e começar o teste gratuito.</p>
+            </div>
+            <div class="card feature-card">
+              <div class="feature-icon">🛡️</div>
+              <h3>WhatsApp verificado</h3>
+              <p>Confirme o número para garantir que os convites e alertas cheguem no contato correto.</p>
+            </div>
+          </div>
+        </div>
+        <div class="lead-card">
+          <h2>Comece pelo grátis</h2>
+          <p>Eventos até 50 convidados sem custo para você testar na prática.</p>
+          <div class="progress-steps">
+            <div class="step-pill active" id="stepPill1"></div>
+            <div class="step-pill" id="stepPill2"></div>
+            <div class="step-pill" id="stepPill3"></div>
+          </div>
+          <div id="leadMessage" class="message"></div>
+          <div class="form-step active" id="stepLead">
+            <div class="form-group"><label for="leadEmail">E-mail</label><input id="leadEmail" type="email"
+                placeholder="Digite seu e-mail para começar" onblur="checkExistingUserByEmail()" /></div>
+            <div id="existingUserBox" class="message success" style="display:none;"></div>
+            <div id="newUserBox" class="message info" style="display:none;"></div>
+            <div id="newUserFields" style="display:none;">
+              <div class="form-group"><label for="leadName">Nome</label><input id="leadName" type="text"
+                  placeholder="Seu nome completo" /></div>
+              <div class="form-group"><label for="leadWhatsapp">WhatsApp</label><input id="leadWhatsapp" type="text"
+                  placeholder="(81) 99999-9999" /></div><button class="btn-primary" style="width:100%;"
+                onclick="startLeadCapture()">Receber código no WhatsApp</button>
+            </div><button id="continueExistingUserButton" class="btn-success" style="width:100%;display:none;"
+              onclick="goToUserEvents()">Ir para meus eventos</button><button class="btn btn-light"
+              style="width:100%;margin-top:10px;" onclick="openLoginModal()">Entrar na área do usuário</button>
+            <p class="small-text">Comece pelo e-mail. Se já existir cadastro, você vai direto para seus eventos. Utilize
+              uma senha forte para proteger seus convidados e acessos do evento.</p>
+          </div>
+          <div class="form-step" id="stepCode">
+            <p style="margin-bottom:14px;color:var(--muted);line-height:1.5;">Digite o código de 6 dígitos enviado para
+              seu WhatsApp.</p>
+            <div class="code-grid"><input maxlength="1" class="code-input" inputmode="numeric" /><input maxlength="1"
+                class="code-input" inputmode="numeric" /><input maxlength="1" class="code-input"
+                inputmode="numeric" /><input maxlength="1" class="code-input" inputmode="numeric" /><input maxlength="1"
+                class="code-input" inputmode="numeric" /><input maxlength="1" class="code-input" inputmode="numeric" />
+            </div><button class="btn-success" style="width:100%;" onclick="verifyLeadCode()">Confirmar
+              número</button><button class="btn-light" style="width:100%;margin-top:10px;"
+              onclick="resendCode()">Reenviar código</button>
+          </div>
+          <div class="form-step" id="stepPassword">
+            <div class="form-group"><label for="leadPassword">Crie sua senha</label><input id="leadPassword"
+                type="password" placeholder="Senha forte com letras, números e símbolo" /></div>
+            <div class="form-group"><label for="leadPasswordConfirm">Confirme sua senha</label><input
+                id="leadPasswordConfirm" type="password" placeholder="Repita sua senha" /></div><button
+              class="btn-success" style="width:100%;" onclick="finishSignup()">Criar minha conta grátis</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- CONTATO / MAPA -->
+    <section class="section">
+      <div class="contact-section">
+
+        <div class="contact-info">
+
+          <h2>
+            Fale com a equipe do Convidou
+          </h2>
+
+          <p>
+            Estamos no coração do Recife desenvolvendo soluções modernas para controle de convidados, confirmação de
+            presença, QR Code e acesso inteligente para eventos.
+          </p>
+
+          <div class="contact-cards">
+
+            <div class="contact-card">
+              <div class="contact-icon">📞</div>
+              <div>
+                <strong>WhatsApp comercial</strong>
+                <span>(81) 99109-4799</span>
+              </div>
+            </div>
+
+            <div class="contact-card">
+              <div class="contact-icon">✉️</div>
+              <div>
+                <strong>E-mail</strong>
+                <span>contato@convidouapp.com.br</span>
+              </div>
+            </div>
+
+            <div class="contact-card">
+              <div class="contact-icon">📍</div>
+              <div>
+                <strong>Endereço</strong>
+                <span>
+                  Travessa do Amariom, 75 • 4º andar<br>
+                  Recife • Pernambuco
+                </span>
+              </div>
+            </div>
+
+          </div>
+
+          <div class="contact-actions">
+            <a href="https://wa.me/5581991094799" target="_blank" class="btn btn-success">
+              💬 Falar no WhatsApp
+            </a>
+
+            <a href="mailto:contato@convidouapp.com.br" class="btn btn-light">
+              ✉️ Enviar e-mail
+            </a>
+          </div>
+        </div>
+
+        <div class="contact-map">
+          <iframe src="https://www.google.com/maps?q=Tv.+do+Amorim,+75+-+4º+andar+-+Recife,+PE,+50030-070&output=embed"
+            allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade">
+          </iframe>
+        </div>
+
+      </div>
+    </section>
+    <footer class="footer"><strong>Convidou</strong> · Convide, confirme e controle acessos com um único celular.
+    </footer>
+  </main>
 
   <script>
     let supabaseClient = null;
-    let allCodes = [];
-    let activeTab = 'mesa';
-    let searchTerm = '';
+    let currentLeadId = null;
+    let currentCode = null;
+    let currentLead = null;
+    let existingUser = null;
 
-    const savedUrl = localStorage.getItem('supabase_url') || 'https://pfyctxoikdrephjogdtm.supabase.co';
-    const savedKey = localStorage.getItem('supabase_key') || 'sb_publishable_h_5hK_HTT-XJ4WUoOGzkGg_tqkBDLjv';
-    const savedEventName = localStorage.getItem('event_name') || '';
-    const savedEventDate = localStorage.getItem('event_date') || '';
-    const savedEventTime = localStorage.getItem('event_time') || '';
-    const savedEventLocation = localStorage.getItem('event_location') || '';
-    let currentEventId = null;
-    let currentEventData = null;
+    const SUPABASE_URL = 'https://pfyctxoikdrephjogdtm.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_h_5hK_HTT-XJ4WUoOGzkGg_tqkBDLjv';
 
-    document.getElementById('supabaseUrl').value = savedUrl;
-    document.getElementById('supabaseKey').value = savedKey;
-    document.getElementById('eventName').value = savedEventName;
-    document.getElementById('eventDate').value = savedEventDate;
-    document.getElementById('eventTime').value = savedEventTime;
-    document.getElementById('eventLocation').value = savedEventLocation;
+    const ZAPI_INSTANCE_ID = '3F32B148C8CA1249DCAE3222B0EDC9B1';
+    const ZAPI_INSTANCE_TOKEN = '234C8842D08C0B205C20CC98';
+    const ZAPI_CLIENT_TOKEN = 'F1348d160382741d398e5d37761e89b6cS';
 
-    toggleTicketType();
+    initializeLanding();
 
-    function toggleConfig() {
-      const container = document.getElementById('configContainer');
-      container.style.display = container.style.display === 'none' ? 'block' : 'none';
-    }
-
-
-    const whatsappInput = document.getElementById('customerWhatsapp');
-
-    whatsappInput.addEventListener('input', function (e) {
-      let value = e.target.value.replace(/\D/g, '');
-
-      value = value.substring(0, 11);
-
-      if (value.length > 10) {
-        value = value.replace(
-          /^(\d{2})(\d{5})(\d{4}).*/,
-          '($1) $2-$3'
-        );
-      } else if (value.length > 6) {
-        value = value.replace(
-          /^(\d{2})(\d{4})(\d{0,4}).*/,
-          '($1) $2-$3'
-        );
-      } else if (value.length > 2) {
-        value = value.replace(
-          /^(\d{2})(\d{0,5})/,
-          '($1) $2'
-        );
-      } else {
-        value = value.replace(
-          /^(\d*)/,
-          '($1'
-        );
-      }
-
-      e.target.value = value;
-    });
-
-    function toggleTicketType() {
-      const ticketType = document.getElementById('ticketType').value;
-      const mesaFields = document.querySelectorAll('.mesa-field');
-      const generateButton = document.getElementById('generateButton');
-
-      mesaFields.forEach(field => {
-        field.style.display = ticketType === 'mesa' ? 'flex' : 'none';
-      });
-
-      generateButton.textContent = ticketType === 'mesa' ? 'Gerar QR Codes' : 'Gerar ingresso individual';
-    }
-
-    function setActiveTab(tab) {
-      activeTab = tab;
-      document.getElementById('tabMesa').classList.toggle('active', tab === 'mesa');
-      document.getElementById('tabIndividual').classList.toggle('active', tab === 'individual');
-      renderQRCodes();
-    }
-
-    function connectSupabase(url, key) {
+    function initializeLanding() {
       const { createClient } = supabase;
-      supabaseClient = createClient(url, key);
-    }
+      supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-    async function saveSupabaseConfig() {
-      const url = document.getElementById('supabaseUrl').value.trim().replace('/rest/v1/', '').replace('/rest/v1', '');
-      const key = document.getElementById('supabaseKey').value.trim();
-      const eventName = document.getElementById('eventName').value.trim();
-      const eventDate = document.getElementById('eventDate').value;
-      const eventTime = document.getElementById('eventTime').value;
-      const eventLocation = document.getElementById('eventLocation').value.trim();
-
-      if (!url || !key) {
-        showMessage('Informe a URL e a Anon Key do Supabase.', 'error');
-        return;
-      }
-
-      localStorage.setItem('supabase_url', url);
-      localStorage.setItem('supabase_key', key);
-      localStorage.setItem('event_name', eventName);
-      localStorage.setItem('event_date', eventDate);
-      localStorage.setItem('event_time', eventTime);
-      localStorage.setItem('event_location', eventLocation);
-
-      connectSupabase(url, key);
-      showMessage('Configurações salvas. Carregando dados...', 'success');
-      await loadCodesFromSupabase();
-    }
-
-    async function loadCodesFromSupabase() {
-      if (!supabaseClient) {
-        showMessage('Conecte o Supabase primeiro.', 'error');
-        return;
-      }
-
-      const eventId = currentEventId || localStorage.getItem('event_id');
-
-      if (!eventId) {
-        allCodes = [];
-        renderQRCodes();
-        updateSummary();
-        showMessage('Informe um event_id válido na URL para carregar os QR Codes.', 'error');
-        return;
-      }
-
-      const { data, error } = await supabaseClient
-        .from('access_codes')
-        .select('*')
-        .eq('event_id', eventId)
-        .order('created_at', { ascending: true });
-
-      if (error) {
-        showMessage('Erro ao buscar dados no Supabase: ' + error.message, 'error');
-        return;
-      }
-
-      allCodes = data || [];
-      renderQRCodes();
-      updateSummary();
-      showMessage('Lista atualizada com QR Codes deste evento.', 'success');
-    }
-
-    function generateUniqueCode(eventName, tableNumber, seatNumber, ticketType) {
-      const cleanEvent = eventName
-        .normalize('NFD')
-        .replace(/[̀-ͯ]/g, '')
-        .replace(/[^a-zA-Z0-9]/g, '')
-        .toUpperCase()
-        .substring(0, 8) || 'EVENTO';
-
-      const randomPart = Math.random().toString(36).substring(2, 8).toUpperCase();
-      const timestamp = Date.now().toString().slice(-6);
-
-      if (ticketType === 'individual') {
-        return `${cleanEvent}-IND-${randomPart}${timestamp}`;
-      }
-
-      return `${cleanEvent}-M${String(tableNumber).padStart(2, '0')}-L${String(seatNumber).padStart(2, '0')}-${randomPart}${timestamp}`;
-    }
-
-    async function generateQRCodes() {
-      if (!supabaseClient) {
-        showMessage('Conecte o Supabase antes de gerar os QR Codes.', 'error');
-        return;
-      }
-
-      const ticketType = document.getElementById('ticketType').value;
-      const eventId = currentEventId || localStorage.getItem('event_id');
-      const eventName = document.getElementById('eventName').value.trim();
-      const eventDate = document.getElementById('eventDate').value;
-      const eventTime = document.getElementById('eventTime').value;
-      const tableNumber = Number(document.getElementById('tableNumber').value);
-      const guestQuantity = ticketType === 'mesa' ? Number(document.getElementById('guestQuantity').value) : 1;
-      const customerName = document.getElementById('customerName').value.trim();
-      const customerEmail = document.getElementById('customerEmail').value.trim();
-      const customerWhatsapp = document.getElementById('customerWhatsapp').value.trim();
-      const generateButton = document.getElementById('generateButton');
-
-      if (!eventId) {
-        showMessage('Evento não carregado. Informe um event_id válido na URL.', 'error');
-        return;
-      }
-
-      if (!eventName) {
-        showMessage('Evento carregado sem nome. Verifique a tabela events.', 'error');
-        return;
-      }
-
-      if (ticketType === 'mesa' && (!tableNumber || tableNumber < 1)) {
-        showMessage('Informe um número de mesa válido.', 'error');
-        return;
-      }
-
-      if (ticketType === 'mesa' && (!guestQuantity || guestQuantity < 1)) {
-        showMessage('Informe a quantidade de lugares.', 'error');
-        return;
-      }
-
-      if (ticketType === 'individual' && !customerName) {
-        showMessage('Informe o nome do convidado para ingresso individual.', 'error');
-        return;
-      }
-
-      generateButton.disabled = true;
-      generateButton.textContent = 'Gerando...';
-
-      if (ticketType === 'mesa') {
-        const { data: existingTable, error: checkError } = await supabaseClient
-          .from('access_codes')
-          .select('id')
-          .eq('event_id', eventId)
-          .eq('ticket_type', 'mesa')
-          .eq('table_number', tableNumber)
-          .limit(1);
-
-        if (checkError) {
-          generateButton.disabled = false;
-          toggleTicketType();
-          showMessage('Erro ao verificar a mesa: ' + checkError.message, 'error');
-          return;
-        }
-
-        if (existingTable && existingTable.length > 0) {
-          generateButton.disabled = false;
-          toggleTicketType();
-          showMessage(`A mesa ${tableNumber} deste evento já existe no Supabase.`, 'error');
-          return;
-        }
-      }
-
-      const newCodes = [];
-
-      for (let seat = 1; seat <= guestQuantity; seat++) {
-        let code;
-
-        do {
-          code = generateUniqueCode(eventName, tableNumber, seat, ticketType);
-        } while (allCodes.some(item => item.qr_code === code) || newCodes.some(item => item.qr_code === code));
-
-        newCodes.push({
-          event_id: eventId,
-          event_name: eventName,
-          event_date: eventDate,
-          event_time: eventTime,
-          ticket_type: ticketType,
-          customer_name: customerName || null,
-          customer_email: customerEmail || null,
-          customer_whatsapp: customerWhatsapp || null,
-          table_number: ticketType === 'mesa' ? tableNumber : null,
-          seat_number: ticketType === 'mesa' ? seat : null,
-          qr_code: code,
-          status: 'pending',
-          accessed: false
-        });
-      }
-
-      const { error: insertError } = await supabaseClient
-        .from('access_codes')
-        .insert(newCodes);
-
-      generateButton.disabled = false;
-      toggleTicketType();
-
-      if (insertError) {
-        showMessage('Erro ao salvar no Supabase: ' + insertError.message, 'error');
-        return;
-      }
-
-      await loadCodesFromSupabase();
-      clearForm(false);
-      showMessage(
-        ticketType === 'mesa'
-          ? `${guestQuantity} QR Codes salvos no Supabase para a mesa ${tableNumber}.`
-          : `Ingresso individual gerado para ${customerName}.`,
-        'success'
-      );
-    }
-
-    function handleSearchInput() {
-      searchTerm = document.getElementById('searchInput').value.trim().toLowerCase();
-
-      if (searchTerm) {
-        const matched = allCodes.filter(matchesSearch);
-        const hasMesa = matched.some(item => (item.ticket_type || 'mesa') === 'mesa');
-        const hasIndividual = matched.some(item => (item.ticket_type || 'mesa') === 'individual');
-
-        if (hasIndividual && !hasMesa) {
-          activeTab = 'individual';
-        }
-
-        if (hasMesa && !hasIndividual) {
-          activeTab = 'mesa';
-        }
-
-        document.getElementById('tabMesa').classList.toggle('active', activeTab === 'mesa');
-        document.getElementById('tabIndividual').classList.toggle('active', activeTab === 'individual');
-      }
-
-      renderQRCodes();
-    }
-
-    function matchesSearch(item) {
-      if (!searchTerm) return true;
-
-      const values = [
-        item.qr_code,
-        item.customer_name,
-        item.customer_email,
-        item.customer_whatsapp,
-        item.table_number,
-        item.seat_number,
-        item.event_name,
-        item.event_date,
-        item.event_time
-      ];
-
-      return values
-        .filter(value => value !== null && value !== undefined)
-        .some(value => String(value).toLowerCase().includes(searchTerm));
-    }
-
-    function renderQRCodes() {
-      const container = document.getElementById('qrContainer');
-      container.innerHTML = '';
-
-      const filteredCodes = allCodes.filter(item => {
-        const type = item.ticket_type || 'mesa';
-        const matchesTab = activeTab === 'mesa' ? type === 'mesa' : type === 'individual';
-        return matchesTab && matchesSearch(item);
+      document.getElementById('leadWhatsapp').addEventListener('input', event => {
+        event.target.value = formatPhoneInput(event.target.value);
       });
 
-      if (filteredCodes.length === 0) {
-        container.innerHTML = `
-          <div class="empty-state">
-            ${searchTerm
-            ? 'Nenhum QR Code encontrado para esta busca.'
-            : activeTab === 'mesa'
-              ? 'Nenhum QR Code de mesa encontrado.'
-              : 'Nenhum ingresso individual encontrado.'}
-          </div>
-        `;
-        return;
-      }
-
-      const groupedByTable = {};
-
-      filteredCodes.forEach(item => {
-        const key = getGroupKey(item);
-
-        if (!groupedByTable[key]) {
-          groupedByTable[key] = [];
+      document.getElementById('leadEmail').addEventListener('keydown', event => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          checkExistingUserByEmail();
         }
-
-        groupedByTable[key].push(item);
       });
 
-      Object.keys(groupedByTable).forEach(groupKey => {
-        const section = document.createElement('div');
-        section.className = 'table-section';
+      document.getElementById('loginEmail').addEventListener('keydown', event => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          loginUser();
+        }
+      });
 
-        const title = document.createElement('div');
-        title.className = 'table-title';
+      document.getElementById('loginPassword').addEventListener('keydown', event => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          loginUser();
+        }
+      });
 
-        const titleText = document.createElement('h2');
-        titleText.textContent = groupKey;
-
-        const titleActions = document.createElement('div');
-        titleActions.style.display = 'flex';
-        titleActions.style.gap = '10px';
-        titleActions.style.alignItems = 'center';
-        titleActions.style.flexWrap = 'wrap';
-
-        const countText = document.createElement('span');
-        countText.textContent = `${groupedByTable[groupKey].length} QR Codes`;
-
-        const tablePdfButton = document.createElement('button');
-        tablePdfButton.className = 'btn-primary';
-        tablePdfButton.style.padding = '10px 12px';
-        tablePdfButton.style.fontSize = '13px';
-        tablePdfButton.textContent = activeTab === 'mesa' ? 'Baixar PDF da mesa' : 'Baixar PDF dos ingressos';
-        tablePdfButton.onclick = () => sendTableQRCodes(groupKey);
-
-        titleActions.appendChild(countText);
-        titleActions.appendChild(tablePdfButton);
-        title.appendChild(titleText);
-        title.appendChild(titleActions);
-
-        const grid = document.createElement('div');
-        grid.className = 'qr-grid';
-
-        groupedByTable[groupKey].forEach(item => {
-          const card = document.createElement('div');
-          card.className = item.accessed ? 'qr-card used' : 'qr-card';
-
-          if (item.accessed) {
-            const usedBadge = document.createElement('div');
-            usedBadge.className = 'used-badge';
-            usedBadge.textContent = 'JÁ ENTROU';
-            card.appendChild(usedBadge);
-          }
-
-          const canvas = document.createElement('canvas');
-          canvas.id = `canvas-${item.id}`;
-
-          const codeText = document.createElement('div');
-          codeText.className = 'qr-code-text';
-          codeText.textContent = item.qr_code;
-
-          const info = document.createElement('div');
-          info.className = 'qr-info';
-          info.innerHTML = getInfoText(item);
-
-          const downloadButton = document.createElement('button');
-          downloadButton.className = 'btn-secondary';
-          downloadButton.textContent = 'Baixar PDF';
-          downloadButton.onclick = () => downloadQRCodePDFAndWhatsApp(item);
-
-          card.appendChild(canvas);
-          card.appendChild(codeText);
-          card.appendChild(info);
-          card.appendChild(downloadButton);
-          grid.appendChild(card);
-
-          QRCode.toCanvas(canvas, item.qr_code, {
-            width: 180,
-            margin: 2,
-            errorCorrectionLevel: 'H'
-          });
+      document.querySelectorAll('.code-input').forEach((input, index, inputs) => {
+        input.addEventListener('input', () => {
+          input.value = input.value.replace(/\D/g, '').slice(0, 1);
+          if (input.value && inputs[index + 1]) inputs[index + 1].focus();
         });
 
-        section.appendChild(title);
-        section.appendChild(grid);
-        container.appendChild(section);
+        input.addEventListener('keydown', event => {
+          if (event.key === 'Backspace' && !input.value && inputs[index - 1]) inputs[index - 1].focus();
+        });
       });
     }
 
-    function getGroupKey(item) {
-      const type = item.ticket_type || 'mesa';
-
-      if (type === 'individual') {
-        return `${item.event_name} - Ingressos individuais`;
-      }
-
-      return `${item.event_name} - Mesa ${item.table_number}${item.customer_name ? ` - Mesa de ${item.customer_name}` : ''}`;
+    function openLoginModal() {
+      const modal = document.getElementById('loginModal');
+      const leadEmail = document.getElementById('leadEmail')?.value?.trim();
+      const loginEmail = document.getElementById('loginEmail');
+      const loginPassword = document.getElementById('loginPassword');
+      modal.classList.add('active');
+      clearLoginMessage();
+      if (leadEmail) loginEmail.value = leadEmail;
+      loginPassword.value = '';
+      setTimeout(() => loginEmail.value ? loginPassword.focus() : loginEmail.focus(), 100);
     }
 
-    function getInfoText(item) {
-      const type = item.ticket_type || 'mesa';
-
-      if (type === 'individual') {
-        return `${item.customer_name || 'Ingresso individual'}${item.accessed ? ' • ACESSO UTILIZADO' : ''}`;
-      }
-
-      const ownerText = item.customer_name ? ` • Mesa de ${item.customer_name}` : '';
-      return item.accessed
-        ? `Mesa ${item.table_number} • Lugar ${item.seat_number}${ownerText} • ACESSO UTILIZADO`
-        : `Mesa ${item.table_number} • Lugar ${item.seat_number}${ownerText}`;
+    function closeLoginModal() {
+      document.getElementById('loginModal').classList.remove('active');
+      clearLoginMessage();
     }
 
-    async function sendTableQRCodes(groupKey) {
-      const tableCodes = allCodes.filter(item => getGroupKey(item) === groupKey);
-
-      if (tableCodes.length === 0) {
-        showMessage('Nenhum QR Code encontrado para gerar o PDF.', 'error');
-        return;
-      }
-
-      const firstItem = tableCodes[0];
-      const { jsPDF } = window.jspdf;
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: [80, 120]
-      });
-
-      let addedPages = 0;
-
-      for (let index = 0; index < tableCodes.length; index++) {
-        const item = tableCodes[index];
-        const canvas = document.getElementById(`canvas-${item.id}`);
-
-        if (!canvas) continue;
-
-        if (addedPages > 0) {
-          pdf.addPage([80, 120], 'portrait');
-        }
-
-        addedPages++;
-        drawTicketPdfPage(pdf, item, canvas);
-      }
-
-      if (addedPages === 0) {
-        showMessage('Não foi possível encontrar os QR Codes renderizados na tela. Atualize a lista e tente novamente.', 'error');
-        return;
-      }
-
-      const fileName = (firstItem.ticket_type || 'mesa') === 'individual'
-        ? `${firstItem.event_name}-ingressos-individuais.pdf`.replace(/[^a-zA-Z0-9.-]/g, '-')
-        : `${firstItem.event_name}-mesa-${firstItem.table_number}-qrcodes.pdf`.replace(/[^a-zA-Z0-9.-]/g, '-');
-
-      await baixarPDFNoCelular(pdf, fileName);
+    function closeLoginModalOnOverlay(event) {
+      if (event.target.id === 'loginModal') closeLoginModal();
     }
 
-    async function downloadQRCodePDFAndWhatsApp(item) {
-      const canvas = document.getElementById(`canvas-${item.id}`);
-
-      if (!canvas) return;
-
-      const { jsPDF } = window.jspdf;
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: [80, 120]
-      });
-
-      drawTicketPdfPage(pdf, item, canvas);
-
-      const fileName = (item.ticket_type || 'mesa') === 'individual'
-        ? `${item.event_name}-${item.customer_name || 'ingresso-individual'}.pdf`.replace(/[^a-zA-Z0-9.-]/g, '-')
-        : `${item.event_name}-mesa-${item.table_number}-lugar-${item.seat_number}.pdf`.replace(/[^a-zA-Z0-9.-]/g, '-');
-
-      await baixarPDFNoCelular(pdf, fileName);
+    function goToSignupFromLogin() {
+      closeLoginModal();
+      document.getElementById('comece').scrollIntoView({ behavior: 'smooth' });
+      setTimeout(() => document.getElementById('leadEmail').focus(), 500);
     }
 
-    function drawTicketPdfPage(pdf, item, canvas) {
-      const image = canvas.toDataURL('image/png');
-      const hasName = Boolean(item.customer_name);
-      const isUsed = Boolean(item.accessed);
-      const type = item.ticket_type || 'mesa';
-
-      pdf.setFillColor(isUsed ? 254 : 255, isUsed ? 242 : 255, isUsed ? 242 : 255);
-      pdf.rect(0, 0, 80, 120, 'F');
-
-      if (isUsed) {
-        pdf.setFillColor(220, 38, 38);
-        pdf.roundedRect(17, 4, 46, 8, 2, 2, 'F');
-        pdf.setTextColor(255, 255, 255);
-        pdf.setFont('helvetica', 'bold');
-        pdf.setFontSize(8);
-        pdf.text('JÁ ACESSADO', 40, 9.5, { align: 'center' });
-      }
-
-      pdf.setTextColor(17, 24, 39);
-      pdf.setFont('helvetica', 'bold');
-      pdf.setFontSize(13);
-      pdf.text(item.event_name || 'Evento', 40, isUsed ? 18 : 10, { align: 'center' });
-
-      pdf.setFont('helvetica', 'normal');
-      pdf.setFontSize(9);
-
-      if (item.event_date) {
-        pdf.text(`Data: ${formatDateBR(item.event_date)}`, 40, isUsed ? 24 : 16, { align: 'center' });
-      }
-
-      if (item.event_time) {
-        pdf.text(`Hora: ${item.event_time}`, 40, isUsed ? 29 : 21, { align: 'center' });
-      }
-
-      if (hasName) {
-        pdf.setFont('helvetica', 'bold');
-        pdf.setFontSize(9);
-        pdf.text(
-          type === 'mesa' ? `Mesa de ${item.customer_name}` : item.customer_name,
-          40,
-          isUsed ? 33 : 25,
-          { align: 'center' }
-        );
-      }
-
-      const qrY = hasName ? (isUsed ? 38 : 30) : (isUsed ? 34 : 26);
-      const boxY = hasName ? (isUsed ? 88 : 82) : (isUsed ? 86 : 80);
-      const textY = hasName ? (isUsed ? 94 : 88) : (isUsed ? 92 : 86);
-      const footerY = hasName ? (isUsed ? 111 : 106) : (isUsed ? 109 : 104);
-
-      pdf.addImage(image, 'PNG', 17, qrY, 46, 46);
-
-      pdf.setFillColor(243, 244, 246);
-      pdf.roundedRect(8, boxY, 64, 16, 3, 3, 'F');
-
-      pdf.setTextColor(17, 24, 39);
-      pdf.setFont('helvetica', 'bold');
-      pdf.setFontSize(10);
-
-      const codeLines = pdf.splitTextToSize(item.qr_code, 58);
-      pdf.text(codeLines, 40, textY, { align: 'center' });
-
-      pdf.setTextColor(107, 114, 128);
-      pdf.setFont('helvetica', 'normal');
-      pdf.setFontSize(10);
-
-      const footerText = type === 'individual'
-        ? `${item.customer_name || 'Ingresso individual'}${isUsed ? ' • JÁ ENTROU' : ''}`
-        : isUsed
-          ? `Mesa ${item.table_number} • Lugar ${item.seat_number} • JÁ ENTROU`
-          : `Mesa ${item.table_number} • Lugar ${item.seat_number}`;
-
-      pdf.text(footerText, 40, footerY, { align: 'center' });
-    }
-
-    async function baixarPDFNoCelular(pdf, fileName) {
-      const pdfBlob = pdf.output('blob');
-      const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
-
-      if (navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
-        try {
-          await navigator.share({
-            files: [pdfFile],
-            title: fileName,
-            text: ''
-          });
-          showMessage('PDF pronto para compartilhar.', 'success');
-          return;
-        } catch (error) {
-          if (error.name === 'AbortError') return;
-        }
-      }
-
-      const pdfUrl = URL.createObjectURL(pdfBlob);
-      const link = document.createElement('a');
-      link.href = pdfUrl;
-      link.download = fileName;
-      link.style.display = 'none';
-      link.rel = 'noopener';
-
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      setTimeout(() => {
-        URL.revokeObjectURL(pdfUrl);
-      }, 3000);
-
-      showMessage('PDF baixado. Agora compartilhe o arquivo pela galeria/arquivos do celular.', 'success');
-    }
-
-    function downloadQRCode(id, code) {
-      const canvas = document.getElementById(`canvas-${id}`);
-
-      if (!canvas) return;
-
-      const image = canvas.toDataURL('image/png');
-      const link = document.createElement('a');
-      link.href = image;
-      link.download = `${code}.png`;
-      link.click();
-    }
-
-    function downloadAllQRCodes() {
-      if (allCodes.length === 0) {
-        showMessage('Nenhum QR Code para baixar.', 'error');
-        return;
-      }
-
-      allCodes.forEach((item, index) => {
-        setTimeout(() => {
-          downloadQRCode(item.id, item.qr_code);
-        }, index * 300);
-      });
-
-      showMessage('Download dos QR Codes iniciado.', 'success');
-    }
-
-    function clearForm(clearEvent = true) {
-      if (clearEvent) {
-        document.getElementById('eventName').value = '';
-      }
-
-      document.getElementById('customerName').value = '';
-      document.getElementById('customerEmail').value = '';
-      document.getElementById('customerWhatsapp').value = '';
-      document.getElementById('tableNumber').value = '';
-      document.getElementById('guestQuantity').value = '';
-    }
-
-    function updateSummary() {
-      const mesaCodes = allCodes.filter(item => (item.ticket_type || 'mesa') === 'mesa');
-      const individualCodes = allCodes.filter(item => (item.ticket_type || 'mesa') === 'individual');
-      const uniqueTables = new Set(mesaCodes.map(item => `${item.event_name}-${item.table_number}`));
-
-      document.getElementById('totalTables').textContent = uniqueTables.size;
-      document.getElementById('totalCodes').textContent = mesaCodes.length;
-      document.getElementById('totalIndividual').textContent = individualCodes.length;
-    }
-
-    function formatDateBR(dateString) {
-      if (!dateString) return '';
-
-      const parts = String(dateString).split('-');
-
-      if (parts.length !== 3) {
-        return dateString;
-      }
-
-      return `${parts[2]}/${parts[1]}/${parts[0]}`;
-    }
-
-    function showMessage(text, type) {
-      const message = document.getElementById('message');
+    function showLoginMessage(text, type) {
+      const message = document.getElementById('loginMessage');
       message.textContent = text;
       message.className = `message ${type}`;
-
-      setTimeout(() => {
-        message.className = 'message';
-        message.textContent = '';
-      }, 5000);
     }
 
+    function clearLoginMessage() {
+      const message = document.getElementById('loginMessage');
+      message.textContent = '';
+      message.className = 'message';
+    }
 
-    async function loadEventFromURL() {
-      const params = new URLSearchParams(window.location.search);
-      const eventId = params.get('event_id');
+    async function loginUser() {
+      const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+      const password = document.getElementById('loginPassword').value;
+      const button = document.getElementById('loginButton');
 
-      if (!eventId || !supabaseClient) {
-        return false;
-      }
+      if (!validateEmail(email)) return showLoginMessage('Informe um e-mail válido.', 'error');
+      if (!password) return showLoginMessage('Informe sua senha.', 'error');
+      if (!supabaseClient) return showLoginMessage('Supabase não configurado. Não foi possível validar o usuário.', 'error');
+
+      button.disabled = true;
+      button.textContent = 'Validando acesso...';
+      showLoginMessage('Validando acesso...', 'info');
 
       const { data, error } = await supabaseClient
-        .from('events')
-        .select('id, name, event_date, event_time, location')
-        .eq('id', eventId)
+        .from('users')
+        .select('id, email, password, status, name')
+        .eq('email', email)
         .maybeSingle();
 
+      button.disabled = false;
+      button.textContent = 'Entrar nos meus eventos';
+
+      if (error) return showLoginMessage('Erro ao validar acesso: ' + error.message, 'error');
+      if (!data) return showLoginMessage('Usuário não encontrado. Faça seu cadastro grátis.', 'error');
+      if (data.status && data.status !== 'active') return showLoginMessage('Usuário inativo. Fale com o suporte.', 'error');
+      if (String(data.password || '') !== String(password)) return showLoginMessage('Senha incorreta.', 'error');
+
+      showLoginMessage(`Bem-vindo(a), ${data.name || 'usuário'}! Redirecionando...`, 'success');
+      setTimeout(() => {
+        window.location.href = `/eventos/?user_id=${encodeURIComponent(data.id)}`;
+      }, 700);
+    }
+
+    async function checkExistingUserByEmail() {
+      const email = document.getElementById('leadEmail').value.trim().toLowerCase();
+      const existingBox = document.getElementById('existingUserBox');
+      const newBox = document.getElementById('newUserBox');
+      const newUserFields = document.getElementById('newUserFields');
+      const continueButton = document.getElementById('continueExistingUserButton');
+      existingUser = null;
+      existingBox.style.display = 'none';
+      newBox.style.display = 'none';
+      newUserFields.style.display = 'none';
+      continueButton.style.display = 'none';
+
+      if (!email) return;
+      if (!validateEmail(email)) return showLeadMessage('Informe um e-mail válido.', 'error');
+      if (!supabaseClient) {
+        newBox.textContent = 'Supabase não configurado. Preencha seus dados para testar o fluxo.';
+        newBox.style.display = 'block';
+        newUserFields.style.display = 'block';
+        return;
+      }
+
+      showLeadMessage('Buscando cadastro...', 'info');
+      const { data, error } = await supabaseClient.from('users').select('*').eq('email', email).maybeSingle();
       if (error) {
-        showMessage('Erro ao buscar evento: ' + error.message, 'error');
-        return false;
+        showLeadMessage('Erro ao buscar usuário: ' + error.message, 'error');
+        newUserFields.style.display = 'block';
+        return;
       }
 
-      if (!data) {
-        showMessage('Evento não encontrado para este ID.', 'error');
-        return false;
+      if (data) {
+        existingUser = data;
+        document.getElementById('leadName').value = data.name || '';
+        document.getElementById('leadWhatsapp').value = formatPhoneInput(data.whatsapp || '');
+        existingBox.textContent = `Olá, ${data.name || 'tudo bem'}! Encontramos seu cadastro. Você pode ir direto para seus eventos.`;
+        existingBox.style.display = 'block';
+        continueButton.style.display = 'flex';
+        showLeadMessage('Cadastro encontrado.', 'success');
+        return;
       }
 
-      currentEventId = data.id;
-      currentEventData = data;
-
-      localStorage.setItem('event_id', data.id);
-      localStorage.setItem('event_name', data.name || '');
-      localStorage.setItem('event_date', data.event_date || '');
-      localStorage.setItem('event_time', data.event_time || '');
-      localStorage.setItem('event_location', data.location || '');
-
-      document.getElementById('eventName').value = data.name || '';
-      document.getElementById('eventDate').value = data.event_date || '';
-      document.getElementById('eventTime').value = data.event_time ? String(data.event_time).substring(0, 5) : '';
-      document.getElementById('eventLocation').value = data.location || '';
-
-      showMessage(`Evento carregado: ${data.name}`, 'success');
-      return true;
+      newBox.textContent = 'E-mail ainda não cadastrado. Preencha nome e WhatsApp para ativar seu teste grátis.';
+      newBox.style.display = 'block';
+      newUserFields.style.display = 'block';
+      document.getElementById('leadName').value = '';
+      document.getElementById('leadWhatsapp').value = '';
+      showLeadMessage('Novo cadastro liberado.', 'info');
     }
 
-    async function initializeSystem() {
-      if (savedUrl && savedKey) {
-        connectSupabase(savedUrl, savedKey);
+    function goToUserEvents() {
+      if (!existingUser?.id) {
+        checkExistingUserByEmail();
+        return;
+      }
+      window.location.href = `/eventos/?user_id=${encodeURIComponent(existingUser.id)}`;
+    }
 
-        const eventLoaded = await loadEventFromURL();
+    async function startLeadCapture() {
+      const email = document.getElementById('leadEmail').value.trim().toLowerCase();
+      const name = document.getElementById('leadName').value.trim();
+      const whatsapp = normalizePhone(document.getElementById('leadWhatsapp').value);
+      if (!validateEmail(email)) return showLeadMessage('Informe um e-mail válido.', 'error');
+      if (!name) return showLeadMessage('Informe seu nome.', 'error');
+      if (whatsapp.length < 10) return showLeadMessage('Informe um WhatsApp válido com DDD.', 'error');
 
-        if (eventLoaded) {
-          await loadCodesFromSupabase();
-        } else {
-          allCodes = [];
-          renderQRCodes();
-          updateSummary();
+      currentCode = generateCode();
+      currentLead = { name, email, whatsapp };
+
+      if (supabaseClient) {
+        const { data } = await supabaseClient
+          .from('leads')
+          .insert({ name, email, whatsapp, verification_code: currentCode, verified: false, source: 'landing_page_convidou' })
+          .select('*')
+          .maybeSingle();
+        if (data) currentLeadId = data.id;
+      }
+
+      try {
+        await sendVerificationCode(whatsapp, currentCode);
+        showLeadMessage('Código enviado para seu WhatsApp.', 'success');
+        setStep(2);
+      } catch (error) {
+        showLeadMessage('Não foi possível enviar o código pelo WhatsApp. Confira as credenciais da Z-API.', 'error');
+      }
+    }
+
+    async function sendVerificationCode(whatsapp, code) {
+      const phone = `55${normalizePhone(whatsapp)}`;
+      const message = `🔐 Código de acesso - Convidou\n\nSeu código de verificação é: ${code}\n\nDigite esse código para continuar seu cadastro.`;
+
+      const response = await fetch(
+        `https://api.z-api.io/instances/${encodeURIComponent(ZAPI_INSTANCE_ID)}/token/${encodeURIComponent(ZAPI_INSTANCE_TOKEN)}/send-text`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Client-Token': ZAPI_CLIENT_TOKEN
+          },
+          body: JSON.stringify({ phone, message })
         }
-      } else {
-        renderQRCodes();
-        updateSummary();
-        showMessage('Informe os dados do Supabase para carregar os QR Codes.', 'info');
+      );
+
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok || result.error) {
+        console.error('Erro Z-API:', result);
+        throw new Error(result.message || result.error || 'Falha ao enviar código.');
+      }
+      return result;
+    }
+
+    function verifyLeadCode() {
+      const typedCode = Array.from(document.querySelectorAll('.code-input')).map(input => input.value).join('');
+      if (typedCode.length !== 6) return showLeadMessage('Digite os 6 dígitos do código.', 'error');
+      if (typedCode !== currentCode) return showLeadMessage('Código inválido. Confira e tente novamente.', 'error');
+      if (supabaseClient && currentLeadId) {
+        supabaseClient.from('leads').update({ verified: true }).eq('id', currentLeadId).then(() => { });
+      }
+      showLeadMessage('WhatsApp confirmado. Agora crie sua senha.', 'success');
+      setStep(3);
+    }
+
+    async function resendCode() {
+      if (!currentLead) return setStep(1);
+      currentCode = generateCode();
+      try {
+        await sendVerificationCode(currentLead.whatsapp, currentCode);
+        showLeadMessage('Novo código enviado para seu WhatsApp.', 'success');
+      } catch (error) {
+        showLeadMessage('Não foi possível reenviar o código. Confira as credenciais da Z-API.', 'error');
       }
     }
 
-    initializeSystem();
+    async function finishSignup() {
+      const password = document.getElementById('leadPassword').value;
+      const confirm = document.getElementById('leadPasswordConfirm').value;
+      if (!currentLead) return showLeadMessage('Preencha seus dados primeiro.', 'error');
+      const strongPassword = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$/;
+      if (!strongPassword.test(password)) return showLeadMessage('Sua senha precisa ter no mínimo 8 caracteres, incluindo letra maiúscula, letra minúscula, número e caractere especial.', 'error');
+      if (password !== confirm) return showLeadMessage('As senhas não conferem.', 'error');
+      if (!supabaseClient) return showLeadMessage('Supabase não configurado. Não foi possível salvar o usuário.', 'error');
+
+      const { data: userFound } = await supabaseClient.from('users').select('*').eq('email', currentLead.email).maybeSingle();
+      if (userFound) {
+        const { error } = await supabaseClient.from('users').update({ name: currentLead.name, whatsapp: currentLead.whatsapp, password, status: 'active', tipo: userFound.tipo || 'U', phone_verified: true }).eq('id', userFound.id);
+        if (error) return showLeadMessage('Erro ao atualizar usuário: ' + error.message, 'error');
+      } else {
+        const { error } = await supabaseClient.from('users').insert({ name: currentLead.name, whatsapp: currentLead.whatsapp, email: currentLead.email, password, status: 'active', tipo: 'U', phone_verified: true });
+        if (error) return showLeadMessage('Erro ao criar usuário: ' + error.message, 'error');
+      }
+
+      showLeadMessage('Conta criada com sucesso. Redirecionando para seus eventos...', 'success');
+      setTimeout(async () => {
+        const { data } = await supabaseClient.from('users').select('id').eq('email', currentLead.email).maybeSingle();
+        window.location.href = data?.id ? `/eventos/?user_id=${encodeURIComponent(data.id)}` : '/eventos/';
+      }, 1400);
+    }
+
+    function setStep(step) {
+      document.getElementById('stepLead').classList.toggle('active', step === 1);
+      document.getElementById('stepCode').classList.toggle('active', step === 2);
+      document.getElementById('stepPassword').classList.toggle('active', step === 3);
+      document.getElementById('stepPill1').classList.toggle('active', step >= 1);
+      document.getElementById('stepPill2').classList.toggle('active', step >= 2);
+      document.getElementById('stepPill3').classList.toggle('active', step >= 3);
+    }
+
+    function showLeadMessage(text, type) {
+      const message = document.getElementById('leadMessage');
+      message.textContent = text;
+      message.className = `message ${type}`;
+    }
+
+    function generateCode() { return String(Math.floor(100000 + Math.random() * 900000)) }
+    function normalizePhone(value) { return String(value || '').replace(/\D/g, '').replace(/^55/, '').slice(0, 11) }
+    function formatPhoneInput(value) { const phone = normalizePhone(value); if (phone.length > 10) return phone.replace(/^(\d{2})(\d{5})(\d{4}).*/, '($1) $2-$3'); if (phone.length > 6) return phone.replace(/^(\d{2})(\d{4})(\d{0,4}).*/, '($1) $2-$3'); if (phone.length > 2) return phone.replace(/^(\d{2})(\d{0,5})/, '($1) $2'); return phone }
+    function validateEmail(email) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) }
   </script>
 </body>
 
