@@ -1,0 +1,1455 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Criar Evento - Controle de Acesso</title>
+
+  <!--
+    SQL NECESSÁRIO
+
+    create table if not exists public.users (
+      id uuid primary key default gen_random_uuid(),
+      name text not null,
+      whatsapp text,
+      email text unique not null,
+      password text not null,
+      status text not null default 'active',
+      tipo char(1) not null default 'U' check (tipo in ('A','U')),
+      created_at timestamptz not null default now()
+    );
+
+    comment on column public.users.tipo is 'A=Administrador, U=Usuário';
+
+    insert into public.users (name, whatsapp, email, password, status, tipo)
+    values ('Antonio', '81988869787', 'ANTOBIOBF@GMAIL.COM', '123456', 'active', 'A')
+    on conflict (email) do update set
+      name = excluded.name,
+      whatsapp = excluded.whatsapp,
+      status = excluded.status,
+      tipo = excluded.tipo;
+
+    create table if not exists public.events (
+      id uuid primary key default gen_random_uuid(),
+      user_id uuid references public.users(id) on delete set null,
+      name text not null,
+      event_date date,
+      event_time time,
+      location text,
+      invitation_image_url text,
+      invitation_image_path text,
+      guest_limit integer default 50,
+      package_name text,
+      package_amount numeric(10,2) default 0,
+      price_per_guest numeric(10,2) default 0,
+      payment_required boolean default false,
+      payment_status text default 'free',
+      payment_id text,
+      created_at timestamptz not null default now()
+    );
+
+    alter table public.events add column if not exists user_id uuid references public.users(id) on delete set null;
+    alter table public.events add column if not exists invitation_image_url text;
+    alter table public.events add column if not exists invitation_image_path text;
+    alter table public.events add column if not exists guest_limit integer default 50;
+    alter table public.events add column if not exists package_name text;
+    alter table public.events add column if not exists package_amount numeric(10,2) default 0;
+    alter table public.events add column if not exists price_per_guest numeric(10,2) default 0;
+    alter table public.events add column if not exists payment_required boolean default false;
+    alter table public.events add column if not exists payment_status text default 'free';
+    alter table public.events add column if not exists payment_id text;
+
+    create table if not exists public.event_payments (
+      id uuid primary key default gen_random_uuid(),
+      event_id uuid references public.events(id) on delete set null,
+      payment_provider text not null,
+      payment_provider_id text,
+      package_name text not null,
+      guest_limit integer not null,
+      price_per_guest numeric(10,2) default 0,
+      amount numeric(10,2) not null,
+      status text default 'pending',
+      pix_qr_code text,
+      pix_copy_paste text,
+      payer_name text,
+      payer_email text,
+      payer_whatsapp text,
+      paid_at timestamptz,
+      created_at timestamptz not null default now()
+    );
+
+    alter table public.users enable row level security;
+    alter table public.events enable row level security;
+    alter table public.event_payments enable row level security;
+
+    create policy "Permitir leitura anonima users" on public.users for select to anon using (true);
+    create policy "Permitir insercao anonima users" on public.users for insert to anon with check (true);
+    create policy "Permitir update anonimo users" on public.users for update to anon using (true) with check (true);
+
+    create policy "Permitir leitura anonima events" on public.events for select to anon using (true);
+    create policy "Permitir insercao anonima events" on public.events for insert to anon with check (true);
+    create policy "Permitir update anonimo events" on public.events for update to anon using (true) with check (true);
+
+    create policy "Permitir leitura anonima pagamentos" on public.event_payments for select to anon using (true);
+    create policy "Permitir insercao anonima pagamentos" on public.event_payments for insert to anon with check (true);
+    create policy "Permitir update anonimo pagamentos" on public.event_payments for update to anon using (true) with check (true);
+
+    insert into storage.buckets (id, name, public)
+    values ('event-invitations', 'event-invitations', true)
+    on conflict (id) do nothing;
+
+    create policy "Permitir upload anonimo convites"
+    on storage.objects for insert to anon
+    with check (bucket_id = 'event-invitations');
+
+    create policy "Permitir leitura publica convites"
+    on storage.objects for select to anon
+    using (bucket_id = 'event-invitations');
+  -->
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode/1.5.1/qrcode.min.js"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+    }
+
+    body {
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at top left, rgba(37, 99, 235, 0.10), transparent 32%),
+        #f3f4f6;
+      color: #111827;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 1250px;
+      margin: 0 auto;
+    }
+
+    .header {
+      position: relative;
+      overflow: hidden;
+      background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 58%, #2563eb 100%);
+      color: white;
+      padding: 38px;
+      border-radius: 28px;
+      margin-bottom: 24px;
+      box-shadow: 0 24px 60px rgba(15, 23, 42, 0.22);
+    }
+
+    .header::before {
+      content: '';
+      position: absolute;
+      width: 260px;
+      height: 260px;
+      top: -120px;
+      right: -90px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .header::after {
+      content: '';
+      position: absolute;
+      width: 360px;
+      height: 360px;
+      bottom: -220px;
+      left: 30%;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.045);
+    }
+
+    .header-inner {
+      position: relative;
+      z-index: 2;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 24px;
+      align-items: start;
+    }
+
+    .header-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 999px;
+      padding: 9px 14px;
+      color: #dbeafe;
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 18px;
+      backdrop-filter: blur(10px);
+    }
+
+    .header h1 {
+      font-size: clamp(34px, 5vw, 56px);
+      line-height: 1;
+      letter-spacing: -1.8px;
+      margin-bottom: 16px;
+      max-width: 780px;
+    }
+
+    .header p {
+      color: rgba(255, 255, 255, 0.82);
+      font-size: 18px;
+      line-height: 1.55;
+      max-width: 760px;
+    }
+
+    .toolbar {
+      display: inline-flex;
+      align-items: center;
+      justify-self: end;
+      background: rgba(255, 255, 255, 0.11);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 18px;
+      overflow: hidden;
+      backdrop-filter: blur(14px);
+      box-shadow:
+        0 12px 28px rgba(0, 0, 0, 0.18),
+        inset 0 1px 0 rgba(255, 255, 255, 0.10);
+    }
+
+    .toolbar-button {
+      height: 54px;
+      border: none;
+      background: transparent;
+      color: white;
+      padding: 0 18px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      font-size: 14px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: 0.2s;
+      white-space: nowrap;
+    }
+
+    .toolbar-button + .toolbar-button {
+      border-left: 1px solid rgba(255, 255, 255, 0.16);
+    }
+
+    .toolbar-button:hover {
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    .toolbar-button:active {
+      transform: scale(0.98);
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.94);
+      border-radius: 24px;
+      padding: 26px;
+      box-shadow: 0 14px 38px rgba(15, 23, 42, 0.08);
+      margin-bottom: 22px;
+      border: 1px solid rgba(226, 232, 240, 0.92);
+    }
+
+    .card-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .card-title h2 {
+      font-size: 24px;
+      letter-spacing: -0.5px;
+      color: #0f172a;
+    }
+
+    .card-title p {
+      color: #64748b;
+      font-size: 14px;
+      margin-top: 4px;
+      line-height: 1.45;
+    }
+
+    .config-box {
+      display: none;
+    }
+
+    .grid-2,
+    .grid-3,
+    .grid-4 {
+      display: grid;
+      gap: 16px;
+    }
+
+    .grid-2 {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .grid-3 {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    .grid-4 {
+      grid-template-columns: repeat(4, 1fr);
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    label {
+      font-weight: 800;
+      font-size: 14px;
+      color: #111827;
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      padding: 15px 16px;
+      border: 1px solid #d1d5db;
+      border-radius: 14px;
+      font-size: 15px;
+      outline: none;
+      background: white;
+      transition: 0.2s;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      border-color: #2563eb;
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
+    }
+
+    input[type="file"] {
+      padding: 13px;
+    }
+
+    button,
+    .btn-link {
+      border: none;
+      border-radius: 14px;
+      padding: 14px 18px;
+      font-weight: 800;
+      cursor: pointer;
+      font-size: 15px;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: 0.2s;
+      white-space: nowrap;
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+
+    .btn-primary {
+      background: #2563eb;
+      color: white;
+      box-shadow: 0 10px 24px rgba(37, 99, 235, 0.22);
+    }
+
+    .btn-primary:hover {
+      background: #1d4ed8;
+      transform: translateY(-1px);
+    }
+
+    .btn-success {
+      background: linear-gradient(135deg, #16a34a, #22c55e);
+      color: white;
+      box-shadow: 0 10px 24px rgba(22, 163, 74, 0.24);
+    }
+
+    .btn-success:hover {
+      transform: translateY(-1px);
+      filter: brightness(1.02);
+    }
+
+    .btn-secondary {
+      background: #e5e7eb;
+      color: #111827;
+    }
+
+    .btn-secondary:hover {
+      background: #d1d5db;
+    }
+
+    .btn-warning {
+      background: #f59e0b;
+      color: white;
+      box-shadow: 0 10px 24px rgba(245, 158, 11, 0.18);
+    }
+
+    .btn-warning:hover {
+      background: #d97706;
+      transform: translateY(-1px);
+    }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 18px;
+    }
+
+    .message {
+      display: none;
+      padding: 14px 16px;
+      border-radius: 16px;
+      margin-bottom: 18px;
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .message.success {
+      display: block;
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .message.error {
+      display: block;
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .message.info {
+      display: block;
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .message.warning {
+      display: block;
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .small-text {
+      color: #64748b;
+      font-size: 13px;
+      line-height: 1.45;
+      margin-top: 8px;
+    }
+
+    .upload-preview {
+      width: 100%;
+      min-height: 180px;
+      max-height: 280px;
+      object-fit: contain;
+      border: 1px solid #e5e7eb;
+      border-radius: 18px;
+      background: #f8fafc;
+      padding: 10px;
+    }
+
+    .user-found,
+    .user-new {
+      border-radius: 16px;
+      padding: 14px 16px;
+      margin: 14px 0 2px;
+      display: none;
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .user-found {
+      background: #dcfce7;
+      color: #166534;
+      border: 1px solid #bbf7d0;
+    }
+
+    .user-new {
+      background: #dbeafe;
+      color: #1e40af;
+      border: 1px solid #bfdbfe;
+    }
+
+    .package-card {
+      border: 2px solid #e5e7eb;
+      background: #f9fafb;
+    }
+
+    .package-card.free {
+      border-color: #16a34a;
+      background: linear-gradient(135deg, #f0fdf4, #ffffff);
+    }
+
+    .package-card.paid {
+      border-color: #2563eb;
+      background: linear-gradient(135deg, #eff6ff, #ffffff);
+    }
+
+    .package-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+
+    .package-title h2 {
+      font-size: 24px;
+      letter-spacing: -0.5px;
+    }
+
+    .package-badge {
+      padding: 10px 16px;
+      border-radius: 999px;
+      font-size: 13px;
+      font-weight: 900;
+      background: #111827;
+      color: white;
+      letter-spacing: 0.5px;
+    }
+
+    .price-box {
+      position: relative;
+      overflow: hidden;
+      background: white;
+      border-radius: 18px;
+      padding: 20px;
+      border: 1px solid #e5e7eb;
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
+    }
+
+    .price-box::after {
+      content: '';
+      position: absolute;
+      width: 90px;
+      height: 90px;
+      border-radius: 999px;
+      right: -40px;
+      top: -40px;
+      background: rgba(37, 99, 235, 0.07);
+    }
+
+    .price-box span {
+      display: block;
+      color: #64748b;
+      font-size: 13px;
+      margin-bottom: 8px;
+      font-weight: 800;
+    }
+
+    .price-box strong {
+      position: relative;
+      z-index: 2;
+      font-size: 30px;
+      letter-spacing: -1px;
+    }
+
+    .pix-box {
+      display: none;
+      border: 2px dashed #2563eb;
+      background: linear-gradient(135deg, #eff6ff, #ffffff);
+    }
+
+    .pix-box.active {
+      display: block;
+    }
+
+    .pix-content {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      gap: 24px;
+      align-items: center;
+    }
+
+    #pixCanvas {
+      background: white;
+      padding: 12px;
+      border-radius: 18px;
+      width: 230px !important;
+      height: 230px !important;
+      margin: 0 auto;
+      box-shadow: 0 12px 30px rgba(15, 23, 42, 0.10);
+    }
+
+    .pix-copy {
+      min-height: 120px;
+      font-size: 13px;
+      line-height: 1.4;
+      word-break: break-word;
+      resize: vertical;
+    }
+
+    .payment-status {
+      padding: 15px 16px;
+      border-radius: 16px;
+      margin-top: 18px;
+      font-weight: 900;
+      border: 1px solid transparent;
+    }
+
+    .payment-status.free,
+    .payment-status.paid {
+      background: #dcfce7;
+      color: #166534;
+      border-color: #bbf7d0;
+    }
+
+    .payment-status.pending {
+      background: #fef3c7;
+      color: #92400e;
+      border-color: #fde68a;
+    }
+
+    .payment-status.expired {
+      background: #fee2e2;
+      color: #991b1b;
+      border-color: #fecaca;
+    }
+
+    .final-card {
+      background: linear-gradient(135deg, #0f172a, #1e3a8a);
+      color: white;
+    }
+
+    .final-card p {
+      color: rgba(255, 255, 255, 0.78);
+    }
+
+    @media (max-width: 900px) {
+      body {
+        padding: 12px;
+      }
+
+      .header {
+        padding: 26px;
+        border-radius: 24px;
+      }
+
+      .header-inner {
+        grid-template-columns: 1fr;
+      }
+
+      .toolbar {
+        justify-self: start;
+        order: -1;
+      }
+
+      .header h1 {
+        font-size: 36px;
+      }
+
+      .header p {
+        font-size: 16px;
+      }
+
+      .grid-2,
+      .grid-3,
+      .grid-4,
+      .pix-content {
+        grid-template-columns: 1fr;
+      }
+
+      button,
+      .btn-link {
+        width: 100%;
+      }
+
+      .toolbar-button {
+        width: auto;
+      }
+
+      .actions {
+        flex-direction: column;
+      }
+
+      .pix-content {
+        text-align: center;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="header-inner">
+        <div class="header-content">
+          <span class="header-badge">✨ Novo evento</span>
+          <h1>Criar Evento</h1>
+          <p>Cadastre seu evento, defina o limite de convidados, envie o convite e vincule o responsável ao usuário cadastrado.</p>
+        </div>
+
+        <div class="toolbar" aria-label="Ações da página">
+          <button class="toolbar-button" onclick="goHome()" title="Voltar para eventos">
+            <span>🏠</span>
+            <strong>Eventos</strong>
+          </button>
+
+          <button class="toolbar-button" onclick="toggleConfig()" title="Configurações">
+            <span>⚙️</span>
+            <strong>Configurações</strong>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="message" class="message"></div>
+
+    <div class="card config-box" id="configBox">
+      <div class="card-title">
+        <div>
+          <h2>Configurações</h2>
+          <p>Conecte o Supabase e configure os endpoints do pagamento PIX.</p>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="form-group">
+          <label for="supabaseUrl">Supabase URL</label>
+          <input id="supabaseUrl" type="text" placeholder="https://xxxx.supabase.co" />
+        </div>
+        <div class="form-group">
+          <label for="supabaseKey">Supabase Anon Key</label>
+          <input id="supabaseKey" type="password" placeholder="Cole sua anon/public key" />
+        </div>
+      </div>
+
+      <div class="grid-2" style="margin-top:16px;">
+        <div class="form-group">
+          <label for="createPaymentUrl">Endpoint criar PIX</label>
+          <input id="createPaymentUrl" type="text" placeholder="/api/create-payment" />
+        </div>
+        <div class="form-group">
+          <label for="checkPaymentUrl">Endpoint verificar PIX</label>
+          <input id="checkPaymentUrl" type="text" placeholder="/api/check-payment" />
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn-primary" onclick="saveConfig()">Salvar configurações</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <div>
+          <h2>Dados do evento</h2>
+          <p>Essas informações serão usadas no convite, QR Codes e dashboard.</p>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="form-group">
+          <label for="eventName">Nome do evento</label>
+          <input id="eventName" type="text" placeholder="Ex: Geraldinho Lins" />
+        </div>
+        <div class="form-group">
+          <label for="eventLocation">Local do evento</label>
+          <input id="eventLocation" type="text" placeholder="Ex: Mirante do Paço" />
+        </div>
+      </div>
+
+      <div class="grid-3" style="margin-top:16px;">
+        <div class="form-group">
+          <label for="eventDate">Data do evento</label>
+          <input id="eventDate" type="date" />
+        </div>
+        <div class="form-group">
+          <label for="eventTime">Hora do evento</label>
+          <input id="eventTime" type="time" />
+        </div>
+        <div class="form-group">
+          <label for="guestLimit">Quantidade estimada de convidados</label>
+          <input id="guestLimit" type="number" min="1" placeholder="Ex: 100" oninput="updatePackageView()" />
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <div>
+          <h2>Convite do evento</h2>
+          <p>Envie uma arte em JPG ou PNG para ficar vinculada ao evento.</p>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div class="form-group">
+          <label for="invitationImage">Upload do convite</label>
+          <input id="invitationImage" type="file" accept="image/jpeg,image/png,.jpg,.jpeg,.png" onchange="previewInvitationImage()" />
+          <p class="small-text">Formatos aceitos: JPG ou PNG. Tamanho máximo: 8MB.</p>
+        </div>
+        <div id="invitationPreviewBox" style="display:none;">
+          <label>Prévia do convite</label>
+          <img id="invitationPreview" class="upload-preview" alt="Prévia do convite" />
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <div>
+          <h2>Responsável pelo evento</h2>
+          <p>Digite o e-mail primeiro para buscar ou cadastrar o usuário responsável.</p>
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-bottom:16px;">
+        <label for="responsibleEmail">E-mail do responsável</label>
+        <input id="responsibleEmail" type="email" placeholder="Digite o e-mail para buscar ou cadastrar" onblur="findResponsibleByEmail()" />
+        <p class="small-text">Se o usuário existir, nome e WhatsApp serão carregados automaticamente.</p>
+      </div>
+
+      <div id="userFoundBox" class="user-found">Usuário encontrado. O evento será vinculado a este usuário.</div>
+      <div id="userNewBox" class="user-new">Usuário não encontrado. Preencha os dados abaixo para cadastrar um novo usuário.</div>
+
+      <div class="grid-3" style="margin-top:16px;">
+        <div class="form-group">
+          <label for="responsibleName">Nome do responsável</label>
+          <input id="responsibleName" type="text" placeholder="Ex: Antônio" />
+        </div>
+        <div class="form-group">
+          <label for="responsibleWhatsapp">WhatsApp do responsável</label>
+          <input id="responsibleWhatsapp" type="text" placeholder="Ex: (81) 99999-9999" />
+        </div>
+        <div class="form-group">
+          <label for="responsibleType">Tipo do usuário</label>
+          <select id="responsibleType">
+            <option value="U">Usuário</option>
+            <option value="A">Administrador</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="card package-card" id="packageCard">
+      <div class="package-title">
+        <div>
+          <h2>Pacote selecionado</h2>
+          <p class="small-text">O valor é calculado automaticamente pela quantidade de convidados.</p>
+        </div>
+        <span class="package-badge" id="packageBadge">FREE</span>
+      </div>
+
+      <div class="grid-4">
+        <div class="price-box">
+          <span>Convidados</span>
+          <strong id="packageGuests">0</strong>
+        </div>
+        <div class="price-box">
+          <span>Valor por convidado</span>
+          <strong id="packagePricePerGuest">R$ 0,00</strong>
+        </div>
+        <div class="price-box">
+          <span>Total</span>
+          <strong id="packageTotal">R$ 0,00</strong>
+        </div>
+        <div class="price-box">
+          <span>Pagamento</span>
+          <strong id="packagePaymentRequired">Não</strong>
+        </div>
+      </div>
+
+      <div class="payment-status free" id="paymentStatusBox">Plano gratuito liberado.</div>
+    </div>
+
+    <div class="card pix-box" id="pixBox">
+      <div class="card-title">
+        <div>
+          <h2>Pagamento PIX</h2>
+          <p>Gere o PIX e confirme o pagamento para liberar a criação do evento.</p>
+        </div>
+      </div>
+
+      <div class="pix-content">
+        <canvas id="pixCanvas"></canvas>
+        <div>
+          <div class="form-group">
+            <label for="pixCopyPaste">PIX copia e cola</label>
+            <textarea id="pixCopyPaste" class="pix-copy" readonly></textarea>
+          </div>
+          <div class="actions">
+            <button class="btn-secondary" onclick="copyPixCode()">Copiar PIX</button>
+            <button class="btn-warning" onclick="checkPaymentStatus()">Já paguei / verificar pagamento</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card final-card">
+      <div class="card-title">
+        <div>
+          <h2 style="color:white;">Finalizar cadastro</h2>
+          <p>Depois de criar o evento, você será redirecionado para a tela do evento.</p>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button class="btn-primary" id="createPaymentButton" onclick="createPixPayment()" style="display:none;">Gerar PIX</button>
+        <button class="btn-success" id="createEventButton" onclick="createNewEvent()">Criar Evento</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let supabaseClient = null;
+    let currentPackage = null;
+    let currentPayment = null;
+    let paymentConfirmed = false;
+    let selectedUser = null;
+
+    const DEFAULT_SUPABASE_URL = 'https://pfyctxoikdrephjogdtm.supabase.co';
+    const DEFAULT_SUPABASE_KEY = 'sb_publishable_h_5hK_HTT-XJ4WUoOGzkGg_tqkBDLjv';
+    const savedUrl = localStorage.getItem('supabase_url') || DEFAULT_SUPABASE_URL;
+    const savedKey = localStorage.getItem('supabase_key') || DEFAULT_SUPABASE_KEY;
+    const savedCreatePaymentUrl = localStorage.getItem('create_payment_url') || '/api/create-payment';
+    const savedCheckPaymentUrl = localStorage.getItem('check_payment_url') || '/api/check-payment';
+
+    document.getElementById('supabaseUrl').value = savedUrl;
+    document.getElementById('supabaseKey').value = savedKey;
+    document.getElementById('createPaymentUrl').value = savedCreatePaymentUrl;
+    document.getElementById('checkPaymentUrl').value = savedCheckPaymentUrl;
+
+    if (savedUrl && savedKey) connectSupabase(savedUrl, savedKey); else toggleConfig();
+    updatePackageView();
+
+    document.getElementById('responsibleEmail').addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        findResponsibleByEmail();
+      }
+    });
+
+    document.getElementById('responsibleWhatsapp').addEventListener('input', e => {
+      e.target.value = formatPhoneInput(e.target.value);
+    });
+
+    function goHome() {
+      window.location.href = '/qrcode/eventos/';
+    }
+
+    function toggleConfig() {
+      const box = document.getElementById('configBox');
+      box.style.display = box.style.display === 'none' || !box.style.display ? 'block' : 'none';
+    }
+
+    function connectSupabase(url, key) {
+      const { createClient } = supabase;
+      supabaseClient = createClient(url, key);
+    }
+
+    function saveConfig() {
+      const url = document.getElementById('supabaseUrl').value.trim().replace('/rest/v1/', '').replace('/rest/v1', '');
+      const key = document.getElementById('supabaseKey').value.trim();
+      const createPaymentUrl = document.getElementById('createPaymentUrl').value.trim() || '/api/create-payment';
+      const checkPaymentUrl = document.getElementById('checkPaymentUrl').value.trim() || '/api/check-payment';
+
+      if (!url || !key) {
+        showMessage('Informe URL e chave do Supabase.', 'error');
+        return;
+      }
+
+      localStorage.setItem('supabase_url', url);
+      localStorage.setItem('supabase_key', key);
+      localStorage.setItem('create_payment_url', createPaymentUrl);
+      localStorage.setItem('check_payment_url', checkPaymentUrl);
+
+      connectSupabase(url, key);
+      showMessage('Configurações salvas com sucesso.', 'success');
+    }
+
+    async function findResponsibleByEmail() {
+      if (!supabaseClient) {
+        showMessage('Configure o Supabase primeiro.', 'error');
+        return;
+      }
+
+      const email = document.getElementById('responsibleEmail').value.trim().toLowerCase();
+      const nameInput = document.getElementById('responsibleName');
+      const whatsInput = document.getElementById('responsibleWhatsapp');
+      const typeInput = document.getElementById('responsibleType');
+      const foundBox = document.getElementById('userFoundBox');
+      const newBox = document.getElementById('userNewBox');
+
+      selectedUser = null;
+      foundBox.style.display = 'none';
+      newBox.style.display = 'none';
+
+      if (!email) {
+        nameInput.value = '';
+        whatsInput.value = '';
+        return;
+      }
+
+      const { data, error } = await supabaseClient
+        .from('users')
+        .select('*')
+        .eq('email', email)
+        .maybeSingle();
+
+      if (error) {
+        showMessage('Erro ao buscar usuário: ' + error.message, 'error');
+        return;
+      }
+
+      if (data) {
+        selectedUser = data;
+        nameInput.value = data.name || '';
+        whatsInput.value = formatPhoneInput(data.whatsapp || '');
+        typeInput.value = data.tipo || 'U';
+        foundBox.style.display = 'block';
+        showMessage('Usuário encontrado e carregado.', 'success');
+      } else {
+        nameInput.value = '';
+        whatsInput.value = '';
+        typeInput.value = 'U';
+        newBox.style.display = 'block';
+        showMessage('Usuário não encontrado. Preencha os dados para cadastrar.', 'info');
+      }
+    }
+
+    async function getOrCreateUser(payload) {
+      const email = payload.responsible_email.toLowerCase();
+
+      if (selectedUser && selectedUser.email === email) return selectedUser.id;
+
+      const { data: existing, error: findError } = await supabaseClient
+        .from('users')
+        .select('*')
+        .eq('email', email)
+        .maybeSingle();
+
+      if (findError) throw new Error('Erro ao buscar usuário: ' + findError.message);
+      if (existing) return existing.id;
+
+      const { data, error } = await supabaseClient
+        .from('users')
+        .insert({
+          name: payload.responsible_name,
+          whatsapp: payload.responsible_whatsapp,
+          email,
+          password: '123456',
+          status: 'active',
+          tipo: document.getElementById('responsibleType').value || 'U'
+        })
+        .select('*')
+        .maybeSingle();
+
+      if (error) throw new Error('Erro ao criar usuário: ' + error.message);
+      return data.id;
+    }
+
+    function calculatePackage(guestCount) {
+      const count = Number(guestCount || 0);
+      if (count <= 50) return { packageName: 'FREE', pricePerGuest: 0, totalAmount: 0, paymentRequired: false };
+      if (count <= 100) return { packageName: 'STARTER', pricePerGuest: .99, totalAmount: roundMoney(count * .99), paymentRequired: true };
+      if (count <= 200) return { packageName: 'PRO', pricePerGuest: .80, totalAmount: roundMoney(count * .80), paymentRequired: true };
+      if (count <= 500) return { packageName: 'BUSINESS', pricePerGuest: .70, totalAmount: roundMoney(count * .70), paymentRequired: true };
+      return { packageName: 'ENTERPRISE', pricePerGuest: .60, totalAmount: roundMoney(count * .60), paymentRequired: true };
+    }
+
+    function updatePackageView() {
+      const guestCount = Number(document.getElementById('guestLimit').value || 0);
+      currentPackage = calculatePackage(guestCount);
+      paymentConfirmed = currentPackage.paymentRequired ? paymentConfirmed : true;
+
+      document.getElementById('packageGuests').textContent = guestCount;
+      document.getElementById('packageBadge').textContent = currentPackage.packageName;
+      document.getElementById('packagePricePerGuest').textContent = formatCurrency(currentPackage.pricePerGuest);
+      document.getElementById('packageTotal').textContent = formatCurrency(currentPackage.totalAmount);
+      document.getElementById('packagePaymentRequired').textContent = currentPackage.paymentRequired ? 'Sim' : 'Não';
+
+      const packageCard = document.getElementById('packageCard');
+      packageCard.classList.toggle('free', !currentPackage.paymentRequired);
+      packageCard.classList.toggle('paid', currentPackage.paymentRequired);
+
+      const paymentStatusBox = document.getElementById('paymentStatusBox');
+      const pixBox = document.getElementById('pixBox');
+      const createPaymentButton = document.getElementById('createPaymentButton');
+      const createEventButton = document.getElementById('createEventButton');
+
+      if (!currentPackage.paymentRequired) {
+        paymentStatusBox.className = 'payment-status free';
+        paymentStatusBox.textContent = 'Plano gratuito liberado.';
+        pixBox.classList.remove('active');
+        createPaymentButton.style.display = 'none';
+        createEventButton.disabled = false;
+        paymentConfirmed = true;
+        currentPayment = null;
+        return;
+      }
+
+      paymentConfirmed = currentPayment && currentPayment.status === 'paid';
+
+      if (paymentConfirmed) {
+        paymentStatusBox.className = 'payment-status paid';
+        paymentStatusBox.textContent = 'Pagamento confirmado. Evento liberado para criação.';
+        createPaymentButton.style.display = 'none';
+        createEventButton.disabled = false;
+      } else {
+        paymentStatusBox.className = 'payment-status pending';
+        paymentStatusBox.textContent = 'Pagamento necessário. Gere o PIX e confirme o pagamento para criar o evento.';
+        createPaymentButton.style.display = 'inline-flex';
+        createEventButton.disabled = true;
+      }
+    }
+
+    async function createPixPayment() {
+      if (!validateForm(false)) return;
+
+      const createPaymentUrl = document.getElementById('createPaymentUrl').value.trim() || '/api/create-payment';
+      const payload = getFormPayload();
+
+      try {
+        showMessage('Gerando cobrança PIX...', 'info');
+        const response = await fetch(createPaymentUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            event_name: payload.name,
+            guest_limit: payload.guest_limit,
+            package_name: currentPackage.packageName,
+            price_per_guest: currentPackage.pricePerGuest,
+            amount: currentPackage.totalAmount,
+            payer_name: payload.responsible_name,
+            payer_email: payload.responsible_email,
+            payer_whatsapp: payload.responsible_whatsapp
+          })
+        });
+
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.message || data.error || 'Erro ao gerar PIX.');
+
+        currentPayment = {
+          payment_id: data.payment_id,
+          status: data.status || 'pending',
+          pix_qr_code: data.pix_qr_code,
+          pix_copy_paste: data.pix_copy_paste,
+          amount: data.amount || currentPackage.totalAmount
+        };
+
+        renderPixPayment();
+        updatePackageView();
+        showMessage('PIX gerado com sucesso.', 'success');
+      } catch (error) {
+        showMessage('Erro ao gerar PIX: ' + error.message, 'error');
+      }
+    }
+
+    function renderPixPayment() {
+      if (!currentPayment) return;
+      const pixBox = document.getElementById('pixBox');
+      const pixCopyPaste = document.getElementById('pixCopyPaste');
+      const pixValue = currentPayment.pix_copy_paste || currentPayment.pix_qr_code || '';
+
+      pixBox.classList.add('active');
+      pixCopyPaste.value = pixValue;
+
+      QRCode.toCanvas(document.getElementById('pixCanvas'), pixValue || 'PIX NAO DISPONIVEL', {
+        width: 230,
+        margin: 2,
+        errorCorrectionLevel: 'H'
+      });
+    }
+
+    async function checkPaymentStatus() {
+      if (!currentPayment || !currentPayment.payment_id) {
+        showMessage('Gere o PIX primeiro.', 'error');
+        return;
+      }
+
+      const checkPaymentUrl = document.getElementById('checkPaymentUrl').value.trim() || '/api/check-payment';
+
+      try {
+        showMessage('Verificando pagamento...', 'info');
+        const response = await fetch(`${checkPaymentUrl}?payment_id=${encodeURIComponent(currentPayment.payment_id)}`);
+        const data = await response.json();
+
+        if (!response.ok) throw new Error(data.message || data.error || 'Erro ao verificar pagamento.');
+
+        currentPayment.status = data.status;
+
+        if (data.status === 'paid') {
+          paymentConfirmed = true;
+          updatePackageView();
+          showMessage('Pagamento confirmado. Você já pode criar o evento.', 'success');
+        } else if (data.status === 'expired') {
+          paymentConfirmed = false;
+          document.getElementById('paymentStatusBox').className = 'payment-status expired';
+          document.getElementById('paymentStatusBox').textContent = 'Pagamento expirado. Gere um novo PIX.';
+          showMessage('Pagamento expirado. Gere um novo PIX.', 'error');
+        } else {
+          paymentConfirmed = false;
+          updatePackageView();
+          showMessage('Pagamento ainda pendente.', 'warning');
+        }
+      } catch (error) {
+        showMessage('Erro ao verificar pagamento: ' + error.message, 'error');
+      }
+    }
+
+    async function uploadInvitationImage() {
+      const file = document.getElementById('invitationImage').files[0];
+      if (!file) return null;
+
+      if (!['image/jpeg', 'image/png'].includes(file.type)) throw new Error('O convite precisa ser JPG ou PNG.');
+      if (file.size > 8 * 1024 * 1024) throw new Error('O arquivo deve ter no máximo 8MB.');
+
+      const extension = file.name.split('.').pop().toLowerCase();
+      const path = `convites/${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${extension}`;
+
+      const { error } = await supabaseClient.storage.from('event-invitations').upload(path, file, {
+        cacheControl: '3600',
+        upsert: false
+      });
+
+      if (error) throw new Error('Erro ao enviar convite: ' + error.message);
+
+      const { data } = supabaseClient.storage.from('event-invitations').getPublicUrl(path);
+      return { path, url: data.publicUrl };
+    }
+
+    function previewInvitationImage() {
+      const input = document.getElementById('invitationImage');
+      const file = input.files[0];
+      const previewBox = document.getElementById('invitationPreviewBox');
+      const preview = document.getElementById('invitationPreview');
+
+      if (!file) {
+        previewBox.style.display = 'none';
+        preview.src = '';
+        return;
+      }
+
+      if (!['image/jpeg', 'image/png'].includes(file.type)) {
+        showMessage('O convite precisa ser JPG ou PNG.', 'error');
+        input.value = '';
+        previewBox.style.display = 'none';
+        preview.src = '';
+        return;
+      }
+
+      preview.src = URL.createObjectURL(file);
+      previewBox.style.display = 'block';
+    }
+
+    async function createNewEvent() {
+      if (!supabaseClient) {
+        showMessage('Configure o Supabase primeiro.', 'error');
+        return;
+      }
+
+      if (!validateForm(true)) return;
+
+      if (currentPackage.paymentRequired && !paymentConfirmed) {
+        showMessage('Confirme o pagamento antes de criar o evento.', 'error');
+        return;
+      }
+
+      const payload = getFormPayload();
+      const button = document.getElementById('createEventButton');
+      button.disabled = true;
+      button.textContent = 'Criando evento...';
+
+      let userId = null;
+      let invitationUpload = null;
+
+      try {
+        userId = await getOrCreateUser(payload);
+      } catch (error) {
+        button.disabled = false;
+        button.textContent = 'Criar Evento';
+        showMessage(error.message, 'error');
+        return;
+      }
+
+      try {
+        invitationUpload = await uploadInvitationImage();
+      } catch (error) {
+        button.disabled = false;
+        button.textContent = 'Criar Evento';
+        showMessage(error.message, 'error');
+        return;
+      }
+
+      const eventPayload = {
+        name: payload.name,
+        event_date: payload.event_date,
+        event_time: payload.event_time,
+        location: payload.location,
+        guest_limit: payload.guest_limit,
+        user_id: userId,
+        invitation_image_url: invitationUpload?.url || null,
+        invitation_image_path: invitationUpload?.path || null,
+        package_name: currentPackage.packageName,
+        package_amount: currentPackage.totalAmount,
+        price_per_guest: currentPackage.pricePerGuest,
+        payment_required: currentPackage.paymentRequired,
+        payment_status: currentPackage.paymentRequired ? 'paid' : 'free',
+        payment_id: currentPayment?.payment_id || null
+      };
+
+      const { data, error } = await supabaseClient
+        .from('events')
+        .insert(eventPayload)
+        .select('*')
+        .maybeSingle();
+
+      if (error) {
+        button.disabled = false;
+        button.textContent = 'Criar Evento';
+        showMessage('Erro ao criar evento: ' + error.message, 'error');
+        return;
+      }
+
+      if (currentPackage.paymentRequired && currentPayment) {
+        await supabaseClient.from('event_payments').insert({
+          event_id: data.id,
+          payment_provider: 'backend_pix',
+          payment_provider_id: currentPayment.payment_id,
+          package_name: currentPackage.packageName,
+          guest_limit: payload.guest_limit,
+          price_per_guest: currentPackage.pricePerGuest,
+          amount: currentPackage.totalAmount,
+          status: 'paid',
+          pix_qr_code: currentPayment.pix_qr_code || null,
+          pix_copy_paste: currentPayment.pix_copy_paste || null,
+          payer_name: payload.responsible_name,
+          payer_email: payload.responsible_email,
+          payer_whatsapp: payload.responsible_whatsapp,
+          paid_at: new Date().toISOString()
+        });
+      }
+
+      showMessage('Evento criado com sucesso. Redirecionando...', 'success');
+      setTimeout(() => {
+        window.location.href = `/eventos/?event_id=${encodeURIComponent(data.id)}`;
+      }, 900);
+    }
+
+    function validateForm(requirePaymentCheck) {
+      const payload = getFormPayload();
+
+      if (!payload.name) {
+        showMessage('Informe o nome do evento.', 'error');
+        return false;
+      }
+
+      if (!payload.event_date) {
+        showMessage('Informe a data do evento.', 'error');
+        return false;
+      }
+
+      if (!payload.event_time) {
+        showMessage('Informe a hora do evento.', 'error');
+        return false;
+      }
+
+      if (!payload.location) {
+        showMessage('Informe o local do evento.', 'error');
+        return false;
+      }
+
+      if (!payload.guest_limit || payload.guest_limit < 1) {
+        showMessage('Informe uma quantidade válida de convidados.', 'error');
+        return false;
+      }
+
+      if (!payload.responsible_email) {
+        showMessage('Informe primeiro o e-mail do responsável.', 'error');
+        return false;
+      }
+
+      if (!payload.responsible_name) {
+        showMessage('Informe o nome do responsável.', 'error');
+        return false;
+      }
+
+      if (!payload.responsible_whatsapp) {
+        showMessage('Informe o WhatsApp do responsável.', 'error');
+        return false;
+      }
+
+      if (requirePaymentCheck && currentPackage.paymentRequired && !paymentConfirmed) {
+        showMessage('Pagamento ainda não confirmado.', 'error');
+        return false;
+      }
+
+      return true;
+    }
+
+    function getFormPayload() {
+      const guestLimit = Number(document.getElementById('guestLimit').value || 0);
+      currentPackage = calculatePackage(guestLimit);
+
+      return {
+        name: document.getElementById('eventName').value.trim(),
+        event_date: document.getElementById('eventDate').value,
+        event_time: document.getElementById('eventTime').value,
+        location: document.getElementById('eventLocation').value.trim(),
+        guest_limit: guestLimit,
+        responsible_name: document.getElementById('responsibleName').value.trim(),
+        responsible_whatsapp: normalizePhone(document.getElementById('responsibleWhatsapp').value),
+        responsible_email: document.getElementById('responsibleEmail').value.trim().toLowerCase()
+      };
+    }
+
+    function copyPixCode() {
+      const pix = document.getElementById('pixCopyPaste').value;
+      if (!pix) {
+        showMessage('PIX ainda não foi gerado.', 'error');
+        return;
+      }
+
+      navigator.clipboard.writeText(pix);
+      showMessage('PIX copia e cola copiado.', 'success');
+    }
+
+    function roundMoney(value) {
+      return Math.round((Number(value) + Number.EPSILON) * 100) / 100;
+    }
+
+    function formatCurrency(value) {
+      return Number(value || 0).toLocaleString('pt-BR', {
+        style: 'currency',
+        currency: 'BRL'
+      });
+    }
+
+    function normalizePhone(value) {
+      return String(value || '').replace(/\D/g, '').replace(/^55/, '').slice(0, 11);
+    }
+
+    function formatPhoneInput(value) {
+      let phone = normalizePhone(value);
+
+      if (phone.length > 10) return phone.replace(/^(\d{2})(\d{5})(\d{4}).*/, '($1) $2-$3');
+      if (phone.length > 6) return phone.replace(/^(\d{2})(\d{4})(\d{0,4}).*/, '($1) $2-$3');
+      if (phone.length > 2) return phone.replace(/^(\d{2})(\d{0,5})/, '($1) $2');
+
+      return phone;
+    }
+
+    function showMessage(text, type) {
+      const message = document.getElementById('message');
+      message.textContent = text;
+      message.className = `message ${type}`;
+
+      setTimeout(() => {
+        message.className = 'message';
+        message.textContent = '';
+      }, 5000);
+    }
+  </script>
+</body>
+</html>

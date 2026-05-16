@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
-
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -18,59 +17,140 @@
 
     body {
       min-height: 100vh;
-      background: #f3f4f6;
+      background:
+        radial-gradient(circle at top left, rgba(37, 99, 235, 0.10), transparent 34%),
+        #f3f4f6;
       color: #111827;
       padding: 20px;
     }
 
     .container {
-      max-width: 1200px;
+      max-width: 1280px;
       margin: 0 auto;
     }
 
     .header {
       position: relative;
-      background: linear-gradient(135deg, #111827, #1e3a8a);
+      overflow: hidden;
+      background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 58%, #2563eb 100%);
       color: white;
-      padding: 30px;
-      border-radius: 24px;
+      padding: 38px;
+      border-radius: 28px;
       margin-bottom: 24px;
-      box-shadow: 0 12px 32px rgba(17, 24, 39, 0.18);
+      box-shadow: 0 24px 60px rgba(15, 23, 42, 0.22);
     }
 
-    .header h1 {
-      font-size: 34px;
-      margin-bottom: 8px;
-      padding-right: 70px;
-    }
-
-    .header p {
-      color: #dbeafe;
-      font-size: 16px;
-      padding-right: 70px;
-    }
-
-    .config-button {
+    .header::before {
+      content: '';
       position: absolute;
-      top: 22px;
-      right: 22px;
-      width: 44px;
-      height: 44px;
-      border-radius: 14px;
-      border: 1px solid rgba(255, 255, 255, 0.18);
-      background: rgba(255, 255, 255, 0.1);
+      width: 260px;
+      height: 260px;
+      top: -120px;
+      right: -90px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .header::after {
+      content: '';
+      position: absolute;
+      width: 360px;
+      height: 360px;
+      bottom: -220px;
+      left: 30%;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.045);
+    }
+
+    .header-inner {
+      position: relative;
+      z-index: 2;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 24px;
+      align-items: start;
+    }
+
+    .toolbar {
+      display: inline-flex;
+      align-items: center;
+      justify-self: end;
+      background: rgba(255, 255, 255, 0.11);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      border-radius: 18px;
+      overflow: hidden;
+      backdrop-filter: blur(14px);
+      box-shadow:
+        0 12px 28px rgba(0, 0, 0, 0.18),
+        inset 0 1px 0 rgba(255, 255, 255, 0.10);
+    }
+
+    .toolbar-button {
+      height: 54px;
+      border: none;
+      background: transparent;
       color: white;
-      font-size: 18px;
+      padding: 0 18px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      font-size: 14px;
+      font-weight: 800;
       cursor: pointer;
+      transition: 0.2s;
+      white-space: nowrap;
+    }
+
+    .toolbar-button + .toolbar-button {
+      border-left: 1px solid rgba(255, 255, 255, 0.16);
+    }
+
+    .toolbar-button:hover {
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    .toolbar-button:active {
+      transform: scale(0.98);
+    }
+
+    .header-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 999px;
+      padding: 9px 14px;
+      color: #dbeafe;
+      font-size: 13px;
+      font-weight: 700;
+      margin-bottom: 18px;
       backdrop-filter: blur(10px);
     }
 
+    .header h1 {
+      font-size: clamp(34px, 5vw, 56px);
+      line-height: 1;
+      letter-spacing: -1.8px;
+      margin-bottom: 16px;
+      max-width: 780px;
+    }
+
+    .header p {
+      color: rgba(255, 255, 255, 0.82);
+      font-size: 18px;
+      line-height: 1.55;
+      max-width: 760px;
+    }
+
     .card {
-      background: white;
-      border-radius: 20px;
-      padding: 22px;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+      background: rgba(255, 255, 255, 0.92);
+      border-radius: 22px;
+      padding: 24px;
+      box-shadow: 0 14px 38px rgba(15, 23, 42, 0.08);
       margin-bottom: 22px;
+      border: 1px solid rgba(226, 232, 240, 0.9);
     }
 
     .config-box {
@@ -84,7 +164,7 @@
       margin-bottom: 16px;
     }
 
-    .toolbar {
+    .search-toolbar {
       display: grid;
       grid-template-columns: 1fr auto;
       gap: 14px;
@@ -98,37 +178,40 @@
     }
 
     label {
-      font-weight: bold;
+      font-weight: 800;
       font-size: 14px;
+      color: #111827;
     }
 
     input {
       width: 100%;
-      padding: 14px;
+      padding: 15px 16px;
       border: 1px solid #d1d5db;
-      border-radius: 12px;
+      border-radius: 14px;
       font-size: 15px;
       outline: none;
       background: white;
+      transition: 0.2s;
     }
 
     input:focus {
       border-color: #2563eb;
-      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14);
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.12);
     }
 
     button,
     .btn-link {
       border: none;
-      border-radius: 12px;
+      border-radius: 14px;
       padding: 13px 16px;
-      font-weight: bold;
+      font-weight: 800;
       cursor: pointer;
       font-size: 14px;
       text-decoration: none;
       display: inline-flex;
       align-items: center;
       justify-content: center;
+      gap: 8px;
       transition: 0.2s;
       white-space: nowrap;
     }
@@ -136,10 +219,12 @@
     .btn-primary {
       background: #2563eb;
       color: white;
+      box-shadow: 0 10px 24px rgba(37, 99, 235, 0.22);
     }
 
     .btn-primary:hover {
       background: #1d4ed8;
+      transform: translateY(-1px);
     }
 
     .btn-secondary {
@@ -149,24 +234,6 @@
 
     .btn-secondary:hover {
       background: #d1d5db;
-    }
-
-    .btn-success {
-      background: #16a34a;
-      color: white;
-    }
-
-    .btn-success:hover {
-      background: #15803d;
-    }
-
-    .btn-dark {
-      background: #111827;
-      color: white;
-    }
-
-    .btn-dark:hover {
-      background: #030712;
     }
 
     .message {
@@ -195,102 +262,241 @@
       color: #1e40af;
     }
 
-    .events-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-      gap: 18px;
-    }
-
-    .event-card {
-      background: white;
-      border-radius: 22px;
-      padding: 22px;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.07);
-      border: 1px solid #eef2f7;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-
-    .event-card h2 {
-      font-size: 22px;
-      line-height: 1.2;
-    }
-
-    .event-meta {
-      display: grid;
-      gap: 8px;
-      color: #4b5563;
-      font-size: 14px;
-    }
-
-    .event-meta div {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-    }
-
-    .event-id {
-      background: #f3f4f6;
-      color: #6b7280;
-      font-size: 12px;
-      padding: 10px;
-      border-radius: 10px;
-      word-break: break-all;
-    }
-
-    .event-actions {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 10px;
-      margin-top: auto;
-    }
-
-    .empty-state {
-      text-align: center;
-      padding: 50px 20px;
-      background: white;
-      border: 1px dashed #d1d5db;
-      color: #6b7280;
-      border-radius: 20px;
-    }
-
     .summary {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 14px;
+      gap: 18px;
       margin-bottom: 22px;
     }
 
     .summary-box {
+      position: relative;
+      overflow: hidden;
       background: white;
-      border-radius: 18px;
-      padding: 18px;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+      border-radius: 22px;
+      padding: 22px;
+      box-shadow: 0 14px 38px rgba(15, 23, 42, 0.08);
+      border: 1px solid #eef2f7;
+    }
+
+    .summary-box::after {
+      content: '';
+      position: absolute;
+      width: 120px;
+      height: 120px;
+      border-radius: 999px;
+      top: -60px;
+      right: -45px;
+      background: rgba(37, 99, 235, 0.08);
     }
 
     .summary-box span {
       display: block;
       color: #6b7280;
-      font-size: 13px;
-      margin-bottom: 6px;
+      font-size: 14px;
+      margin-bottom: 8px;
+      font-weight: 700;
     }
 
     .summary-box strong {
-      font-size: 30px;
+      font-size: 34px;
+      letter-spacing: -1px;
     }
 
-    @media (max-width: 760px) {
+    .events-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 20px;
+    }
+
+    .event-card {
+      position: relative;
+      overflow: hidden;
+      background: white;
+      border-radius: 26px;
+      padding: 24px;
+      box-shadow: 0 18px 44px rgba(15, 23, 42, 0.10);
+      border: 1px solid #e8edf5;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      transition: 0.25s ease;
+    }
+
+    .event-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 24px 54px rgba(15, 23, 42, 0.14);
+    }
+
+    .event-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 6px;
+      background: linear-gradient(90deg, #16a34a, #2563eb, #111827);
+    }
+
+    .event-title-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: flex-start;
+    }
+
+    .event-card h2 {
+      font-size: 24px;
+      line-height: 1.15;
+      letter-spacing: -0.5px;
+      color: #0f172a;
+    }
+
+    .event-status-badge {
+      flex: 0 0 auto;
+      padding: 7px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+
+    .event-status-badge.upcoming {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .event-status-badge.past {
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .event-meta {
+      display: grid;
+      gap: 10px;
+      color: #4b5563;
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .event-meta div {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .meta-icon {
+      width: 30px;
+      height: 30px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      background: #f3f4f6;
+    }
+
+    .event-id {
+      background: #f8fafc;
+      color: #64748b;
+      font-size: 12px;
+      padding: 12px;
+      border-radius: 14px;
+      word-break: break-all;
+      border: 1px solid #e5e7eb;
+    }
+
+    .event-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: auto;
+    }
+
+    .action-card {
+      min-height: 74px;
+      border-radius: 18px;
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      justify-content: center;
+      color: white;
+      text-align: left;
+      box-shadow: 0 12px 26px rgba(15, 23, 42, 0.12);
+    }
+
+    .action-card strong {
+      font-size: 14px;
+      line-height: 1.1;
+    }
+
+    .action-card span {
+      font-size: 12px;
+      opacity: 0.82;
+      margin-top: 4px;
+      font-weight: 600;
+    }
+
+    .action-card:hover {
+      transform: translateY(-2px);
+      filter: brightness(1.02);
+    }
+
+    .action-green {
+      background: linear-gradient(135deg, #16a34a, #22c55e);
+    }
+
+    .action-blue {
+      background: linear-gradient(135deg, #2563eb, #60a5fa);
+    }
+
+    .action-dark {
+      background: linear-gradient(135deg, #0f172a, #334155);
+    }
+
+    .action-purple {
+      background: linear-gradient(135deg, #4f46e5, #8b5cf6);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 56px 20px;
+      background: white;
+      border: 1px dashed #d1d5db;
+      color: #6b7280;
+      border-radius: 22px;
+      box-shadow: 0 14px 38px rgba(15, 23, 42, 0.06);
+    }
+
+    @media (max-width: 860px) {
       body {
         padding: 12px;
       }
 
+      .header {
+        padding: 26px;
+        border-radius: 24px;
+      }
+
+      .header-inner {
+        grid-template-columns: 1fr;
+      }
+
+      .toolbar {
+        justify-self: start;
+        order: -1;
+      }
+
       .header h1 {
-        font-size: 26px;
+        font-size: 36px;
+      }
+
+      .header p {
+        font-size: 16px;
       }
 
       .config-grid,
-      .toolbar,
+      .search-toolbar,
       .summary {
         grid-template-columns: 1fr;
       }
@@ -299,20 +505,43 @@
         grid-template-columns: 1fr;
       }
 
+      .event-actions {
+        grid-template-columns: 1fr;
+      }
+
       button,
       .btn-link {
         width: 100%;
       }
+
+      .toolbar-button {
+        width: auto;
+      }
     }
   </style>
 </head>
-
 <body>
   <div class="container">
     <div class="header">
-      <button class="config-button" onclick="toggleConfig()" title="Configurações">⚙️</button>
-      <h1>Eventos cadastrados</h1>
-      <p>Escolha um evento para bipar, gerar QR Codes ou acompanhar o dashboard.</p>
+      <div class="header-inner">
+        <div class="header-content">
+          <span class="header-badge">🎟️ Controle de eventos</span>
+          <h1>Eventos cadastrados</h1>
+          <p>Escolha um evento para bipar, gerar QR Codes, gerenciar convidados ou acompanhar o dashboard.</p>
+        </div>
+
+        <div class="toolbar" aria-label="Ações da página">
+          <button class="toolbar-button" onclick="window.location.href='/eventos/novo/'" title="Adicionar evento">
+            <span>➕</span>
+            <strong>Adicionar</strong>
+          </button>
+
+          <button class="toolbar-button" onclick="toggleConfig()" title="Configurações">
+            <span>⚙️</span>
+            <strong>Configurações</strong>
+          </button>
+        </div>
+      </div>
     </div>
 
     <div id="message" class="message"></div>
@@ -332,11 +561,10 @@
     </div>
 
     <div class="card">
-      <div class="toolbar">
+      <div class="search-toolbar">
         <div class="form-group">
           <label for="searchInput">Buscar evento</label>
-          <input id="searchInput" type="text" placeholder="Busque por nome, local, data ou ID"
-            oninput="renderEvents()" />
+          <input id="searchInput" type="text" placeholder="Busque por nome, local, data ou ID" oninput="renderEvents()" />
         </div>
         <button class="btn-primary" onclick="loadEvents()">Atualizar eventos</button>
       </div>
@@ -459,17 +687,21 @@
       container.className = 'events-grid';
       container.innerHTML = filtered.map(event => {
         const eventId = encodeURIComponent(event.id);
+        const isPast = isPastEvent(event.event_date);
 
         return `
           <div class="event-card">
-            <div>
+            <div class="event-title-row">
               <h2>${escapeHTML(event.name || 'Evento sem nome')}</h2>
+              <span class="event-status-badge ${isPast ? 'past' : 'upcoming'}">
+                ${isPast ? 'Passado' : 'Próximo'}
+              </span>
             </div>
 
             <div class="event-meta">
-              <div>📅 <strong>${formatDateBR(event.event_date) || '-'}</strong></div>
-              <div>⏰ <strong>${formatTime(event.event_time) || '-'}</strong></div>
-              <div>📍 <strong>${escapeHTML(event.location || '-')}</strong></div>
+              <div><span class="meta-icon">📅</span><strong>${formatDateBR(event.event_date) || '-'}</strong></div>
+              <div><span class="meta-icon">⏰</span><strong>${formatTime(event.event_time) || '-'}</strong></div>
+              <div><span class="meta-icon">📍</span><strong>${escapeHTML(event.location || '-')}</strong></div>
             </div>
 
             <div class="event-id">
@@ -477,24 +709,26 @@
             </div>
 
             <div class="event-actions">
+              <a class="btn-link action-card action-green" href="/qrcode/acesso/?event_id=${eventId}">
+                <strong>🟢 Bipagem</strong>
+                <span>Validar entrada</span>
+              </a>
 
-  <a class="btn-link btn-success" href="/qrcode/acesso/?event_id=${eventId}">
-    Bipagem
-  </a>
+              <a class="btn-link action-card action-blue" href="/qrcode/?event_id=${eventId}">
+                <strong>🎟️ QR Codes</strong>
+                <span>Cadastro e geração</span>
+              </a>
 
-  <a class="btn-link btn-primary" href="/qrcode/?event_id=${eventId}">
-    Cadastro / Gerador de QR Code
-  </a>
+              <a class="btn-link action-card action-dark" href="/qrcode/dashboard/?event_id=${eventId}">
+                <strong>📊 Dashboard</strong>
+                <span>Acompanhar acessos</span>
+              </a>
 
-  <a class="btn-link btn-dark" href="/qrcode/dashboard/?event_id=${eventId}">
-    Dashboard
-  </a>
-
-  <a class="btn-link btn-warning" href="/qrcode/convidados/?event_id=${eventId}">
-    Convidados
-  </a>
-
-</div>
+              <a class="btn-link action-card action-purple" href="/qrcode/convidados/?event_id=${eventId}">
+                <strong>👥 Convidados</strong>
+                <span>Lista e disparos</span>
+              </a>
+            </div>
           </div>
         `;
       }).join('');
@@ -519,6 +753,14 @@
       document.getElementById('totalEvents').textContent = events.length;
       document.getElementById('upcomingEvents').textContent = upcoming;
       document.getElementById('pastEvents').textContent = past;
+    }
+
+    function isPastEvent(dateString) {
+      if (!dateString) return false;
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const date = new Date(dateString + 'T00:00:00');
+      return date < today;
     }
 
     function formatDateBR(dateString) {
@@ -554,5 +796,4 @@
     }
   </script>
 </body>
-
 </html>
