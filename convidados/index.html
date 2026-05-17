@@ -943,7 +943,7 @@ async function initializePage() {
   currentEventId = params.get('event_id');
 
   if (!currentEventId) {
-    showMessage('Informe o event_id na URL. Ex: /qrcode/convidados/?event_id=UUID', 'error');
+    showMessage('Informe o event_id na URL. Ex: /convidados/?event_id=UUID', 'error');
     return;
   }
 
@@ -959,7 +959,7 @@ async function initializePage() {
 }
 
 function goEvents() {
-  window.location.href = '/qrcode/eventos/';
+  window.location.href = '/eventos/';
 }
 
 function toggleConfig() {
@@ -1467,7 +1467,7 @@ function updateSummary() {
 }
 
 function getConfirmationLink(guestId) {
-  return `${window.location.origin}/qrcode/confirmar-presenca/?guest_id=${encodeURIComponent(guestId)}`;
+  return `${window.location.origin}/confirmar-presenca/?guest_id=${encodeURIComponent(guestId)}`;
 }
 
 function buildGuestMessage(guest) {

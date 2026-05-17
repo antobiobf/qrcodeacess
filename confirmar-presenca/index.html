@@ -1,61 +1,11 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
   <title>Confirmar Presença</title>
-
-  <!--
-    SQL NECESSÁRIO
-
-    alter table public.access_codes
-    add column if not exists event_id uuid references public.events(id) on delete cascade;
-
-    alter table public.access_codes
-    add column if not exists ticket_type text default 'mesa';
-
-    alter table public.access_codes
-    add column if not exists customer_name text;
-
-    alter table public.access_codes
-    add column if not exists customer_email text;
-
-    alter table public.access_codes
-    add column if not exists customer_whatsapp text;
-
-    alter table public.access_codes
-    add column if not exists source_guest_id uuid;
-
-    alter table public.event_guests
-    add column if not exists access_code_id uuid;
-
-    -- Opcional, pode rodar depois. A tela não depende mais desse relacionamento automático.
-    do $$
-    begin
-      if not exists (
-        select 1 from pg_constraint where conname = 'access_codes_source_guest_id_fkey'
-      ) then
-        alter table public.access_codes
-        add constraint access_codes_source_guest_id_fkey
-        foreign key (source_guest_id)
-        references public.event_guests(id)
-        on delete set null;
-      end if;
-    end $$;
-
-    do $$
-    begin
-      if not exists (
-        select 1 from pg_constraint where conname = 'event_guests_access_code_id_fkey'
-      ) then
-        alter table public.event_guests
-        add constraint event_guests_access_code_id_fkey
-        foreign key (access_code_id)
-        references public.access_codes(id)
-        on delete set null;
-      end if;
-    end $$;
-  -->
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode/1.5.1/qrcode.min.js"></script>
@@ -66,136 +16,193 @@
       box-sizing: border-box;
       margin: 0;
       padding: 0;
-      font-family: Arial, sans-serif;
+      font-family: Inter, Arial, sans-serif;
     }
 
     body {
       min-height: 100vh;
-      background: linear-gradient(135deg, #111827, #1e3a8a);
-      color: #111827;
+      background:
+        radial-gradient(circle at top left, rgba(59, 130, 246, .18), transparent 30%),
+        radial-gradient(circle at bottom right, rgba(16, 185, 129, .16), transparent 35%),
+        linear-gradient(135deg, #0f172a, #1e3a8a);
       padding: 20px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      color: #111827;
     }
 
     .page {
       width: 100%;
-      max-width: 720px;
+      max-width: 760px;
+      margin: 0 auto;
     }
 
     .card {
-      width: 100%;
-      background: white;
-      border-radius: 26px;
-      padding: 28px;
-      box-shadow: 0 20px 50px rgba(0, 0, 0, .22);
-      text-align: center;
+      background: rgba(255, 255, 255, 0.96);
+      backdrop-filter: blur(18px);
+      border: 1px solid rgba(255, 255, 255, .35);
+      border-radius: 30px;
+      padding: 30px;
+      box-shadow: 0 30px 80px rgba(0, 0, 0, .25);
       margin-bottom: 18px;
     }
 
     .icon {
-      width: 72px;
-      height: 72px;
+      width: 82px;
+      height: 82px;
       border-radius: 999px;
-      margin: 0 auto 18px;
+      margin: 0 auto 22px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 34px;
-      background: #dbeafe;
-      color: #1e40af;
+      font-size: 38px;
+      background: linear-gradient(135deg, #dbeafe, #bfdbfe);
+      color: #1d4ed8;
+      box-shadow: 0 15px 40px rgba(37, 99, 235, .18);
     }
 
     .icon.success {
-      background: #dcfce7;
+      background: linear-gradient(135deg, #dcfce7, #bbf7d0);
       color: #166534;
+      box-shadow: 0 15px 40px rgba(22, 163, 74, .18);
     }
 
     .icon.error {
-      background: #fee2e2;
+      background: linear-gradient(135deg, #fee2e2, #fecaca);
       color: #991b1b;
+      box-shadow: 0 15px 40px rgba(220, 38, 38, .18);
     }
 
     h1 {
-      font-size: 28px;
-      margin-bottom: 10px;
+      font-size: 34px;
+      line-height: 1.1;
+      margin-bottom: 14px;
+      text-align: center;
+      color: #0f172a;
     }
 
-    p {
-      color: #4b5563;
-      line-height: 1.5;
-      margin-bottom: 8px;
+    .subtitle {
+      text-align: center;
+      color: #64748b;
+      font-size: 16px;
+      line-height: 1.6;
+      margin-bottom: 26px;
     }
 
     .details {
-      background: #f9fafb;
-      border: 1px solid #e5e7eb;
-      border-radius: 16px;
-      padding: 16px;
-      margin: 20px 0;
-      text-align: left;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 22px;
+      padding: 18px;
+      margin-top: 18px;
     }
 
-    .details div {
+    .detail-row {
       display: flex;
       justify-content: space-between;
-      gap: 12px;
-      padding: 8px 0;
+      gap: 16px;
+      padding: 14px 0;
       border-bottom: 1px solid #e5e7eb;
     }
 
-    .details div:last-child {
+    .detail-row:last-child {
       border-bottom: none;
     }
 
-    .details span:first-child {
-      color: #6b7280;
+    .detail-label {
+      color: #64748b;
+      font-weight: 600;
     }
 
-    .details span:last-child {
-      font-weight: bold;
+    .detail-value {
       text-align: right;
+      font-weight: 700;
+      color: #111827;
+    }
+
+    .invite-image-card {
+      background: white;
+      border-radius: 28px;
+      overflow: hidden;
+      margin-top: 20px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, .15);
+      border: 1px solid rgba(255, 255, 255, .6);
+    }
+
+    .invite-image-card img {
+      width: 100%;
+      display: block;
+      object-fit: cover;
+      max-height: 980px;
+    }
+
+    .maps-card {
+      margin-top: 20px;
+      background: white;
+      border-radius: 28px;
+      overflow: hidden;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, .15);
+    }
+
+    .maps-header {
+      padding: 22px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+
+    .maps-header h3 {
+      font-size: 22px;
+      margin-bottom: 8px;
+      color: #0f172a;
+    }
+
+    .maps-header p {
+      color: #64748b;
+      line-height: 1.5;
+    }
+
+    .maps-frame {
+      width: 100%;
+      height: 360px;
+      border: none;
+    }
+
+    .maps-actions {
+      padding: 20px;
     }
 
     button {
       width: 100%;
       border: none;
-      border-radius: 14px;
-      padding: 15px 18px;
-      background: #16a34a;
-      color: white;
+      border-radius: 18px;
+      padding: 18px;
       font-size: 16px;
-      font-weight: bold;
+      font-weight: 700;
       cursor: pointer;
-      margin-top: 14px;
-      transition: .2s;
+      transition: .25s;
     }
 
-    button:hover {
-      background: #15803d;
+    .btn-primary {
+      background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      color: white;
+      box-shadow: 0 15px 40px rgba(37, 99, 235, .28);
     }
 
-    button:disabled {
-      opacity: .6;
-      cursor: not-allowed;
+    .btn-success {
+      background: linear-gradient(135deg, #16a34a, #15803d);
+      color: white;
+      box-shadow: 0 15px 40px rgba(22, 163, 74, .24);
     }
 
     .btn-secondary {
-      background: #e5e7eb;
+      background: #e2e8f0;
       color: #111827;
-    }
-
-    .btn-secondary:hover {
-      background: #d1d5db;
     }
 
     .message {
       display: none;
-      padding: 14px;
-      border-radius: 14px;
-      margin-top: 16px;
+      margin-top: 18px;
+      padding: 16px;
+      border-radius: 18px;
       font-size: 14px;
+      font-weight: 600;
     }
 
     .message.success {
@@ -210,206 +217,236 @@
       color: #991b1b;
     }
 
-    .message.info {
-      display: block;
-      background: #dbeafe;
-      color: #1e40af;
-    }
-
     .ticket-card {
       display: none;
-      background: #ffffff;
-      border-radius: 26px;
-      padding: 26px;
-      box-shadow: 0 20px 50px rgba(0, 0, 0, .22);
-      text-align: center;
     }
 
     .ticket-card.active {
       display: block;
     }
 
-    .ticket-card.used {
-      border: 3px solid #dc2626;
-      background: #fef2f2;
-    }
-
-    .used-alert {
-      display: none;
-      background: #dc2626;
-      color: white;
-      font-weight: bold;
-      font-size: 20px;
-      border-radius: 16px;
-      padding: 16px;
-      margin-bottom: 18px;
-    }
-
-    .used-alert.active {
-      display: block;
-    }
-
-    .used-details {
-      display: none;
-      background: #fee2e2;
-      color: #991b1b;
-      border: 1px solid #fecaca;
-      border-radius: 14px;
-      padding: 12px;
-      margin-top: 14px;
-      font-size: 14px;
-      line-height: 1.45;
-    }
-
-    .used-details.active {
-      display: block;
-    }
-
     .ticket-preview {
-      width: 280px;
-      max-width: 100%;
-      margin: 0 auto;
-      background: white;
-      border-radius: 20px;
-      padding: 20px;
+      margin-top: 20px;
+      background: #ffffff;
+      border-radius: 28px;
+      padding: 28px;
       border: 1px solid #e5e7eb;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, .08);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, .12);
+      text-align: center;
     }
 
     .ticket-preview h2 {
-      font-size: 20px;
+      font-size: 26px;
       margin-bottom: 8px;
+      color: #0f172a;
     }
 
-    .ticket-preview .event-meta {
-      color: #6b7280;
-      font-size: 13px;
-      margin-bottom: 14px;
-      line-height: 1.4;
+    .event-meta {
+      color: #64748b;
+      line-height: 1.5;
+      margin-bottom: 20px;
     }
 
     #qrCanvas {
-      width: 190px !important;
-      height: 190px !important;
-      margin: 12px auto;
+      width: 230px !important;
+      height: 230px !important;
+      margin: 0 auto 20px;
       display: block;
     }
 
     .qr-code-text {
-      font-weight: bold;
-      font-size: 14px;
+      background: #f1f5f9;
+      padding: 14px;
+      border-radius: 16px;
+      font-weight: 700;
+      margin-bottom: 16px;
       word-break: break-word;
-      background: #f3f4f6;
-      padding: 10px;
-      border-radius: 10px;
-      margin: 12px 0;
     }
 
     .guest-name {
-      color: #111827;
-      font-size: 16px;
-      font-weight: bold;
-      margin-top: 8px;
+      font-size: 18px;
+      font-weight: 700;
+      color: #0f172a;
     }
 
     .ticket-type {
-      color: #6b7280;
-      font-size: 13px;
-      margin-top: 4px;
+      color: #64748b;
+      margin-top: 6px;
     }
 
-    @media (max-width: 640px) {
+    .ticket-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-top: 20px;
+    }
+
+    .used-alert {
+      margin-top: 18px;
+      background: linear-gradient(135deg, #fee2e2, #fecaca);
+      border: 1px solid #fca5a5;
+      border-radius: 22px;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .used-alert strong {
+      display: block;
+      font-size: 18px;
+      color: #991b1b;
+      margin-bottom: 8px;
+    }
+
+    .used-alert span {
+      color: #7f1d1d;
+      font-size: 15px;
+      line-height: 1.5;
+    }
+
+    @media(max-width: 640px) {
+
       body {
-        padding: 12px;
-        align-items: flex-start;
+        padding: 14px;
       }
 
-      .card,
-      .ticket-card {
+      .card {
         padding: 22px;
+        border-radius: 24px;
       }
 
       h1 {
-        font-size: 24px;
+        font-size: 28px;
       }
 
-      .details div {
+      .detail-row {
         flex-direction: column;
-        gap: 4px;
       }
 
-      .details span:last-child {
+      .detail-value {
         text-align: left;
+      }
+
+      .ticket-actions {
+        grid-template-columns: 1fr;
+      }
+
+      .maps-frame {
+        height: 280px;
       }
     }
   </style>
 </head>
+
 <body>
+
   <div class="page">
+
     <div class="card">
+
       <div class="icon" id="statusIcon">⏳</div>
+
       <h1 id="title">Confirmar presença</h1>
-      <p id="subtitle">Carregando seus dados...</p>
+
+      <p class="subtitle" id="subtitle">
+        Carregando informações do seu convite...
+      </p>
 
       <div class="details" id="detailsBox" style="display:none;"></div>
 
-      <button id="confirmButton" onclick="confirmPresence()" disabled>Confirmar minha presença</button>
+      <div id="inviteContainer" style="display:none;"></div>
+
+      <div id="mapsContainer" style="display:none;"></div>
+
+      <div id="usedAlertContainer"></div>
+
+      <button
+        id="confirmButton"
+        class="btn-success"
+        onclick="confirmPresence()"
+        disabled
+        style="margin-top:22px;">
+        Confirmar minha presença
+      </button>
 
       <div id="message" class="message"></div>
     </div>
 
-    <div class="ticket-card" id="ticketCard">
-      <div class="used-alert" id="usedAlert">INGRESSO JÁ UTILIZADO</div>
-      <h1 id="ticketTitle">Seu ingresso foi gerado 🎟️</h1>
-      <p id="ticketSubtitle">Apresente este QR Code na entrada do evento.</p>
+    <div class="card ticket-card" id="ticketCard">
 
-      <div class="ticket-preview" id="ticketPreview">
+      <div class="ticket-preview">
+
         <h2 id="ticketEventName">Evento</h2>
+
         <div class="event-meta" id="ticketEventMeta">-</div>
+
         <canvas id="qrCanvas"></canvas>
+
         <div class="qr-code-text" id="ticketCodeText">-</div>
+
         <div class="guest-name" id="ticketGuestName">-</div>
-        <div class="ticket-type">Ingresso individual</div>
-        <div class="used-details" id="usedDetails"></div>
+
+        <div class="ticket-type">
+          Ingresso individual
+        </div>
+
       </div>
 
-      <button id="downloadPdfButton" onclick="downloadTicketPDF()">Baixar meu ingresso em PDF</button>
-      <button class="btn-secondary" onclick="copyTicketCode()">Copiar código do ingresso</button>
+      <div class="ticket-actions">
+
+        <button class="btn-primary" onclick="downloadTicketPDF()">
+          Baixar PDF
+        </button>
+
+        <button class="btn-secondary" onclick="copyTicketCode()">
+          Copiar código
+        </button>
+
+      </div>
+
     </div>
+
   </div>
 
   <script>
+
     let supabaseClient = null;
     let guestId = null;
     let guestData = null;
     let accessCodeData = null;
 
-    const savedUrl = localStorage.getItem('supabase_url') || 'https://pfyctxoikdrephjogdtm.supabase.co';
-    const savedKey = localStorage.getItem('supabase_key') || 'sb_publishable_h_5hK_HTT-XJ4WUoOGzkGg_tqkBDLjv';
+    const savedUrl =
+      localStorage.getItem('supabase_url')
+      || 'https://pfyctxoikdrephjogdtm.supabase.co';
+
+    const savedKey =
+      localStorage.getItem('supabase_key')
+      || 'sb_publishable_h_5hK_HTT-XJ4WUoOGzkGg_tqkBDLjv';
 
     initializePage();
 
     async function initializePage() {
+
       const params = new URLSearchParams(window.location.search);
+
       guestId = params.get('guest_id');
 
       if (!guestId) {
-        setError('Link inválido', 'O link de confirmação está sem o código do convidado.');
-        return;
-      }
-
-      if (!savedUrl || !savedKey) {
-        setError('Configuração ausente', 'Não foi possível conectar ao Supabase neste navegador.');
+        setError(
+          'Link inválido',
+          'O link enviado está incompleto.'
+        );
         return;
       }
 
       const { createClient } = supabase;
+
       supabaseClient = createClient(savedUrl, savedKey);
 
       await loadGuest();
     }
 
     async function loadGuest() {
+
       const { data, error } = await supabaseClient
         .from('event_guests')
         .select(`
@@ -419,77 +456,63 @@
             name,
             event_date,
             event_time,
-            location
+            location,
+            google_maps_link,
+            invitation_image_url
           )
         `)
         .eq('id', guestId)
         .maybeSingle();
 
-      if (error) {
-        setError('Erro ao carregar', error.message);
-        return;
-      }
-
-      if (!data) {
-        setError('Convidado não encontrado', 'Não encontramos este convite na lista do evento.');
+      if (error || !data) {
+        setError(
+          'Convite não encontrado',
+          error?.message || 'Não encontramos este convidado.'
+        );
         return;
       }
 
       guestData = data;
 
       if (data.access_code_id) {
-        await loadExistingAccessCode(data.access_code_id);
-      } else {
-        await loadExistingAccessCodeByGuest(data.id);
+        await loadAccessCode(data.access_code_id);
       }
 
       renderGuest();
     }
 
-    async function loadExistingAccessCode(accessCodeId) {
-      const { data, error } = await supabaseClient
+    async function loadAccessCode(id) {
+
+      const { data } = await supabaseClient
         .from('access_codes')
         .select('*')
-        .eq('id', accessCodeId)
+        .eq('id', id)
         .maybeSingle();
 
-      if (!error && data) {
-        accessCodeData = data;
-      }
-    }
-
-    async function loadExistingAccessCodeByGuest(sourceGuestId) {
-      const { data, error } = await supabaseClient
-        .from('access_codes')
-        .select('*')
-        .eq('source_guest_id', sourceGuestId)
-        .maybeSingle();
-
-      if (!error && data) {
-        accessCodeData = data;
-
-        if (!guestData.access_code_id) {
-          await supabaseClient
-            .from('event_guests')
-            .update({ access_code_id: data.id })
-            .eq('id', guestData.id);
-
-          guestData.access_code_id = data.id;
-        }
-      }
+      accessCodeData = data || null;
     }
 
     function renderGuest() {
+
       const isConfirmed = guestData.confirmed === true;
-
-      document.getElementById('statusIcon').textContent = isConfirmed ? '✅' : '👋';
-      document.getElementById('statusIcon').className = isConfirmed ? 'icon success' : 'icon';
-      document.getElementById('title').textContent = isConfirmed ? 'Presença confirmada' : 'Confirme sua presença';
-      document.getElementById('subtitle').textContent = isConfirmed
-        ? 'Obrigado! Seu ingresso individual está disponível abaixo.'
-        : `Olá, ${guestData.guest_name}. Confirme abaixo sua presença no evento.`;
-
       const event = guestData.events || {};
+
+      document.getElementById('statusIcon').textContent =
+        isConfirmed ? '✅' : '🎉';
+
+      document.getElementById('statusIcon').className =
+        isConfirmed ? 'icon success' : 'icon';
+
+      document.getElementById('title').textContent =
+        isConfirmed
+          ? 'Presença confirmada'
+          : `Olá, ${guestData.guest_name}`;
+
+      document.getElementById('subtitle').textContent =
+        isConfirmed
+          ? 'Seu ingresso individual já está disponível abaixo.'
+          : 'Confirme sua presença no evento e gere seu QR Code individual.';
+
       const rows = [
         ['Convidado', guestData.guest_name],
         ['Grupo', guestData.group_name],
@@ -497,38 +520,143 @@
         ['Data', formatDateBR(event.event_date)],
         ['Hora', formatTime(event.event_time)],
         ['Local', event.location]
-      ].filter(row => row[1]);
+      ].filter(r => r[1]);
 
       document.getElementById('detailsBox').style.display = 'block';
-      document.getElementById('detailsBox').innerHTML = rows.map(([label, value]) => `
-        <div><span>${escapeHTML(label)}</span><span>${escapeHTML(value)}</span></div>
-      `).join('');
+
+      document.getElementById('detailsBox').innerHTML =
+        rows.map(([label, value]) => `
+          <div class="detail-row">
+            <div class="detail-label">${escapeHTML(label)}</div>
+            <div class="detail-value">${escapeHTML(value)}</div>
+          </div>
+        `).join('');
+
+      renderInviteImage();
+      renderGoogleMaps();
 
       const button = document.getElementById('confirmButton');
+
       button.disabled = isConfirmed;
-      button.textContent = isConfirmed ? 'Presença confirmada' : 'Confirmar minha presença';
+
+      button.textContent =
+        isConfirmed
+          ? 'Presença confirmada'
+          : 'Confirmar minha presença';
 
       if (isConfirmed && accessCodeData) {
-        renderTicket(true);
-      } else if (isConfirmed && !accessCodeData) {
-        createAccessCodeForGuest();
+        renderTicket();
       }
     }
 
-    async function confirmPresence() {
-      if (!guestData) return;
+    function renderInviteImage() {
 
-      const button = document.getElementById('confirmButton');
+      const container = document.getElementById('inviteContainer');
+
+      const imageUrl =
+        guestData?.events?.invitation_image_url;
+
+      if (!imageUrl) {
+        container.style.display = 'none';
+        return;
+      }
+
+      container.style.display = 'block';
+
+      container.innerHTML = `
+        <div class="invite-image-card">
+          <img
+            src="${escapeHTML(imageUrl)}"
+            alt="Convite do evento" />
+        </div>
+      `;
+    }
+
+    function renderGoogleMaps() {
+
+      const container =
+        document.getElementById('mapsContainer');
+
+      const event = guestData?.events || {};
+
+      const mapsLink =
+        event.google_maps_link;
+
+      if (!mapsLink) {
+        container.style.display = 'none';
+        container.innerHTML = '';
+        return;
+      }
+
+      let embedUrl = '';
+
+      try {
+
+        if (mapsLink.includes('/embed?')) {
+
+          embedUrl = mapsLink;
+
+        } else {
+
+          const encoded =
+            encodeURIComponent(event.location || mapsLink);
+
+          embedUrl =
+            `https://www.google.com/maps?q=${encoded}&output=embed`;
+        }
+
+      } catch {
+
+        const encoded =
+          encodeURIComponent(event.location || '');
+
+        embedUrl =
+          `https://www.google.com/maps?q=${encoded}&output=embed`;
+      }
+
+      container.style.display = 'block';
+
+      container.innerHTML = `
+        <div class="maps-card">
+
+          <div class="maps-header">
+            <h3>📍 Como chegar</h3>
+            <p>${escapeHTML(event.location || '')}</p>
+          </div>
+
+          <iframe
+            class="maps-frame"
+            loading="lazy"
+            allowfullscreen
+            referrerpolicy="no-referrer-when-downgrade"
+            src="${embedUrl}">
+          </iframe>
+
+          <div class="maps-actions">
+            <button
+              class="btn-primary"
+              onclick="window.open('${escapeHTML(mapsLink)}', '_blank')">
+              Abrir rota no Google Maps
+            </button>
+          </div>
+
+        </div>
+      `;
+    }
+
+    async function confirmPresence() {
+
+      const button =
+        document.getElementById('confirmButton');
+
       button.disabled = true;
       button.textContent = 'Confirmando...';
-
-      const now = new Date().toISOString();
 
       const { data, error } = await supabaseClient
         .from('event_guests')
         .update({
           confirmed: true,
-          confirmed_at: now
+          confirmed_at: new Date().toISOString()
         })
         .eq('id', guestId)
         .select(`
@@ -538,52 +666,52 @@
             name,
             event_date,
             event_time,
-            location
+            location,
+            google_maps_link,
+            invitation_image_url
           )
         `)
         .maybeSingle();
 
       if (error) {
-        showMessage('Erro ao confirmar presença: ' + error.message, 'error');
+
         button.disabled = false;
         button.textContent = 'Confirmar minha presença';
+
+        showMessage(error.message, 'error');
         return;
       }
 
       guestData = data;
 
-      await createAccessCodeForGuest();
+      await createAccessCode();
+
       renderGuest();
-      showMessage('Presença confirmada e ingresso individual gerado com sucesso.', 'success');
+
+      showMessage(
+        'Presença confirmada com sucesso.',
+        'success'
+      );
     }
 
-    async function createAccessCodeForGuest() {
-      if (!guestData || accessCodeData) return;
-
-      await loadExistingAccessCodeByGuest(guestData.id);
-
-      if (accessCodeData) {
-        renderTicket(true);
-        return;
-      }
+    async function createAccessCode() {
 
       const event = guestData.events || {};
-      const qrCode = generateIndividualCode(event.name || 'EVENTO', guestData.guest_name || 'CONVIDADO');
+
+      const code = generateCode();
 
       const payload = {
-        event_id: event.id || guestData.event_id,
-        event_name: event.name || 'Evento',
-        event_date: event.event_date || null,
-        event_time: event.event_time || null,
-        ticket_type: 'individual',
-        customer_name: guestData.guest_name || null,
-        customer_whatsapp: guestData.whatsapp || null,
-        table_number: null,
-        seat_number: null,
-        qr_code: qrCode,
-        status: 'pending',
+        event_id: event.id,
+        event_name: event.name,
+        event_date: event.event_date,
+        event_time: event.event_time,
+        qr_code: code,
+        customer_name: guestData.guest_name,
+        customer_whatsapp: guestData.whatsapp,
+        source_guest_id: guestData.id,
         accessed: false,
-        source_guest_id: guestData.id
+        status: 'pending',
+        ticket_type: 'individual'
       };
 
       const { data, error } = await supabaseClient
@@ -593,7 +721,7 @@
         .maybeSingle();
 
       if (error) {
-        showMessage('Presença confirmada, mas houve erro ao gerar ingresso: ' + error.message, 'error');
+        showMessage(error.message, 'error');
         return;
       }
 
@@ -601,237 +729,237 @@
 
       await supabaseClient
         .from('event_guests')
-        .update({ access_code_id: data.id })
+        .update({
+          access_code_id: data.id
+        })
         .eq('id', guestData.id);
 
-      guestData.access_code_id = data.id;
-      renderTicket(true);
+      renderTicket();
     }
 
-    function renderTicket(shouldScroll = false) {
+    function renderTicket() {
+
       if (!accessCodeData) return;
 
       const event = guestData.events || {};
-      const card = document.getElementById('ticketCard');
-      const usedAlert = document.getElementById('usedAlert');
-      const usedDetails = document.getElementById('usedDetails');
-      const ticketTitle = document.getElementById('ticketTitle');
-      const ticketSubtitle = document.getElementById('ticketSubtitle');
-      const downloadButton = document.getElementById('downloadPdfButton');
-      const isUsed = accessCodeData.accessed === true;
 
-      document.getElementById('ticketEventName').textContent = event.name || accessCodeData.event_name || 'Evento';
-      document.getElementById('ticketEventMeta').textContent = `${formatDateBR(event.event_date || accessCodeData.event_date) || '-'} • ${formatTime(event.event_time || accessCodeData.event_time) || '-'} • ${event.location || '-'}`;
-      document.getElementById('ticketCodeText').textContent = accessCodeData.qr_code;
-      document.getElementById('ticketGuestName').textContent = guestData.guest_name || accessCodeData.customer_name || 'Convidado';
+      const alreadyUsed =
+        accessCodeData.accessed === true;
 
-      card.classList.add('active');
-      card.classList.toggle('used', isUsed);
-      usedAlert.classList.toggle('active', isUsed);
-      usedDetails.classList.toggle('active', isUsed);
+      const accessedAt =
+        accessCodeData.accessed_at
+        || accessCodeData.used_at;
 
-      if (isUsed) {
-        ticketTitle.textContent = 'Este ingresso já foi utilizado';
-        ticketSubtitle.textContent = 'Este QR Code já passou pela bipagem e não deve ser usado novamente.';
-        downloadButton.textContent = 'Baixar PDF com aviso de utilizado';
-        usedDetails.innerHTML = `
-          <strong>Status:</strong> Já utilizado<br>
-          <strong>Data/Hora do acesso:</strong> ${formatDateTimeBR(accessCodeData.accessed_at || accessCodeData.used_at) || '-'}
+      document.getElementById('ticketCard')
+        .classList.add('active');
+
+      document.getElementById('ticketEventName')
+        .textContent = event.name || '';
+
+      document.getElementById('ticketEventMeta')
+        .textContent =
+        `${formatDateBR(event.event_date)} • ${formatTime(event.event_time)} • ${event.location || ''}`;
+
+      document.getElementById('ticketCodeText')
+        .textContent = accessCodeData.qr_code;
+
+      document.getElementById('ticketGuestName')
+        .textContent = guestData.guest_name;
+
+      QRCode.toCanvas(
+        document.getElementById('qrCanvas'),
+        accessCodeData.qr_code,
+        {
+          width: 240,
+          margin: 2
+        }
+      );
+
+      if (alreadyUsed) {
+
+        document.getElementById('statusIcon').textContent = '🚫';
+
+        document.getElementById('statusIcon').className =
+          'icon error';
+
+        document.getElementById('title').textContent =
+          'QR Code já utilizado';
+
+        document.getElementById('subtitle').innerHTML = `
+          Este ingresso já foi utilizado anteriormente.
         `;
+
+        document.getElementById('usedAlertContainer').innerHTML = `
+          <div class="used-alert">
+            <strong>Entrada já registrada</strong>
+            <span>
+              Este QR Code foi utilizado em
+              ${formatDateTimeBR(accessedAt)}.
+            </span>
+          </div>
+        `;
+
+        document.getElementById('confirmButton')
+          .style.display = 'none';
+
       } else {
-        ticketTitle.textContent = 'Seu ingresso foi gerado 🎟️';
-        ticketSubtitle.textContent = 'Apresente este QR Code na entrada do evento.';
-        downloadButton.textContent = 'Baixar meu ingresso em PDF';
-        usedDetails.innerHTML = '';
+
+        document.getElementById('statusIcon').textContent = '✅';
+
+        document.getElementById('statusIcon').className =
+          'icon success';
+
+        document.getElementById('title').textContent =
+          'Presença confirmada';
+
+        document.getElementById('subtitle').innerHTML =
+          'Seu ingresso individual já está disponível abaixo.';
       }
 
-      const canvas = document.getElementById('qrCanvas');
-      QRCode.toCanvas(canvas, accessCodeData.qr_code, {
-        width: 220,
-        margin: 2,
-        errorCorrectionLevel: 'H'
-      });
+      setTimeout(() => {
 
-      if (shouldScroll) {
-        setTimeout(() => {
-          card.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 300);
-      }
+        document.getElementById('ticketCard')
+          .scrollIntoView({
+            behavior: 'smooth'
+          });
+
+      }, 400);
     }
 
     async function downloadTicketPDF() {
-      if (!accessCodeData) {
-        showMessage('Ingresso ainda não foi gerado.', 'error');
-        return;
-      }
 
-      const canvas = document.getElementById('qrCanvas');
+      const canvas =
+        document.getElementById('qrCanvas');
+
       const image = canvas.toDataURL('image/png');
+
       const { jsPDF } = window.jspdf;
+
       const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
         format: [80, 120]
       });
 
-      const event = guestData.events || {};
-      const eventName = event.name || accessCodeData.event_name || 'Evento';
-      const eventDate = formatDateBR(event.event_date || accessCodeData.event_date);
-      const eventTime = formatTime(event.event_time || accessCodeData.event_time);
-      const location = event.location || '';
-      const guestName = guestData.guest_name || accessCodeData.customer_name || 'Convidado';
+      pdf.setFontSize(16);
 
-      const isUsed = accessCodeData.accessed === true;
+      pdf.text(
+        guestData.events.name || 'Evento',
+        40,
+        12,
+        { align: 'center' }
+      );
 
-      pdf.setFillColor(isUsed ? 254 : 255, isUsed ? 242 : 255, isUsed ? 242 : 255);
-      pdf.rect(0, 0, 80, 120, 'F');
-
-      if (isUsed) {
-        pdf.setFillColor(220, 38, 38);
-        pdf.roundedRect(12, 4, 56, 9, 2, 2, 'F');
-        pdf.setTextColor(255, 255, 255);
-        pdf.setFont('helvetica', 'bold');
-        pdf.setFontSize(9);
-        pdf.text('INGRESSO JÁ UTILIZADO', 40, 10, { align: 'center' });
-      }
-
-      pdf.setTextColor(17, 24, 39);
-      pdf.setFont('helvetica', 'bold');
-      pdf.setFontSize(13);
-      pdf.text(eventName, 40, isUsed ? 20 : 10, { align: 'center' });
-
-      pdf.setFont('helvetica', 'normal');
-      pdf.setFontSize(9);
-
-      if (eventDate) pdf.text(`Data: ${eventDate}`, 40, isUsed ? 26 : 16, { align: 'center' });
-      if (eventTime) pdf.text(`Hora: ${eventTime}`, 40, isUsed ? 31 : 21, { align: 'center' });
-
-      if (location) {
-        const locationLines = pdf.splitTextToSize(`Local: ${location}`, 68);
-        pdf.text(locationLines, 40, 26, { align: 'center' });
-      }
-
-      pdf.addImage(image, 'PNG', 17, isUsed ? 43 : 34, 46, 46);
-
-      pdf.setFillColor(243, 244, 246);
-      pdf.roundedRect(8, 84, 64, 16, 3, 3, 'F');
-
-      pdf.setTextColor(17, 24, 39);
-      pdf.setFont('helvetica', 'bold');
       pdf.setFontSize(10);
 
-      const codeLines = pdf.splitTextToSize(accessCodeData.qr_code, 58);
-      pdf.text(codeLines, 40, 90, { align: 'center' });
+      pdf.text(
+        formatDateBR(guestData.events.event_date),
+        40,
+        18,
+        { align: 'center' }
+      );
 
-      pdf.setTextColor(17, 24, 39);
-      pdf.setFont('helvetica', 'bold');
-      pdf.setFontSize(10);
-      pdf.text(guestName, 40, 106, { align: 'center' });
+      pdf.addImage(image, 'PNG', 17, 26, 46, 46);
 
-      pdf.setTextColor(107, 114, 128);
-      pdf.setFont('helvetica', 'normal');
-      pdf.setFontSize(9);
-      pdf.text('Ingresso individual', 40, 112, { align: 'center' });
+      pdf.text(
+        accessCodeData.qr_code,
+        40,
+        80,
+        { align: 'center' }
+      );
 
-      const fileName = `${eventName}-${guestName}-ingresso.pdf`.replace(/[^a-zA-Z0-9.-]/g, '-');
-      await baixarPDFNoCelular(pdf, fileName);
-    }
-
-    async function baixarPDFNoCelular(pdf, fileName) {
-      const pdfBlob = pdf.output('blob');
-      const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
-
-      if (navigator.canShare && navigator.canShare({ files: [pdfFile] })) {
-        try {
-          await navigator.share({
-            files: [pdfFile],
-            title: fileName,
-            text: ''
-          });
-          showMessage('PDF pronto para compartilhar.', 'success');
-          return;
-        } catch (error) {
-          if (error.name === 'AbortError') return;
-        }
-      }
-
-      const pdfUrl = URL.createObjectURL(pdfBlob);
-      const link = document.createElement('a');
-      link.href = pdfUrl;
-      link.download = fileName;
-      link.style.display = 'none';
-      link.rel = 'noopener';
-
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-      setTimeout(() => URL.revokeObjectURL(pdfUrl), 3000);
-      showMessage('PDF baixado com sucesso.', 'success');
+      pdf.save('ingresso.pdf');
     }
 
     async function copyTicketCode() {
-      if (!accessCodeData) return;
-      await navigator.clipboard.writeText(accessCodeData.qr_code);
-      showMessage('Código do ingresso copiado.', 'success');
+
+      await navigator.clipboard.writeText(
+        accessCodeData.qr_code
+      );
+
+      showMessage(
+        'Código copiado.',
+        'success'
+      );
     }
 
-    function generateIndividualCode(eventName, guestName) {
-      const cleanEvent = String(eventName || 'EVENTO')
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[^a-zA-Z0-9]/g, '')
-        .toUpperCase()
-        .substring(0, 8);
+    function generateCode() {
 
-      const cleanGuest = String(guestName || 'CONVIDADO')
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[^a-zA-Z0-9]/g, '')
-        .toUpperCase()
-        .substring(0, 4);
-
-      const randomPart = Math.random().toString(36).substring(2, 8).toUpperCase();
-      const timestamp = Date.now().toString().slice(-6);
-
-      return `${cleanEvent}-IND-${cleanGuest}${randomPart}${timestamp}`;
+      return (
+        'QR-' +
+        Math.random()
+          .toString(36)
+          .substring(2, 10)
+          .toUpperCase()
+      );
     }
 
     function setError(title, subtitle) {
-      document.getElementById('statusIcon').textContent = '⚠️';
-      document.getElementById('statusIcon').className = 'icon error';
-      document.getElementById('title').textContent = title;
-      document.getElementById('subtitle').textContent = subtitle;
-      document.getElementById('confirmButton').style.display = 'none';
+
+      document.getElementById('statusIcon')
+        .textContent = '⚠️';
+
+      document.getElementById('statusIcon')
+        .className = 'icon error';
+
+      document.getElementById('title')
+        .textContent = title;
+
+      document.getElementById('subtitle')
+        .textContent = subtitle;
+
+      document.getElementById('confirmButton')
+        .style.display = 'none';
     }
 
-    function formatDateBR(dateString) {
-      if (!dateString) return '';
-      const parts = String(dateString).split('-');
-      if (parts.length !== 3) return dateString;
+    function showMessage(text, type) {
+
+      const el =
+        document.getElementById('message');
+
+      el.textContent = text;
+      el.className = `message ${type}`;
+    }
+
+    function formatDateBR(date) {
+
+      if (!date) return '';
+
+      const parts = String(date).split('-');
+
+      if (parts.length !== 3) return date;
+
       return `${parts[2]}/${parts[1]}/${parts[0]}`;
     }
 
-    function formatTime(timeString) {
-      if (!timeString) return '';
-      return String(timeString).substring(0, 5);
-    }
-
     function formatDateTimeBR(dateString) {
-      if (!dateString) return '';
+
+      if (!dateString) return '-';
+
       const date = new Date(dateString);
-      if (Number.isNaN(date.getTime())) return dateString;
+
+      if (Number.isNaN(date.getTime())) {
+        return dateString;
+      }
+
       return date.toLocaleString('pt-BR', {
         day: '2-digit',
         month: '2-digit',
         year: 'numeric',
         hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit'
+        minute: '2-digit'
       });
     }
 
+    function formatTime(time) {
+
+      if (!time) return '';
+
+      return String(time).substring(0, 5);
+    }
+
     function escapeHTML(value) {
+
       return String(value || '')
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
@@ -840,11 +968,8 @@
         .replace(/'/g, '&#039;');
     }
 
-    function showMessage(text, type) {
-      const message = document.getElementById('message');
-      message.textContent = text;
-      message.className = `message ${type}`;
-    }
   </script>
+
 </body>
+
 </html>
