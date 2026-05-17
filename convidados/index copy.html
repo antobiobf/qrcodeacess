@@ -45,6 +45,42 @@
     to anon
     using (true)
     with check (true);
+
+    create table if not exists public.message_templates (
+      id uuid primary key default gen_random_uuid(),
+      nome text not null,
+      mensagem text not null,
+      status text not null default 'ativa' check (status in ('ativa','inativa')),
+      created_at timestamptz not null default now()
+    );
+
+    alter table public.message_templates enable row level security;
+
+    create policy "Permitir leitura anonima modelos de mensagem"
+    on public.message_templates
+    for select
+    to anon
+    using (true);
+
+    insert into public.message_templates (nome, mensagem, status)
+    values (
+      'Convite padrão',
+      'Olá, {{nome}} 👋
+
+Temos o prazer de convidar você para o evento *{{evento}}* ✨
+
+📅 *Data:* {{data}}
+⏰ *Hora:* {{hora}}
+📍 *Local:* {{local}}
+
+Sua presença é muito importante para nós ❤️
+
+Para confirmar sua participação, basta clicar no link abaixo:
+
+👉 {{link}}',
+      'ativa'
+    )
+    on conflict do nothing;
   -->
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -369,6 +405,80 @@
       border-radius: 18px;
     }
 
+
+    .accordion-card {
+      overflow: hidden;
+    }
+
+    .accordion-header {
+      width: 100%;
+      border: none;
+      background: transparent;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 0;
+      cursor: pointer;
+      color: #111827;
+      text-align: left;
+    }
+
+    .accordion-header:hover {
+      transform: none;
+    }
+
+    .accordion-title {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+    }
+
+    .accordion-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      background: #eff6ff;
+      color: #1d4ed8;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+
+    .accordion-title h2 {
+      margin-bottom: 4px;
+      font-size: 22px;
+      color: #111827;
+    }
+
+    .accordion-toggle {
+      background: #f3f4f6;
+      color: #111827;
+      border-radius: 999px;
+      padding: 10px 14px;
+      font-size: 13px;
+      font-weight: 900;
+      flex-shrink: 0;
+    }
+
+    .accordion-body {
+      display: none;
+      padding-top: 22px;
+      margin-top: 20px;
+      border-top: 1px solid #e5e7eb;
+    }
+
+    .accordion-card.active .accordion-body {
+      display: block;
+    }
+
+    .accordion-card.active .accordion-toggle {
+      background: #2563eb;
+      color: white;
+    }
+
     @media(max-width: 900px) {
       body { padding: 12px; }
       .grid-4,
@@ -452,114 +562,224 @@
       <div class="info-box summary-box"><span>Grupos</span><strong id="totalGroups">0</strong></div>
     </div>
 
-    <div class="card">
-      <h2 style="margin-bottom:18px;">Importar planilha</h2>
-      <div class="import-section">
-        <div class="form-group">
-          <label for="spreadsheetFile">Planilha Excel ou CSV</label>
-          <input type="file" id="spreadsheetFile" accept=".xlsx,.xls,.csv" />
-          <p class="small-text">A planilha deve conter as colunas: <strong>Nome do Convidado</strong>, <strong>Nome do Grupo</strong> e <strong>Whatsapp</strong>.</p>
+    <div class="card accordion-card active" id="accordionAddGuest">
+      <button class="accordion-header" type="button" onclick="toggleAccordion('accordionAddGuest')">
+        <div class="accordion-title">
+          <span class="accordion-icon">👤</span>
+          <div>
+            <h2>Adicionar convidado</h2>
+            <p class="small-text" style="margin-top:0;">Cadastre convidados avulsos sem precisar usar planilha.</p>
+          </div>
         </div>
-        <button id="importButton" class="btn-primary" onclick="importSpreadsheet()">Importar convidados</button>
+        <span class="accordion-toggle">Exibir</span>
+      </button>
+
+      <div class="accordion-body">
+        <div class="grid-3">
+          <div class="form-group">
+            <label for="singleGuestName">Nome do convidado</label>
+            <input id="singleGuestName" type="text" placeholder="Ex: Maria Silva" />
+          </div>
+
+          <div class="form-group">
+            <label for="singleGuestGroup">Grupo</label>
+            <input id="singleGuestGroup" type="text" placeholder="Ex: Família, Mesa 01, VIP" />
+          </div>
+
+          <div class="form-group">
+            <label for="singleGuestWhatsapp">WhatsApp</label>
+            <input id="singleGuestWhatsapp" type="text" placeholder="Ex: (81) 99999-9999" />
+          </div>
+        </div>
+
+        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:16px;">
+          <button id="addSingleGuestButton" class="btn-success" onclick="addSingleGuest()">Adicionar convidado</button>
+          <button class="btn-secondary" onclick="clearSingleGuestForm()">Limpar campos</button>
+        </div>
       </div>
     </div>
 
-    <div class="card">
-      <h2 style="margin-bottom:18px;">Mensagem padrão</h2>
-      <div class="form-group">
-        <label for="messageTemplate">Mensagem enviada ao convidado</label>
-        <textarea id="messageTemplate">🎉 *Você é nosso(a) convidado(a) especial!*
+    <div class="card accordion-card" id="accordionImport">
+      <button class="accordion-header" type="button" onclick="toggleAccordion('accordionImport')">
+        <div class="accordion-title">
+          <span class="accordion-icon">📥</span>
+          <div>
+            <h2>Importar planilha</h2>
+            <p class="small-text" style="margin-top:0;">Importe convidados em lote usando o modelo aceito pelo sistema.</p>
+          </div>
+        </div>
+        <span class="accordion-toggle">Exibir</span>
+      </button>
 
-Olá, {{nome}} 👋
+      <div class="accordion-body">
+        <div class="import-section">
+          <div class="form-group">
+            <label for="spreadsheetFile">Planilha Excel ou CSV</label>
+            <input type="file" id="spreadsheetFile" accept=".xlsx,.xls,.csv" />
+            <p class="small-text">A planilha deve conter as colunas: <strong>Nome do Convidado</strong>, <strong>Nome do Grupo</strong> e <strong>Whatsapp</strong>.</p>
+          </div>
+          <button id="importButton" class="btn-primary" onclick="importSpreadsheet()">Importar convidados</button>
+        </div>
+
+        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:14px;">
+          <button class="btn-secondary" onclick="downloadGuestSpreadsheetTemplate()">⬇️ Baixar modelo da planilha</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card accordion-card" id="accordionMessage">
+      <button class="accordion-header" type="button" onclick="toggleAccordion('accordionMessage')">
+        <div class="accordion-title">
+          <span class="accordion-icon">💬</span>
+          <div>
+            <h2>Mensagem padrão</h2>
+            <p class="small-text" style="margin-top:0;">Escolha um modelo ativo cadastrado no banco ou escreva uma mensagem avulsa.</p>
+          </div>
+        </div>
+        <span class="accordion-toggle">Exibir</span>
+      </button>
+
+      <div class="accordion-body">
+        <!-- <div style="display:flex;justify-content:flex-end;margin-bottom:16px;">
+          <button class="btn-secondary" onclick="reloadTemplates()">🔄 Atualizar modelos</button>
+        </div> -->
+
+        <div class="form-group" style="margin-bottom:18px;">
+          <label for="messageTemplateSelect">Modelo de mensagem</label>
+          <select id="messageTemplateSelect" onchange="applySelectedTemplate()">
+            <option value="">✍️ Mensagem avulsa / personalizada</option>
+          </select>
+          <p class="small-text">Apenas modelos com status <strong>ativa</strong> aparecem nessa lista.</p>
+        </div>
+
+        <div class="form-group">
+          <label for="messageTemplate">Mensagem enviada ao convidado</label>
+          <textarea id="messageTemplate">Olá, {{nome}} 👋
 
 Temos o prazer de convidar você para o evento *{{evento}}* ✨
 
 📅 *Data:* {{data}}
 ⏰ *Hora:* {{hora}}
 📍 *Local:* {{local}}
+🗺️ *Mapa:* {{maps}}
 
 Sua presença é muito importante para nós ❤️
 
 Para confirmar sua participação, basta clicar no link abaixo:
 
-👉 {{link}}
-
-Esperamos você para viver esse momento incrível conosco! 🚀</textarea>
-        <p class="small-text">Variáveis disponíveis: {{nome}}, {{grupo}}, {{evento}}, {{data}}, {{hora}}, {{local}}, {{link}}</p>
+👉 {{link}}</textarea>
+          <p class="small-text">Variáveis disponíveis: <strong>{{nome}}, {{grupo}}, {{evento}}, {{data}}, {{hora}}, {{local}}, {{maps}}, {{link}}</strong></p>
+        </div>
       </div>
     </div>
 
-    <div class="card">
-      <h2 style="margin-bottom:18px;">Envio em massa pela Z-API</h2>
+    <div class="card accordion-card" id="accordionSend">
+      <button class="accordion-header" type="button" onclick="toggleAccordion('accordionSend')">
+        <div class="accordion-title">
+          <span class="accordion-icon">🚀</span>
+          <div>
+            <h2>Envio em massa pela Z-API</h2>
+            <p class="small-text" style="margin-top:0;">Envie convites por lote, com intervalo e controle de erros.</p>
+          </div>
+        </div>
+        <span class="accordion-toggle">Exibir</span>
+      </button>
 
-      <div class="safe-send-box">
-        <h3>⚠️ Envio protegido</h3>
-        <p>O envio em massa usa lotes, intervalo entre mensagens, pula quem já recebeu e registra erros. Para reduzir risco de bloqueio, comece com lotes pequenos e aumente aos poucos.</p>
-      </div>
-
-      <div class="send-controls">
-        <div class="form-group">
-          <label for="batchLimit">Mensagens por lote</label>
-          <select id="batchLimit">
-            <option value="5">5 - teste</option>
-            <option value="10">10 - muito seguro</option>
-            <option value="20" selected>20 - seguro</option>
-            <option value="30">30 - moderado</option>
-            <option value="50">50 - maior risco</option>
-          </select>
+      <div class="accordion-body">
+        <div class="safe-send-box">
+          <h3>⚠️ Envio protegido</h3>
+          <p>O envio em massa usa lotes, intervalo entre mensagens, pula quem já recebeu e registra erros. Para reduzir risco de bloqueio, comece com lotes pequenos e aumente aos poucos.</p>
         </div>
 
-        <div class="form-group">
-          <label for="delaySeconds">Intervalo entre mensagens</label>
-          <select id="delaySeconds">
-            <option value="5">5 segundos</option>
-            <option value="8" selected>8 segundos</option>
-            <option value="12">12 segundos</option>
-            <option value="20">20 segundos</option>
-          </select>
+        <div class="send-controls">
+          <div class="form-group">
+            <label for="batchLimit">Mensagens por lote</label>
+            <select id="batchLimit">
+              <option value="5">5 - teste</option>
+              <option value="10">10 - muito seguro</option>
+              <option value="20" selected>20 - seguro</option>
+              <option value="30">30 - moderado</option>
+              <option value="50">50 - maior risco</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="delaySeconds">Intervalo entre mensagens</label>
+            <select id="delaySeconds">
+              <option value="5">5 segundos</option>
+              <option value="8" selected>8 segundos</option>
+              <option value="12">12 segundos</option>
+              <option value="20">20 segundos</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="pauseMinutes">Pausa recomendada após lote</label>
+            <select id="pauseMinutes">
+              <option value="2">2 minutos</option>
+              <option value="5" selected>5 minutos</option>
+              <option value="10">10 minutos</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>&nbsp;</label>
+            <button id="safeSendButton" class="btn-success" onclick="startZAPIBatchSend()">Iniciar envio em massa</button>
+          </div>
         </div>
 
-        <div class="form-group">
-          <label for="pauseMinutes">Pausa recomendada após lote</label>
-          <select id="pauseMinutes">
-            <option value="2">2 minutos</option>
-            <option value="5" selected>5 minutos</option>
-            <option value="10">10 minutos</option>
-          </select>
+        <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:14px;">
+          <button id="stopSendButton" class="btn-danger" onclick="stopBatchSend()" disabled>Parar envio</button>
+          <button class="btn-secondary" onclick="resetMessageSentForPending()">Liberar reenvio dos pendentes</button>
         </div>
 
-        <div class="form-group">
-          <label>&nbsp;</label>
-          <button id="safeSendButton" class="btn-success" onclick="startZAPIBatchSend()">Iniciar envio em massa</button>
+        <div id="sendProgress" class="send-progress">
+          <strong id="sendProgressTitle">Preparando envio...</strong>
+          <p id="sendProgressText" style="margin-top:8px;">-</p>
+          <div class="progress-bar"><div class="progress-fill" id="sendProgressFill"></div></div>
         </div>
-      </div>
-
-      <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:14px;">
-        <button id="stopSendButton" class="btn-danger" onclick="stopBatchSend()" disabled>Parar envio</button>
-        <button class="btn-secondary" onclick="resetMessageSentForPending()">Liberar reenvio dos pendentes</button>
-      </div>
-
-      <div id="sendProgress" class="send-progress">
-        <strong id="sendProgressTitle">Preparando envio...</strong>
-        <p id="sendProgressText" style="margin-top:8px;">-</p>
-        <div class="progress-bar"><div class="progress-fill" id="sendProgressFill"></div></div>
       </div>
     </div>
 
-    <div class="card">
-      <div class="tools">
-        <div class="form-group">
-          <label for="searchInput">Buscar convidado</label>
-          <input id="searchInput" type="text" placeholder="Nome, grupo ou WhatsApp" oninput="renderGuests()" />
+    <div class="card accordion-card" id="accordionSearch">
+      <button class="accordion-header" type="button" onclick="toggleAccordion('accordionSearch')">
+        <div class="accordion-title">
+          <span class="accordion-icon">🔎</span>
+          <div>
+            <h2>Buscar</h2>
+            <p class="small-text" style="margin-top:0;">Filtre convidados por nome, grupo ou WhatsApp.</p>
+          </div>
         </div>
-        <button class="btn-secondary" onclick="loadGuests()">Atualizar lista</button>
-        <button class="btn-warning" onclick="sendNextPendingZAPI()">Enviar próximo pendente</button>
+        <span class="accordion-toggle">Exibir</span>
+      </button>
+
+      <div class="accordion-body">
+        <div class="tools">
+          <div class="form-group">
+            <label for="searchInput">Buscar convidado</label>
+            <input id="searchInput" type="text" placeholder="Nome, grupo ou WhatsApp" oninput="renderGuests()" />
+          </div>
+          <button class="btn-secondary" onclick="loadGuests()">Atualizar lista</button>
+          <button class="btn-warning" onclick="sendNextPendingZAPI()">Enviar próximo pendente</button>
+        </div>
       </div>
     </div>
 
-    <div class="panel">
-      <h2 style="margin-bottom:16px;">Convidados do evento</h2>
-      <div id="guestsTableContainer"></div>
+    <div class="panel accordion-card active" id="accordionGuests">
+      <button class="accordion-header" type="button" onclick="toggleAccordion('accordionGuests')">
+        <div class="accordion-title">
+          <span class="accordion-icon">📋</span>
+          <div>
+            <h2>Convidados do evento</h2>
+            <p class="small-text" style="margin-top:0;">Lista de convidados cadastrados, status de envio e confirmação.</p>
+          </div>
+        </div>
+        <span class="accordion-toggle">Exibir</span>
+      </button>
+
+      <div class="accordion-body">
+        <div id="guestsTableContainer"></div>
+      </div>
     </div>
   </div>
 
@@ -568,6 +788,7 @@ let supabaseClient = null;
 let currentEventId = null;
 let currentEventData = null;
 let guests = [];
+let messageTemplates = [];
 let batchSending = false;
 let stopRequested = false;
 
@@ -590,6 +811,13 @@ document.getElementById('zapiInstanceId').value = savedZapiInstanceId;
 document.getElementById('zapiToken').value = savedZapiToken;
 document.getElementById('zapiClientToken').value = savedZapiClientToken;
 
+const singleGuestWhatsappInput = document.getElementById('singleGuestWhatsapp');
+if (singleGuestWhatsappInput) {
+  singleGuestWhatsappInput.addEventListener('input', e => {
+    e.target.value = formatPhoneInput(e.target.value);
+  });
+}
+
 initializePage();
 
 async function initializePage() {
@@ -604,6 +832,7 @@ async function initializePage() {
   if (savedUrl && savedKey) {
     connectSupabase(savedUrl, savedKey);
     await loadEvent();
+    await loadTemplates();
     await loadGuests();
   } else {
     toggleConfig();
@@ -645,14 +874,83 @@ async function saveConfig() {
 
   connectSupabase(url, key);
   await loadEvent();
+  await loadTemplates();
   await loadGuests();
   showMessage('Configurações salvas com sucesso.', 'success');
 }
 
+
+async function loadTemplates() {
+  if (!supabaseClient) return;
+
+  const select = document.getElementById('messageTemplateSelect');
+  if (!select) return;
+
+  select.innerHTML = '<option value="">✍️ Mensagem avulsa / personalizada</option>';
+
+  const { data, error } = await supabaseClient
+    .from('message_templates')
+    .select('id, nome, mensagem, status')
+    .eq('status', 'ativa')
+    .order('nome', { ascending: true });
+
+  if (error) {
+    console.error('Erro ao carregar modelos de mensagem:', error);
+    showMessage('Não foi possível carregar os modelos de mensagem.', 'warning');
+    return;
+  }
+
+  messageTemplates = data || [];
+
+  messageTemplates.forEach(template => {
+    const option = document.createElement('option');
+    option.value = template.id;
+    option.textContent = template.nome;
+    select.appendChild(option);
+  });
+}
+
+function applySelectedTemplate() {
+  const select = document.getElementById('messageTemplateSelect');
+  const modeInput = document.getElementById('messageTemplateMode');
+  const textarea = document.getElementById('messageTemplate');
+
+  if (!select || !textarea) return;
+
+  const templateId = select.value;
+
+  if (!templateId) {
+    if (modeInput) modeInput.value = 'Mensagem avulsa / personalizada';
+    textarea.focus();
+    return;
+  }
+
+  const template = messageTemplates.find(item => item.id === templateId);
+
+  if (!template) {
+    showMessage('Modelo não encontrado. Atualize os modelos e tente novamente.', 'error');
+    return;
+  }
+
+  textarea.value = template.mensagem || '';
+
+  if (modeInput) {
+    modeInput.value = `Modelo selecionado: ${template.nome}`;
+  }
+
+  showMessage(`Modelo "${template.nome}" carregado no campo mensagem.`, 'success');
+}
+
+async function reloadTemplates() {
+  await loadTemplates();
+  showMessage('Modelos de mensagem atualizados.', 'success');
+}
+
+
 async function loadEvent() {
   const { data, error } = await supabaseClient
     .from('events')
-    .select('id, name, event_date, event_time, location')
+    .select('id, name, event_date, event_time, location, google_maps_link')
     .eq('id', currentEventId)
     .maybeSingle();
 
@@ -730,6 +1028,97 @@ async function importSpreadsheet() {
     button.disabled = false;
     button.textContent = 'Importar convidados';
   }
+}
+
+
+async function addSingleGuest() {
+  if (!supabaseClient || !currentEventId) {
+    showMessage('Evento ou Supabase não carregado.', 'error');
+    return;
+  }
+
+  const button = document.getElementById('addSingleGuestButton');
+  const guestName = document.getElementById('singleGuestName').value.trim();
+  const groupName = document.getElementById('singleGuestGroup').value.trim();
+  const whatsapp = normalizePhone(document.getElementById('singleGuestWhatsapp').value);
+
+  if (!guestName) {
+    showMessage('Informe o nome do convidado.', 'error');
+    return;
+  }
+
+  if (!whatsapp) {
+    showMessage('Informe o WhatsApp do convidado.', 'error');
+    return;
+  }
+
+  button.disabled = true;
+  button.textContent = 'Adicionando...';
+
+  const { error } = await supabaseClient
+    .from('event_guests')
+    .insert({
+      event_id: currentEventId,
+      guest_name: guestName,
+      group_name: groupName || null,
+      whatsapp,
+      confirmed: false,
+      message_sent: false,
+      last_send_error: null
+    });
+
+  button.disabled = false;
+  button.textContent = 'Adicionar convidado';
+
+  if (error) {
+    showMessage('Erro ao adicionar convidado: ' + error.message, 'error');
+    return;
+  }
+
+  clearSingleGuestForm();
+  await loadGuests();
+  showMessage('Convidado adicionado com sucesso.', 'success');
+}
+
+function clearSingleGuestForm() {
+  document.getElementById('singleGuestName').value = '';
+  document.getElementById('singleGuestGroup').value = '';
+  document.getElementById('singleGuestWhatsapp').value = '';
+}
+
+function downloadGuestSpreadsheetTemplate() {
+  const rows = [
+    ['Nome do Convidado', 'Nome do Grupo', 'Whatsapp'],
+    ['Maria Silva', 'Família', '81999999999'],
+    ['João Santos', 'Amigos', '81988888888']
+  ];
+
+  const csvContent = rows
+    .map(row => row.map(value => '"' + String(value).replace(/"/g, '""') + '"').join(';'))
+    .join(String.fromCharCode(10));
+
+  const blob = new Blob([String.fromCharCode(65279) + csvContent], {
+    type: 'text/csv;charset=utf-8;'
+  });
+
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'modelo-importacao-convidados.csv';
+  link.style.display = 'none';
+
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+
+  setTimeout(() => URL.revokeObjectURL(url), 3000);
+  showMessage('Modelo da planilha baixado.', 'success');
+}
+
+function toggleAccordion(id) {
+  const card = document.getElementById(id);
+  if (!card) return;
+  card.classList.toggle('active');
 }
 
 function readSpreadsheet(file) {
@@ -853,6 +1242,7 @@ function getConfirmationLink(guestId) {
 function buildGuestMessage(guest) {
   const template = document.getElementById('messageTemplate').value;
   const link = getConfirmationLink(guest.id);
+  const maps = currentEventData?.google_maps_link || '';
 
   return template
     .replaceAll('{{nome}}', guest.guest_name || '')
@@ -861,6 +1251,7 @@ function buildGuestMessage(guest) {
     .replaceAll('{{data}}', formatDateBR(currentEventData?.event_date) || '')
     .replaceAll('{{hora}}', formatTime(currentEventData?.event_time) || '')
     .replaceAll('{{local}}', currentEventData?.location || '')
+    .replaceAll('{{maps}}', maps)
     .replaceAll('{{link}}', link);
 }
 
