@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login - Convidou</title>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+    }
+
+    :root {
+      --dark: #0f172a;
+      --blue: #2563eb;
+      --green: #16a34a;
+      --muted: #64748b;
+      --line: #e5e7eb;
+      --bg: #f3f4f6;
+    }
+
+    body {
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at top left, rgba(37, 99, 235, 0.16), transparent 34%),
+        radial-gradient(circle at bottom right, rgba(22, 163, 74, 0.14), transparent 32%),
+        var(--bg);
+      color: #111827;
+      padding: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .page {
+      width: min(1180px, 100%);
+      display: grid;
+      grid-template-columns: 1.05fr .95fr;
+      gap: 24px;
+      align-items: stretch;
+    }
+
+    .brand-panel {
+      position: relative;
+      overflow: hidden;
+      border-radius: 34px;
+      min-height: 720px;
+      padding: 46px;
+      color: white;
+      background:
+        linear-gradient(rgba(2, 6, 23, .76), rgba(15, 23, 42, .72)),
+        url('https://images.unsplash.com/photo-1516306580123-e6e52b1b7b5f?q=80&w=1800&auto=format&fit=crop') center/cover no-repeat;
+      box-shadow: 0 28px 70px rgba(15, 23, 42, .24);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .brand-panel::before {
+      content: '';
+      position: absolute;
+      width: 320px;
+      height: 320px;
+      top: -130px;
+      right: -100px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, .08);
+    }
+
+    .brand-panel::after {
+      content: '';
+      position: absolute;
+      width: 460px;
+      height: 460px;
+      left: 38%;
+      bottom: -280px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, .045);
+    }
+
+    .brand-content,
+    .brand-footer {
+      position: relative;
+      z-index: 2;
+    }
+
+    .logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 22px;
+      font-weight: 900;
+      margin-bottom: 44px;
+    }
+
+    .logo-mark {
+      width: 48px;
+      height: 48px;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, var(--blue), var(--green));
+      box-shadow: 0 14px 30px rgba(37, 99, 235, .28);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 15px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, .12);
+      border: 1px solid rgba(255, 255, 255, .16);
+      color: #dbeafe;
+      font-size: 13px;
+      font-weight: 800;
+      margin-bottom: 22px;
+      backdrop-filter: blur(10px);
+    }
+
+    .brand-panel h1 {
+      font-size: clamp(42px, 5vw, 68px);
+      line-height: .96;
+      letter-spacing: -2.5px;
+      max-width: 700px;
+      margin-bottom: 22px;
+    }
+
+    .brand-panel p {
+      color: rgba(255, 255, 255, .84);
+      font-size: 19px;
+      line-height: 1.6;
+      max-width: 620px;
+    }
+
+    .proof-grid {
+      position: relative;
+      z-index: 2;
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-top: 34px;
+    }
+
+    .proof-card {
+      background: rgba(255, 255, 255, .11);
+      border: 1px solid rgba(255, 255, 255, .14);
+      border-radius: 20px;
+      padding: 16px;
+      backdrop-filter: blur(12px);
+    }
+
+    .proof-card strong {
+      display: block;
+      font-size: 22px;
+      margin-bottom: 5px;
+    }
+
+    .proof-card span {
+      color: #dbeafe;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .brand-footer {
+      color: #dbeafe;
+      font-size: 14px;
+      font-weight: 800;
+    }
+
+    .auth-panel {
+      background: rgba(255, 255, 255, .94);
+      border: 1px solid rgba(226, 232, 240, .9);
+      border-radius: 34px;
+      padding: 34px;
+      box-shadow: 0 24px 70px rgba(15, 23, 42, .12);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .auth-card {
+      width: 100%;
+      max-width: 520px;
+      margin: 0 auto;
+    }
+
+    .auth-head {
+      margin-bottom: 24px;
+    }
+
+    .auth-head h2 {
+      color: var(--dark);
+      font-size: 38px;
+      line-height: 1;
+      letter-spacing: -1.4px;
+      margin-bottom: 10px;
+    }
+
+    .auth-head p {
+      color: var(--muted);
+      font-size: 16px;
+      line-height: 1.55;
+    }
+
+    .step-tabs {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 22px;
+    }
+
+    .step-pill {
+      height: 8px;
+      border-radius: 999px;
+      background: #e5e7eb;
+    }
+
+    .step-pill.active {
+      background: linear-gradient(90deg, var(--blue), var(--green));
+    }
+
+    .form-view {
+      display: none;
+    }
+
+    .form-view.active {
+      display: block;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 15px;
+    }
+
+    label {
+      font-size: 14px;
+      color: var(--dark);
+      font-weight: 900;
+    }
+
+    input {
+      width: 100%;
+      padding: 16px;
+      border: 1px solid #d1d5db;
+      border-radius: 16px;
+      font-size: 15px;
+      outline: none;
+      background: white;
+      transition: .2s;
+    }
+
+    input:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, .12);
+    }
+
+    .code-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 8px;
+      margin: 14px 0;
+    }
+
+    .code-grid input {
+      text-align: center;
+      font-size: 22px;
+      font-weight: 900;
+      padding: 14px 6px;
+    }
+
+    button,
+    .btn {
+      border: none;
+      border-radius: 16px;
+      padding: 15px 18px;
+      font-weight: 900;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      transition: .22s;
+      font-size: 15px;
+      white-space: nowrap;
+      text-decoration: none;
+    }
+
+    button:hover,
+    .btn:hover {
+      transform: translateY(-1px);
+      filter: brightness(1.02);
+    }
+
+    button:disabled {
+      opacity: .6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--blue), #60a5fa);
+      color: white;
+      box-shadow: 0 14px 28px rgba(37, 99, 235, .22);
+    }
+
+    .btn-success {
+      background: linear-gradient(135deg, var(--green), #22c55e);
+      color: white;
+      box-shadow: 0 14px 28px rgba(22, 163, 74, .20);
+    }
+
+    .btn-light {
+      background: white;
+      color: var(--dark);
+      border: 1px solid var(--line);
+    }
+
+    .btn-muted {
+      background: #e5e7eb;
+      color: var(--dark);
+    }
+
+    .actions {
+      display: grid;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .actions-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+
+    .actions-row button,
+    .actions-row .btn {
+      flex: 1;
+    }
+
+    .message {
+      display: none;
+      padding: 14px 16px;
+      border-radius: 16px;
+      margin: 14px 0;
+      font-size: 14px;
+      font-weight: 800;
+      line-height: 1.45;
+    }
+
+    .message.success {
+      display: block;
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .message.error {
+      display: block;
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .message.info {
+      display: block;
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .message.warning {
+      display: block;
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .small-text {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+      margin-top: 10px;
+    }
+
+    .divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--muted);
+      margin: 22px 0;
+      font-size: 13px;
+      font-weight: 800;
+    }
+
+    .divider::before,
+    .divider::after {
+      content: '';
+      height: 1px;
+      background: var(--line);
+      flex: 1;
+    }
+
+    @media(max-width: 980px) {
+      body {
+        align-items: flex-start;
+        padding: 12px;
+      }
+
+      .page {
+        grid-template-columns: 1fr;
+      }
+
+      .brand-panel {
+        min-height: auto;
+        padding: 28px;
+        border-radius: 28px;
+      }
+
+      .brand-panel h1 {
+        font-size: 42px;
+      }
+
+      .proof-grid {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .auth-panel {
+        padding: 24px;
+        border-radius: 28px;
+      }
+    }
+
+    @media(max-width: 620px) {
+      .proof-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .brand-panel h1 {
+        font-size: 36px;
+      }
+
+      .brand-panel p {
+        font-size: 16px;
+      }
+
+      .auth-head h2 {
+        font-size: 32px;
+      }
+
+      .actions-row {
+        flex-direction: column;
+      }
+
+      .actions-row button,
+      .actions-row .btn {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="brand-panel">
+      <div class="brand-content">
+        <div class="logo">
+          <div class="logo-mark">✓</div>
+          <span>Convidou</span>
+        </div>
+
+        <span class="badge">📲 Área do usuário</span>
+        <h1>Acesse seus eventos com segurança.</h1>
+        <p>Entre para gerenciar convidados, QR Codes, bipagem, mesas e dashboard em tempo real.</p>
+
+        <div class="proof-grid">
+          <div class="proof-card"><strong>QR</strong><span>Controle de entrada individual</span></div>
+          <div class="proof-card"><strong>WhatsApp</strong><span>Recuperação de senha verificada</span></div>
+          <div class="proof-card"><strong>Mesas</strong><span>Organização para recepção</span></div>
+          <div class="proof-card"><strong>Dashboard</strong><span>Acessos em tempo real</span></div>
+        </div>
+      </div>
+
+      <div class="brand-footer">Convidou · Controle de eventos com um único celular</div>
+    </section>
+
+    <section class="auth-panel">
+      <div class="auth-card">
+        <div class="auth-head">
+          <h2 id="authTitle">Entrar</h2>
+          <p id="authSubtitle">Informe seu e-mail e senha para acessar seus eventos.</p>
+        </div>
+
+        <div class="step-tabs" id="recoverySteps" style="display:none;">
+          <div class="step-pill active" id="stepPill1"></div>
+          <div class="step-pill" id="stepPill2"></div>
+          <div class="step-pill" id="stepPill3"></div>
+        </div>
+
+        <div id="message" class="message"></div>
+
+        <div class="form-view active" id="loginView">
+          <div class="form-group">
+            <label for="loginEmail">E-mail</label>
+            <input id="loginEmail" type="email" placeholder="seuemail@exemplo.com" autocomplete="email" />
+          </div>
+
+          <div class="form-group">
+            <label for="loginPassword">Senha</label>
+            <input id="loginPassword" type="password" placeholder="Digite sua senha" autocomplete="current-password" />
+          </div>
+
+          <div class="actions">
+            <button id="loginButton" class="btn-success" onclick="loginUser()">Entrar nos meus eventos</button>
+            <button class="btn-light" onclick="showRecoveryEmailView()">Esqueci minha senha</button>
+          </div>
+
+          <div class="divider">ou</div>
+
+          <div class="actions">
+            <a href="/index.html#comece" class="btn btn-primary">Criar conta grátis</a>
+          </div>
+        </div>
+
+        <div class="form-view" id="recoveryEmailView">
+          <div class="form-group">
+            <label for="recoveryEmail">E-mail cadastrado</label>
+            <input id="recoveryEmail" type="email" placeholder="Digite seu e-mail" autocomplete="email" />
+          </div>
+
+          <button id="sendCodeButton" class="btn-primary" style="width:100%;" onclick="sendPasswordRecoveryCode()">
+            Enviar código pelo WhatsApp
+          </button>
+
+          <p class="small-text">O código será enviado para o WhatsApp cadastrado nesse usuário.</p>
+
+          <div class="actions-row">
+            <button class="btn-muted" onclick="showLoginView()">Voltar ao login</button>
+          </div>
+        </div>
+
+        <div class="form-view" id="recoveryCodeView">
+          <p class="small-text">Digite o código de 6 dígitos enviado para seu WhatsApp.</p>
+
+          <div class="code-grid">
+            <input maxlength="1" class="recovery-code-input" inputmode="numeric" />
+            <input maxlength="1" class="recovery-code-input" inputmode="numeric" />
+            <input maxlength="1" class="recovery-code-input" inputmode="numeric" />
+            <input maxlength="1" class="recovery-code-input" inputmode="numeric" />
+            <input maxlength="1" class="recovery-code-input" inputmode="numeric" />
+            <input maxlength="1" class="recovery-code-input" inputmode="numeric" />
+          </div>
+
+          <button class="btn-success" style="width:100%;" onclick="verifyRecoveryCode()">Confirmar código</button>
+
+          <div class="actions-row">
+            <button class="btn-light" onclick="sendPasswordRecoveryCode(true)">Reenviar código</button>
+            <button class="btn-muted" onclick="showRecoveryEmailView()">Trocar e-mail</button>
+          </div>
+        </div>
+
+        <div class="form-view" id="newPasswordView">
+          <div class="form-group">
+            <label for="newPassword">Nova senha</label>
+            <input id="newPassword" type="password" placeholder="Senha forte com letras, números e símbolo" autocomplete="new-password" />
+          </div>
+
+          <div class="form-group">
+            <label for="newPasswordConfirm">Confirmar nova senha</label>
+            <input id="newPasswordConfirm" type="password" placeholder="Repita a nova senha" autocomplete="new-password" />
+          </div>
+
+          <button id="updatePasswordButton" class="btn-success" style="width:100%;" onclick="updatePassword()">
+            Atualizar senha e entrar
+          </button>
+
+          <p class="small-text">A senha precisa ter no mínimo 8 caracteres, letra maiúscula, letra minúscula, número e caractere especial.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    let supabaseClient = null;
+    let recoveryUser = null;
+    let recoveryCode = null;
+    let recoveryVerified = false;
+
+    const USER_SESSION_KEY = 'convidou_user_session';
+
+    const SUPABASE_URL = 'https://pfyctxoikdrephjogdtm.supabase.co';
+    const SUPABASE_ANON_KEY = 'sb_publishable_h_5hK_HTT-XJ4WUoOGzkGg_tqkBDLjv';
+
+    const ZAPI_INSTANCE_ID = '3F32B148C8CA1249DCAE3222B0EDC9B1';
+    const ZAPI_INSTANCE_TOKEN = '234C8842D08C0B205C20CC98';
+    const ZAPI_CLIENT_TOKEN = 'F1348d160382741d398e5d37761e89b6cS';
+
+    initializePage();
+
+    function initializePage() {
+      const { createClient } = supabase;
+      supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+      const session = getLoggedUser();
+      if (session?.id) {
+        redirectToUserEvents(session.id);
+        return;
+      }
+
+      document.getElementById('loginEmail').addEventListener('keydown', event => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          loginUser();
+        }
+      });
+
+      document.getElementById('loginPassword').addEventListener('keydown', event => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          loginUser();
+        }
+      });
+
+      document.getElementById('recoveryEmail').addEventListener('keydown', event => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          sendPasswordRecoveryCode();
+        }
+      });
+
+      document.getElementById('newPassword').addEventListener('keydown', event => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          updatePassword();
+        }
+      });
+
+      document.getElementById('newPasswordConfirm').addEventListener('keydown', event => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          updatePassword();
+        }
+      });
+
+      document.querySelectorAll('.recovery-code-input').forEach((input, index, inputs) => {
+        input.addEventListener('input', () => {
+          input.value = input.value.replace(/\D/g, '').slice(0, 1);
+          if (input.value && inputs[index + 1]) inputs[index + 1].focus();
+        });
+
+        input.addEventListener('keydown', event => {
+          if (event.key === 'Backspace' && !input.value && inputs[index - 1]) inputs[index - 1].focus();
+          if (event.key === 'Enter') verifyRecoveryCode();
+        });
+      });
+    }
+
+    async function loginUser() {
+      const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+      const password = document.getElementById('loginPassword').value;
+      const button = document.getElementById('loginButton');
+
+      if (!validateEmail(email)) return showMessage('Informe um e-mail válido.', 'error');
+      if (!password) return showMessage('Informe sua senha.', 'error');
+
+      button.disabled = true;
+      button.textContent = 'Validando acesso...';
+      showMessage('Validando acesso...', 'info');
+
+      const { data, error } = await supabaseClient
+        .from('users')
+        .select('id, email, password, status, name, whatsapp, tipo')
+        .eq('email', email)
+        .maybeSingle();
+
+      button.disabled = false;
+      button.textContent = 'Entrar nos meus eventos';
+
+      if (error) return showMessage('Erro ao validar acesso: ' + error.message, 'error');
+      if (!data) return showMessage('Usuário não encontrado.', 'error');
+      if (data.status && data.status !== 'active') return showMessage('Usuário inativo. Fale com o suporte.', 'error');
+      if (String(data.password || '') !== String(password)) return showMessage('Senha incorreta.', 'error');
+
+      saveUserSession(data);
+      showMessage(`Bem-vindo(a), ${data.name || 'usuário'}! Redirecionando...`, 'success');
+
+      setTimeout(() => redirectToUserEvents(data.id), 700);
+    }
+
+    async function sendPasswordRecoveryCode(isResend = false) {
+      const email = document.getElementById('recoveryEmail').value.trim().toLowerCase();
+      const button = document.getElementById('sendCodeButton');
+
+      if (!validateEmail(email)) return showMessage('Informe um e-mail válido.', 'error');
+
+      if (button && !isResend) {
+        button.disabled = true;
+        button.textContent = 'Buscando usuário...';
+      }
+
+      showMessage('Buscando usuário...', 'info');
+
+      const { data, error } = await supabaseClient
+        .from('users')
+        .select('id, email, password, status, name, whatsapp, tipo')
+        .eq('email', email)
+        .maybeSingle();
+
+      if (button && !isResend) {
+        button.disabled = false;
+        button.textContent = 'Enviar código pelo WhatsApp';
+      }
+
+      if (error) return showMessage('Erro ao buscar usuário: ' + error.message, 'error');
+      if (!data) return showMessage('Nenhum usuário encontrado com este e-mail.', 'error');
+      if (data.status && data.status !== 'active') return showMessage('Usuário inativo. Fale com o suporte.', 'error');
+      if (!normalizePhone(data.whatsapp)) return showMessage('Este usuário não possui WhatsApp cadastrado.', 'error');
+
+      recoveryUser = data;
+      recoveryCode = generateCode();
+      recoveryVerified = false;
+
+      try {
+        await sendRecoveryCodeWhatsApp(data.whatsapp, recoveryCode, data.name);
+        clearCodeInputs();
+        showRecoveryCodeView();
+        showMessage('Código enviado para o WhatsApp cadastrado.', 'success');
+      } catch (error) {
+        showMessage('Não foi possível enviar o código pelo WhatsApp. Confira as credenciais da Z-API.', 'error');
+      }
+    }
+
+    async function sendRecoveryCodeWhatsApp(whatsapp, code, name) {
+      const phone = `55${normalizePhone(whatsapp)}`;
+      const message = `🔐 Recuperação de senha - Convidou\n\nOlá, ${name || 'tudo bem'}!\n\nSeu código de verificação é: ${code}\n\nDigite este código na tela de recuperação para criar uma nova senha.`;
+
+      const response = await fetch(
+        `https://api.z-api.io/instances/${encodeURIComponent(ZAPI_INSTANCE_ID)}/token/${encodeURIComponent(ZAPI_INSTANCE_TOKEN)}/send-text`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Client-Token': ZAPI_CLIENT_TOKEN
+          },
+          body: JSON.stringify({ phone, message })
+        }
+      );
+
+      const result = await response.json().catch(() => ({}));
+
+      if (!response.ok || result.error) {
+        console.error('Erro Z-API:', result);
+        throw new Error(result.message || result.error || 'Falha ao enviar código.');
+      }
+
+      return result;
+    }
+
+    function verifyRecoveryCode() {
+      if (!recoveryUser || !recoveryCode) {
+        showRecoveryEmailView();
+        return showMessage('Solicite um novo código para continuar.', 'error');
+      }
+
+      const typedCode = Array.from(document.querySelectorAll('.recovery-code-input'))
+        .map(input => input.value)
+        .join('');
+
+      if (typedCode.length !== 6) return showMessage('Digite os 6 dígitos do código.', 'error');
+      if (typedCode !== recoveryCode) return showMessage('Código inválido. Confira e tente novamente.', 'error');
+
+      recoveryVerified = true;
+      showNewPasswordView();
+      showMessage('Código confirmado. Agora informe sua nova senha.', 'success');
+    }
+
+    async function updatePassword() {
+      const password = document.getElementById('newPassword').value;
+      const confirm = document.getElementById('newPasswordConfirm').value;
+      const button = document.getElementById('updatePasswordButton');
+
+      if (!recoveryUser?.id || !recoveryVerified) return showMessage('Confirme o código antes de alterar a senha.', 'error');
+
+      const strongPassword = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#])[A-Za-z\d@$!%*?&#]{8,}$/;
+
+      if (!strongPassword.test(password)) {
+        return showMessage('Sua senha precisa ter no mínimo 8 caracteres, incluindo letra maiúscula, letra minúscula, número e caractere especial.', 'error');
+      }
+
+      if (password !== confirm) return showMessage('As senhas não conferem.', 'error');
+
+      button.disabled = true;
+      button.textContent = 'Atualizando senha...';
+      showMessage('Atualizando senha...', 'info');
+
+      const { data, error } = await supabaseClient
+        .from('users')
+        .update({ password })
+        .eq('id', recoveryUser.id)
+        .select('id, email, status, name, whatsapp, tipo')
+        .maybeSingle();
+
+      button.disabled = false;
+      button.textContent = 'Atualizar senha e entrar';
+
+      if (error) return showMessage('Erro ao atualizar senha: ' + error.message, 'error');
+      if (!data) return showMessage('Não foi possível atualizar a senha.', 'error');
+
+      saveUserSession(data);
+      showMessage('Senha atualizada com sucesso. Redirecionando...', 'success');
+
+      setTimeout(() => redirectToUserEvents(data.id), 900);
+    }
+
+    function showLoginView() {
+      setAuthText('Entrar', 'Informe seu e-mail e senha para acessar seus eventos.');
+      setView('loginView');
+      document.getElementById('recoverySteps').style.display = 'none';
+      clearMessage();
+    }
+
+    function showRecoveryEmailView() {
+      setAuthText('Recuperar senha', 'Informe seu e-mail para receber o código de verificação pelo WhatsApp.');
+      setView('recoveryEmailView');
+      setRecoveryStep(1);
+      document.getElementById('recoverySteps').style.display = 'grid';
+      clearMessage();
+
+      const loginEmail = document.getElementById('loginEmail').value.trim();
+      if (loginEmail) document.getElementById('recoveryEmail').value = loginEmail;
+
+      setTimeout(() => document.getElementById('recoveryEmail').focus(), 100);
+    }
+
+    function showRecoveryCodeView() {
+      setAuthText('Verificar código', 'Digite o código recebido no WhatsApp cadastrado.');
+      setView('recoveryCodeView');
+      setRecoveryStep(2);
+      document.getElementById('recoverySteps').style.display = 'grid';
+      setTimeout(() => document.querySelector('.recovery-code-input')?.focus(), 100);
+    }
+
+    function showNewPasswordView() {
+      setAuthText('Criar nova senha', 'Use uma senha forte para proteger seus eventos e convidados.');
+      setView('newPasswordView');
+      setRecoveryStep(3);
+      document.getElementById('recoverySteps').style.display = 'grid';
+      setTimeout(() => document.getElementById('newPassword').focus(), 100);
+    }
+
+    function setAuthText(title, subtitle) {
+      document.getElementById('authTitle').textContent = title;
+      document.getElementById('authSubtitle').textContent = subtitle;
+    }
+
+    function setView(viewId) {
+      document.querySelectorAll('.form-view').forEach(view => {
+        view.classList.toggle('active', view.id === viewId);
+      });
+    }
+
+    function setRecoveryStep(step) {
+      document.getElementById('stepPill1').classList.toggle('active', step >= 1);
+      document.getElementById('stepPill2').classList.toggle('active', step >= 2);
+      document.getElementById('stepPill3').classList.toggle('active', step >= 3);
+    }
+
+    function clearCodeInputs() {
+      document.querySelectorAll('.recovery-code-input').forEach(input => input.value = '');
+    }
+
+    function saveUserSession(user) {
+      if (!user || !user.id) return;
+
+      const session = {
+        id: user.id,
+        name: user.name || '',
+        email: user.email || '',
+        whatsapp: user.whatsapp || '',
+        status: user.status || 'active',
+        tipo: user.tipo || 'U',
+        logged_at: new Date().toISOString()
+      };
+
+      localStorage.setItem(USER_SESSION_KEY, JSON.stringify(session));
+      localStorage.setItem('convidou_user_id', session.id);
+      localStorage.setItem('user_id', session.id);
+    }
+
+    function getLoggedUser() {
+      try {
+        return JSON.parse(localStorage.getItem(USER_SESSION_KEY));
+      } catch (error) {
+        return null;
+      }
+    }
+
+    function redirectToUserEvents(userId) {
+      window.location.href = `/eventos/?user_id=${encodeURIComponent(userId)}`;
+    }
+
+    function showMessage(text, type) {
+      const message = document.getElementById('message');
+      message.textContent = text;
+      message.className = `message ${type}`;
+    }
+
+    function clearMessage() {
+      const message = document.getElementById('message');
+      message.textContent = '';
+      message.className = 'message';
+    }
+
+    function generateCode() {
+      return String(Math.floor(100000 + Math.random() * 900000));
+    }
+
+    function normalizePhone(value) {
+      return String(value || '').replace(/\D/g, '').replace(/^55/, '').slice(0, 11);
+    }
+
+    function validateEmail(email) {
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    }
+  </script>
+</body>
+</html>

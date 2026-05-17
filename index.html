@@ -1308,9 +1308,11 @@
               <div class="form-group"><label for="leadWhatsapp">WhatsApp</label><input id="leadWhatsapp" type="text"
                   placeholder="(81) 99999-9999" /></div><button class="btn-primary" style="width:100%;"
                 onclick="startLeadCapture()">Receber código no WhatsApp</button>
-            </div><button id="continueExistingUserButton" class="btn-success" style="width:100%;display:none;"
-              onclick="goToUserEvents()">Ir para meus eventos</button><button class="btn btn-light"
-              style="width:100%;margin-top:10px;" onclick="openLoginModal()">Entrar na área do usuário</button>
+            </div>
+            <button id="continueExistingUserButton" class="btn-success" style="width:100%;display:none;"
+              onclick="goToUserEvents()">Ir para meus eventos</button>
+            <button class="btn btn-light" style="width:100%;margin-top:10px; display: none;"
+              onclick="openLoginModal()">Entrar na área do usuário</button>
             <p class="small-text">Comece pelo e-mail. Se já existir cadastro, você vai direto para seus eventos. Utilize
               uma senha forte para proteger seus convidados e acessos do evento.</p>
           </div>
@@ -1412,6 +1414,55 @@
     let currentCode = null;
     let currentLead = null;
     let existingUser = null;
+
+    const USER_SESSION_KEY = 'convidou_user_session';
+
+    function saveUserSession(user) {
+      if (!user || !user.id) return;
+
+      const session = {
+        id: user.id,
+        name: user.name || '',
+        email: user.email || '',
+        whatsapp: user.whatsapp || '',
+        status: user.status || 'active',
+        tipo: user.tipo || 'U',
+        logged_at: new Date().toISOString()
+      };
+
+      localStorage.setItem(USER_SESSION_KEY, JSON.stringify(session));
+      localStorage.setItem('convidou_user_id', session.id);
+      localStorage.setItem('user_id', session.id);
+    }
+
+    function getLoggedUser() {
+      try {
+        return JSON.parse(localStorage.getItem(USER_SESSION_KEY));
+      } catch (error) {
+        return null;
+      }
+    }
+
+    function getLoggedUserId() {
+      const session = getLoggedUser();
+      return session?.id || localStorage.getItem('convidou_user_id') || localStorage.getItem('user_id') || '';
+    }
+
+    function logoutUser() {
+      localStorage.removeItem(USER_SESSION_KEY);
+      localStorage.removeItem('convidou_user_id');
+      localStorage.removeItem('user_id');
+      window.location.href = '/';
+    }
+
+    function redirectToUserEvents(userId) {
+      if (!userId) {
+        window.location.href = '/eventos/';
+        return;
+      }
+
+      window.location.href = `/eventos/?user_id=${encodeURIComponent(userId)}`;
+    }
 
     const SUPABASE_URL = 'https://pfyctxoikdrephjogdtm.supabase.co';
     const SUPABASE_ANON_KEY = 'sb_publishable_h_5hK_HTT-XJ4WUoOGzkGg_tqkBDLjv';
@@ -1517,7 +1568,7 @@
 
       const { data, error } = await supabaseClient
         .from('users')
-        .select('id, email, password, status, name')
+        .select('id, email, password, status, name, whatsapp, tipo')
         .eq('email', email)
         .maybeSingle();
 
@@ -1530,8 +1581,10 @@
       if (String(data.password || '') !== String(password)) return showLoginMessage('Senha incorreta.', 'error');
 
       showLoginMessage(`Bem-vindo(a), ${data.name || 'usuário'}! Redirecionando...`, 'success');
+      saveUserSession(data);
+
       setTimeout(() => {
-        window.location.href = `/eventos/?user_id=${encodeURIComponent(data.id)}`;
+        redirectToUserEvents(data.id);
       }, 700);
     }
 
@@ -1584,11 +1637,23 @@
     }
 
     function goToUserEvents() {
-      if (!existingUser?.id) {
-        checkExistingUserByEmail();
+      // se já existe usuário encontrado pelo e-mail
+      debugger
+      if (existingUser?.id) {
+        saveUserSession(existingUser);
+      }
+
+      // valida sessão salva
+      const loggedUser = getLoggedUser();
+
+      // se NÃO tiver sessão válida -> login
+      if (!loggedUser?.id) {
+        window.location.href = '/login/';
         return;
       }
-      window.location.href = `/eventos/?user_id=${encodeURIComponent(existingUser.id)}`;
+
+      // sessão válida -> eventos
+      redirectToUserEvents(loggedUser.id);
     }
 
     async function startLeadCapture() {
@@ -1686,8 +1751,19 @@
 
       showLeadMessage('Conta criada com sucesso. Redirecionando para seus eventos...', 'success');
       setTimeout(async () => {
-        const { data } = await supabaseClient.from('users').select('id').eq('email', currentLead.email).maybeSingle();
-        window.location.href = data?.id ? `/eventos/?user_id=${encodeURIComponent(data.id)}` : '/eventos/';
+        const { data } = await supabaseClient
+          .from('users')
+          .select('id, name, email, whatsapp, status, tipo')
+          .eq('email', currentLead.email)
+          .maybeSingle();
+
+        if (data) {
+          saveUserSession(data);
+          redirectToUserEvents(data.id);
+          return;
+        }
+
+        window.location.href = '/eventos/';
       }, 1400);
     }
 

@@ -36,6 +36,7 @@
       event_date date,
       event_time time,
       location text,
+      google_maps_link text,
       invitation_image_url text,
       invitation_image_path text,
       guest_limit integer default 50,
@@ -49,6 +50,7 @@
     );
 
     alter table public.events add column if not exists user_id uuid references public.users(id) on delete set null;
+    alter table public.events add column if not exists google_maps_link text;
     alter table public.events add column if not exists invitation_image_url text;
     alter table public.events add column if not exists invitation_image_path text;
     alter table public.events add column if not exists guest_limit integer default 50;
@@ -751,12 +753,18 @@
       <div class="grid-2">
         <div class="form-group">
           <label for="eventName">Nome do evento</label>
-          <input id="eventName" type="text" placeholder="Ex: Geraldinho Lins" />
+          <input id="eventName" type="text" placeholder="Ex: Aniversário de Camila" />
         </div>
         <div class="form-group">
           <label for="eventLocation">Local do evento</label>
-          <input id="eventLocation" type="text" placeholder="Ex: Mirante do Paço" />
+          <input id="eventLocation" type="text" placeholder="Ex: Espaço Convidou" />
         </div>
+      </div>
+
+      <div class="form-group" style="margin-top:16px;">
+        <label for="googleMapsLink">Link do Google Maps</label>
+        <input id="googleMapsLink" type="url" placeholder="Cole aqui o link do Google Maps do local" />
+        <p class="small-text">Esse link ficará salvo no evento para usarmos depois nos convites, confirmações e páginas públicas.</p>
       </div>
 
       <div class="grid-3" style="margin-top:16px;">
@@ -822,7 +830,7 @@
           <label for="responsibleWhatsapp">WhatsApp do responsável</label>
           <input id="responsibleWhatsapp" type="text" placeholder="Ex: (81) 99999-9999" />
         </div>
-        <div class="form-group">
+        <div class="form-group" style="display: none;">
           <label for="responsibleType">Tipo do usuário</label>
           <select id="responsibleType">
             <option value="U">Usuário</option>
@@ -935,7 +943,7 @@
     });
 
     function goHome() {
-      window.location.href = '/qrcode/eventos/';
+      window.location.href = '/eventos/';
     }
 
     function toggleConfig() {
@@ -1287,6 +1295,7 @@
         event_date: payload.event_date,
         event_time: payload.event_time,
         location: payload.location,
+        google_maps_link: payload.google_maps_link || null,
         guest_limit: payload.guest_limit,
         user_id: userId,
         invitation_image_url: invitationUpload?.url || null,
@@ -1360,6 +1369,11 @@
         return false;
       }
 
+      if (payload.google_maps_link && !isValidGoogleMapsLink(payload.google_maps_link)) {
+        showMessage('Informe um link válido do Google Maps.', 'error');
+        return false;
+      }
+
       if (!payload.guest_limit || payload.guest_limit < 1) {
         showMessage('Informe uma quantidade válida de convidados.', 'error');
         return false;
@@ -1397,6 +1411,7 @@
         event_date: document.getElementById('eventDate').value,
         event_time: document.getElementById('eventTime').value,
         location: document.getElementById('eventLocation').value.trim(),
+        google_maps_link: document.getElementById('googleMapsLink').value.trim(),
         guest_limit: guestLimit,
         responsible_name: document.getElementById('responsibleName').value.trim(),
         responsible_whatsapp: normalizePhone(document.getElementById('responsibleWhatsapp').value),
@@ -1438,6 +1453,22 @@
       if (phone.length > 2) return phone.replace(/^(\d{2})(\d{0,5})/, '($1) $2');
 
       return phone;
+    }
+
+    function isValidGoogleMapsLink(value) {
+      try {
+        const url = new URL(value);
+        const host = url.hostname.replace(/^www\./, '').toLowerCase();
+
+        return (
+          host === 'google.com' ||
+          host.endsWith('.google.com') ||
+          host === 'maps.app.goo.gl' ||
+          host === 'goo.gl'
+        );
+      } catch (error) {
+        return false;
+      }
     }
 
     function showMessage(text, type) {

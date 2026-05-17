@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -102,7 +103,7 @@
       white-space: nowrap;
     }
 
-    .toolbar-button + .toolbar-button {
+    .toolbar-button+.toolbar-button {
       border-left: 1px solid rgba(255, 255, 255, 0.16);
     }
 
@@ -520,6 +521,7 @@
     }
   </style>
 </head>
+
 <body>
   <div class="container">
     <div class="header">
@@ -531,16 +533,34 @@
         </div>
 
         <div class="toolbar" aria-label="Ações da página">
-          <button class="toolbar-button" onclick="window.location.href='/eventos/novo/'" title="Adicionar evento">
+
+          <button class="toolbar-button"
+            onclick="window.location.href='/eventos/novo/?user_id=' + encodeURIComponent(loggedUser.id)"
+            title="Adicionar evento">
+
             <span>➕</span>
             <strong>Adicionar</strong>
           </button>
 
-          <button class="toolbar-button" onclick="toggleConfig()" title="Configurações">
+          <!-- Apenas administrador -->
+          <button id="configToolbarButton" class="toolbar-button" onclick="toggleConfig()" title="Configurações"
+            style="display:none;">
+
             <span>⚙️</span>
             <strong>Configurações</strong>
           </button>
+
+          <button class="toolbar-button toolbar-danger" onclick="logoutUser()" title="Sair da sessão">
+
+            <span>🚪</span>
+
+            <strong id="logoutButtonText">
+              Sair
+            </strong>
+          </button>
+
         </div>
+
       </div>
     </div>
 
@@ -564,7 +584,8 @@
       <div class="search-toolbar">
         <div class="form-group">
           <label for="searchInput">Buscar evento</label>
-          <input id="searchInput" type="text" placeholder="Busque por nome, local, data ou ID" oninput="renderEvents()" />
+          <input id="searchInput" type="text" placeholder="Busque por nome, local, data ou ID"
+            oninput="renderEvents()" />
         </div>
         <button class="btn-primary" onclick="loadEvents()">Atualizar eventos</button>
       </div>
@@ -592,6 +613,40 @@
     let supabaseClient = null;
     let events = [];
 
+    const USER_SESSION_KEY = 'convidou_user_session';
+
+    function getLoggedUser() {
+      try {
+        return JSON.parse(localStorage.getItem(USER_SESSION_KEY));
+      } catch (error) {
+        return null;
+      }
+    }
+
+    const loggedUser = getLoggedUser();
+
+    if (!loggedUser || !loggedUser.id) {
+      window.location.href = '/index.html';
+    }
+
+    // mostra configurações apenas para admin
+    if (loggedUser.tipo === 'A') {
+      const configButton = document.getElementById('configToolbarButton');
+
+      if (configButton) {
+        configButton.style.display = 'inline-flex';
+      }
+    }
+
+    // primeiro nome no botão sair
+    const logoutButtonText = document.getElementById('logoutButtonText');
+
+    if (logoutButtonText && loggedUser?.name) {
+      const firstName = loggedUser.name.trim().split(' ')[0];
+
+      logoutButtonText.textContent = `Sair (${firstName})`;
+    }
+
     const savedUrl = localStorage.getItem('supabase_url') || 'https://pfyctxoikdrephjogdtm.supabase.co';
     const savedKey = localStorage.getItem('supabase_key') || 'sb_publishable_h_5hK_HTT-XJ4WUoOGzkGg_tqkBDLjv';
 
@@ -609,6 +664,14 @@
     function toggleConfig() {
       const box = document.getElementById('configBox');
       box.style.display = box.style.display === 'none' || !box.style.display ? 'block' : 'none';
+    }
+
+    function logoutUser() {
+      localStorage.removeItem('convidou_user_session');
+      localStorage.removeItem('convidou_user_id');
+      localStorage.removeItem('user_id');
+
+      window.location.href = '/login/';
     }
 
     function connectSupabase(url, key) {
@@ -638,10 +701,24 @@
         return;
       }
 
-      const { data, error } = await supabaseClient
+      const loggedUser = getLoggedUser();
+
+      if (!loggedUser?.id) {
+        window.location.href = '/index.html';
+        return;
+      }
+
+      let query = supabaseClient
         .from('events')
-        .select('id, name, event_date, event_time, location, created_at')
+        .select('id, name, event_date, event_time, location, created_at, user_id')
         .order('event_date', { ascending: true });
+
+      // usuário comum vê apenas os próprios eventos
+      if (loggedUser.tipo !== 'A') {
+        query = query.eq('user_id', loggedUser.id);
+      }
+
+      const { data, error } = await query;
 
       if (error) {
         showMessage('Erro ao carregar eventos: ' + error.message, 'error');
@@ -649,10 +726,17 @@
       }
 
       events = data || [];
+
       renderEvents();
       updateSummary();
-      showMessage('Eventos carregados com sucesso.', 'success');
+
+      if (loggedUser.tipo === 'A') {
+        showMessage('Administrador conectado. Todos os eventos carregados.', 'success');
+      } else {
+        showMessage('Seus eventos foram carregados.', 'success');
+      }
     }
+
 
     function renderEvents() {
       const container = document.getElementById('eventsContainer');
@@ -796,4 +880,5 @@
     }
   </script>
 </body>
+
 </html>
