@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link href="../image/favicon.ico" rel="icon" type="image/x-icon" />
+  <title>Configuração Z-API - Trocar Número</title>
+
+  <!--
+    SQL NECESSÁRIO
+
+    create table if not exists public.user_zapi_instances (
+      id uuid primary key default gen_random_uuid(),
+      user_id uuid not null references public.users(id) on delete cascade,
+      instance_id text not null,
+      instance_token text not null,
+      client_token text not null,
+      connected_phone text,
+      status text default 'unknown',
+      smartphone_connected boolean default false,
+      last_status_message text,
+      last_qrcode_at timestamptz,
+      last_disconnected_at timestamptz,
+      last_connected_at timestamptz,
+      created_at timestamptz not null default now(),
+      updated_at timestamptz not null default now(),
+      unique(user_id)
+    );
+
+    alter table public.user_zapi_instances enable row level security;
+
+    create policy "Permitir leitura anonima zapi"
+    on public.user_zapi_instances
+    for select
+    to anon
+    using (true);
+
+    create policy "Permitir insert anonimo zapi"
+    on public.user_zapi_instances
+    for insert
+    to anon
+    with check (true);
+
+    create policy "Permitir update anonimo zapi"
+    on public.user_zapi_instances
+    for update
+    to anon
+    using (true)
+    with check (true);
+
+    create table if not exists public.user_zapi_instance_logs (
+      id uuid primary key default gen_random_uuid(),
+      user_id uuid references public.users(id) on delete set null,
+      zapi_instance_id uuid references public.user_zapi_instances(id) on delete cascade,
+      action text not null,
+      old_phone text,
+      new_phone text,
+      status text,
+      details text,
+      created_at timestamptz not null default now()
+    );
+
+    alter table public.user_zapi_instance_logs enable row level security;
+
+    create policy "Permitir leitura anonima zapi logs"
+    on public.user_zapi_instance_logs
+    for select
+    to anon
+    using (true);
+
+    create policy "Permitir insert anonimo zapi logs"
+    on public.user_zapi_instance_logs
+    for insert
+    to anon
+    with check (true);
+  -->
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: Inter, Arial, sans-serif; }
+    body { min-height: 100vh; background: radial-gradient(circle at top left, rgba(37,99,235,.12), transparent 32%), radial-gradient(circle at bottom right, rgba(22,163,74,.12), transparent 34%), #f3f4f6; color: #111827; padding: 20px; }
+    .container { max-width: 1180px; margin: 0 auto; }
+    .header { position: relative; overflow: hidden; background: linear-gradient(135deg, #0f172a, #1e3a8a 58%, #2563eb); color: white; padding: 34px; border-radius: 28px; margin-bottom: 22px; box-shadow: 0 24px 60px rgba(15,23,42,.22); }
+    .header::after { content: ""; position: absolute; width: 280px; height: 280px; border-radius: 999px; top: -120px; right: -80px; background: rgba(255,255,255,.08); }
+    .header-content { position: relative; z-index: 2; }
+    .header-badge { display: inline-flex; align-items: center; gap: 8px; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.16); border-radius: 999px; padding: 9px 14px; color: #dbeafe; font-size: 13px; font-weight: 800; margin-bottom: 18px; backdrop-filter: blur(10px); }
+    .header h1 { font-size: clamp(32px, 5vw, 52px); line-height: 1; letter-spacing: -1.6px; margin-bottom: 14px; }
+    .header p { max-width: 780px; color: rgba(255,255,255,.84); font-size: 17px; line-height: 1.55; }
+    .top-actions { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 24px; }
+    .card { background: rgba(255,255,255,.96); border: 1px solid rgba(226,232,240,.9); border-radius: 24px; padding: 24px; margin-bottom: 20px; box-shadow: 0 14px 38px rgba(15,23,42,.08); }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+    .form-group { display: flex; flex-direction: column; gap: 8px; }
+    label { font-weight: 800; font-size: 14px; color: #111827; }
+    input { width: 100%; border: 1px solid #d1d5db; border-radius: 14px; padding: 15px 16px; outline: none; font-size: 15px; background: white; }
+    input:focus { border-color: #2563eb; box-shadow: 0 0 0 4px rgba(37,99,235,.12); }
+    button { border: none; border-radius: 14px; padding: 14px 18px; font-size: 14px; font-weight: 900; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: .2s; white-space: nowrap; }
+    button:hover { transform: translateY(-1px); }
+    button:disabled { opacity: .6; cursor: not-allowed; transform: none; }
+    .btn-primary { background: #2563eb; color: white; }
+    .btn-success { background: #16a34a; color: white; }
+    .btn-danger { background: #dc2626; color: white; }
+    .btn-secondary { background: #e5e7eb; color: #111827; }
+    .btn-dark { background: #111827; color: white; }
+    .btn-warning { background: #f59e0b; color: white; }
+    .message { display: none; padding: 15px; border-radius: 16px; margin-bottom: 18px; font-size: 14px; font-weight: 700; line-height: 1.45; }
+    .message.success { display: block; background: #dcfce7; color: #166534; }
+    .message.error { display: block; background: #fee2e2; color: #991b1b; }
+    .message.info { display: block; background: #dbeafe; color: #1e40af; }
+    .message.warning { display: block; background: #fef3c7; color: #92400e; }
+    .status-card { position: relative; overflow: hidden; background: linear-gradient(135deg, #fff, #f8fafc); }
+    .status-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-top: 18px; }
+    .status-box { border-radius: 18px; background: #f8fafc; border: 1px solid #e5e7eb; padding: 18px; }
+    .status-box span { display: block; color: #64748b; font-size: 12px; font-weight: 800; margin-bottom: 8px; text-transform: uppercase; letter-spacing: .04em; }
+    .status-box strong { display: block; color: #0f172a; font-size: 18px; word-break: break-word; }
+    .badge { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 8px 12px; font-weight: 900; font-size: 13px; }
+    .badge.connected { background: #dcfce7; color: #166534; }
+    .badge.disconnected { background: #fee2e2; color: #991b1b; }
+    .badge.unknown { background: #f3f4f6; color: #475569; }
+    .qr-layout { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 22px; align-items: start; }
+    .qr-box { min-height: 380px; border-radius: 22px; border: 1px dashed #cbd5e1; background: #f8fafc; display: flex; align-items: center; justify-content: center; padding: 24px; text-align: center; color: #64748b; }
+    .qr-box img { width: 100%; max-width: 320px; border-radius: 18px; background: white; padding: 12px; box-shadow: 0 16px 40px rgba(15,23,42,.12); }
+    .steps { display: grid; gap: 12px; margin-top: 16px; }
+    .step { display: flex; gap: 12px; align-items: flex-start; background: #f8fafc; border: 1px solid #e5e7eb; border-radius: 18px; padding: 16px; }
+    .step-number { width: 30px; height: 30px; flex-shrink: 0; border-radius: 999px; background: #2563eb; color: white; display: inline-flex; align-items: center; justify-content: center; font-weight: 900; }
+    .step strong { display: block; margin-bottom: 4px; color: #0f172a; }
+    .step p { color: #64748b; line-height: 1.45; font-size: 14px; }
+    .danger-zone { border: 1px solid #fecaca; background: #fff7f7; }
+    .danger-zone h2 { color: #991b1b; }
+    .small-text { color: #64748b; font-size: 13px; line-height: 1.45; margin-top: 8px; }
+    .section-title { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; margin-bottom: 18px; }
+    .section-title h2 { color: #0f172a; font-size: 24px; letter-spacing: -.6px; margin-bottom: 6px; }
+    .loading-spinner { width: 14px; height: 14px; border: 2px solid rgba(255,255,255,.45); border-top-color: white; border-radius: 999px; display: inline-block; animation: spin .8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @media (max-width: 900px) { body { padding: 12px; } .header { padding: 26px; border-radius: 24px; } .grid-2, .grid-3, .status-grid, .qr-layout { grid-template-columns: 1fr; } button { width: 100%; } .top-actions { flex-direction: column; } }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="header-content">
+        <span class="header-badge">📲 Configuração da instância</span>
+        <h1>Trocar número do WhatsApp</h1>
+        <p>Gerencie a mesma instância Z-API do responsável, desconecte o número atual e conecte outro WhatsApp sem mudar a assinatura.</p>
+        <div class="top-actions">
+          <button class="btn-secondary" onclick="goBack()">← Voltar</button>
+          <button class="btn-dark" onclick="goEvents()">Eventos</button>
+          <button class="btn-success" onclick="checkZAPIStatus(event)">Verificar status</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="message" class="message"></div>
+
+    <div class="card status-card">
+      <div class="section-title">
+        <div>
+          <h2>Status da instância</h2>
+          <p class="small-text">Veja se a instância está conectada, desconectada ou aguardando leitura do QR Code.</p>
+        </div>
+        <span id="connectionBadge" class="badge unknown">● Não verificado</span>
+      </div>
+      <div class="status-grid">
+        <div class="status-box"><span>Usuário</span><strong id="loggedUserName">-</strong></div>
+        <div class="status-box"><span>Telefone salvo</span><strong id="savedPhoneText">-</strong></div>
+        <div class="status-box"><span>WhatsApp conectado</span><strong id="connectedText">-</strong></div>
+        <div class="status-box"><span>Celular online</span><strong id="smartphoneText">-</strong></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">
+        <div>
+          <h2>Credenciais da Z-API</h2>
+          <p class="small-text">Salve os dados da instância paga que será usada por este responsável.</p>
+        </div>
+      </div>
+      <div class="grid-3">
+        <div class="form-group"><label for="instanceId">Instance ID</label><input id="instanceId" type="text" placeholder="ID da instância Z-API" /></div>
+        <div class="form-group"><label for="instanceToken">Token da instância</label><input id="instanceToken" type="password" placeholder="Token da instância" /></div>
+        <div class="form-group"><label for="clientToken">Client-Token</label><input id="clientToken" type="password" placeholder="Client-Token da conta" /></div>
+      </div>
+      <div class="grid-2" style="margin-top:18px;">
+        <div class="form-group">
+          <label for="connectedPhone">Número conectado / desejado</label>
+          <input id="connectedPhone" type="text" placeholder="Ex: (81) 99999-9999" />
+          <p class="small-text">Esse campo é usado para registro interno e para solicitar conexão por código de telefone.</p>
+        </div>
+        <div class="form-group">
+          <label for="testPhone">Número para teste de envio</label>
+          <input id="testPhone" type="text" placeholder="Ex: (81) 99999-9999" />
+          <p class="small-text">Use para validar se a instância está enviando mensagens.</p>
+        </div>
+      </div>
+      <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:18px;">
+        <button class="btn-primary" onclick="saveZAPIInstance(event)">Salvar instância</button>
+        <button class="btn-success" onclick="testSend(event)">Enviar teste</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">
+        <div>
+          <h2>Conectar outro número</h2>
+          <p class="small-text">Para trocar o WhatsApp da mesma instância, desconecte o número atual e gere um novo QR Code.</p>
+        </div>
+      </div>
+      <div class="qr-layout">
+        <div>
+          <div class="steps">
+            <div class="step"><span class="step-number">1</span><div><strong>Confira a instância</strong><p>Verifique se as credenciais salvas são da instância paga correta.</p></div></div>
+            <div class="step"><span class="step-number">2</span><div><strong>Desconecte o número atual</strong><p>Isso libera a mesma instância para parear um novo WhatsApp.</p></div></div>
+            <div class="step"><span class="step-number">3</span><div><strong>Gere o QR Code</strong><p>Abra o WhatsApp no novo celular, vá em aparelhos conectados e leia o QR Code.</p></div></div>
+            <div class="step"><span class="step-number">4</span><div><strong>Verifique o status</strong><p>Depois de parear, clique em verificar status para confirmar que o novo número está conectado.</p></div></div>
+          </div>
+          <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:18px;">
+            <button class="btn-danger" onclick="disconnectNumber(event)">Desconectar número atual</button>
+            <button class="btn-primary" onclick="getQRCode(event)">Gerar QR Code</button>
+            <button class="btn-warning" onclick="getPhoneCode(event)">Conectar por código</button>
+          </div>
+        </div>
+        <div>
+          <div id="qrBox" class="qr-box">O QR Code aparecerá aqui.</div>
+          <p class="small-text">O QR Code pode expirar rapidamente. Se não funcionar, gere outro.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="card danger-zone">
+      <div class="section-title">
+        <div>
+          <h2>Zona de atenção</h2>
+          <p class="small-text">Ao desconectar, a instância fica temporariamente sem enviar mensagens até o novo número ser conectado.</p>
+        </div>
+      </div>
+      <button class="btn-danger" onclick="clearLocalAndGoLogin()">Sair e limpar sessão local</button>
+    </div>
+  </div>
+
+<script>
+  let supabaseClient = null;
+  let zapiInstanceRow = null;
+  const USER_SESSION_KEY = 'convidou_user_session';
+
+  const DEFAULT_SUPABASE_URL = localStorage.getItem('supabase_url') || 'https://pfyctxoikdrephjogdtm.supabase.co';
+  const DEFAULT_SUPABASE_KEY = localStorage.getItem('supabase_key') || 'sb_publishable_h_5hK_HTT-XJ4WUoOGzkGg_tqkBDLjv';
+
+  initializePage();
+
+  function getLoggedUser() {
+    try { return JSON.parse(localStorage.getItem(USER_SESSION_KEY)); } catch { return null; }
+  }
+
+  async function initializePage() {
+    const loggedUser = getLoggedUser();
+    if (!loggedUser?.id) { window.location.href = '/login/'; return; }
+    document.getElementById('loggedUserName').textContent = loggedUser.name || loggedUser.email || 'Usuário';
+    const { createClient } = supabase;
+    supabaseClient = createClient(DEFAULT_SUPABASE_URL, DEFAULT_SUPABASE_KEY);
+    setupMasks();
+    await loadZAPIInstance();
+  }
+
+  function setupMasks() {
+    ['connectedPhone', 'testPhone'].forEach(id => {
+      const input = document.getElementById(id);
+      input.addEventListener('input', event => { event.target.value = formatPhoneInput(event.target.value); });
+    });
+  }
+
+  function goBack() { history.back(); }
+  function goEvents() { window.location.href = '/eventos/'; }
+
+  async function loadZAPIInstance() {
+    const loggedUser = getLoggedUser();
+    const { data, error } = await supabaseClient.from('user_zapi_instances').select('*').eq('user_id', loggedUser.id).maybeSingle();
+    if (error) { showMessage('Erro ao carregar instância: ' + error.message, 'error'); return; }
+    zapiInstanceRow = data || null;
+    if (!zapiInstanceRow) { updateStatusUI(null); showMessage('Nenhuma instância salva para este usuário.', 'info'); return; }
+    document.getElementById('instanceId').value = zapiInstanceRow.instance_id || '';
+    document.getElementById('instanceToken').value = zapiInstanceRow.instance_token || '';
+    document.getElementById('clientToken').value = zapiInstanceRow.client_token || '';
+    document.getElementById('connectedPhone').value = formatPhoneInput(zapiInstanceRow.connected_phone || '');
+    updateStatusUI({ connected: zapiInstanceRow.status === 'connected', smartphoneConnected: zapiInstanceRow.smartphone_connected, error: zapiInstanceRow.last_status_message || '' });
+  }
+
+  async function saveZAPIInstance(evt) {
+    const button = evt?.target;
+    setButtonLoading(button, true, 'Salvando...');
+    try {
+      const loggedUser = getLoggedUser();
+      const instanceId = document.getElementById('instanceId').value.trim();
+      const instanceToken = document.getElementById('instanceToken').value.trim();
+      const clientToken = document.getElementById('clientToken').value.trim();
+      const connectedPhone = normalizePhone(document.getElementById('connectedPhone').value);
+      if (!instanceId || !instanceToken || !clientToken) throw new Error('Informe Instance ID, Token da instância e Client-Token.');
+      const payload = { user_id: loggedUser.id, instance_id: instanceId, instance_token: instanceToken, client_token: clientToken, connected_phone: connectedPhone || null, updated_at: new Date().toISOString() };
+      let result = null;
+      if (zapiInstanceRow?.id) {
+        result = await supabaseClient.from('user_zapi_instances').update(payload).eq('id', zapiInstanceRow.id).select('*').maybeSingle();
+      } else {
+        result = await supabaseClient.from('user_zapi_instances').insert(payload).select('*').maybeSingle();
+      }
+      if (result.error) throw result.error;
+      zapiInstanceRow = result.data;
+      await insertInstanceLog('save_config', null, connectedPhone, 'saved', 'Credenciais da instância atualizadas.');
+      showMessage('Instância salva com sucesso.', 'success');
+      await checkZAPIStatus();
+    } catch (error) {
+      showMessage('Erro ao salvar: ' + error.message, 'error');
+    } finally { setButtonLoading(button, false); }
+  }
+
+  function getCurrentConfig() {
+    const instanceId = document.getElementById('instanceId').value.trim();
+    const instanceToken = document.getElementById('instanceToken').value.trim();
+    const clientToken = document.getElementById('clientToken').value.trim();
+    if (!instanceId || !instanceToken || !clientToken) throw new Error('Informe e salve Instance ID, Token da instância e Client-Token.');
+    return { instanceId, instanceToken, clientToken };
+  }
+
+  async function zapiRequest(path, options = {}) {
+    const config = getCurrentConfig();
+    const url = `https://api.z-api.io/instances/${encodeURIComponent(config.instanceId)}/token/${encodeURIComponent(config.instanceToken)}${path}`;
+    const response = await fetch(url, {
+      method: options.method || 'GET',
+      headers: { 'Content-Type': 'application/json', 'Client-Token': config.clientToken },
+      body: options.body ? JSON.stringify(options.body) : undefined
+    });
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(result.message || result.error || result.errorMessage || `Erro Z-API HTTP ${response.status}`);
+    if (result.error && typeof result.error === 'string') throw new Error(result.error);
+    return result;
+  }
+
+  function isAlreadyConnectedMessage(value) {
+    const text = String(value || '').toLowerCase();
+    return text.includes('already connected') || text.includes('you are already connected');
+  }
+
+  function isZAPIConnectedResponse(result) {
+    if (!result) return false;
+
+    return (
+      result.connected === true ||
+      result.smartphoneConnected === true ||
+      result.status === 'connected' ||
+      result.status === 'CONNECTED' ||
+      isAlreadyConnectedMessage(result.message) ||
+      isAlreadyConnectedMessage(result.error) ||
+      isAlreadyConnectedMessage(result.errorMessage)
+    );
+  }
+
+  function getZAPIStatusMessage(result) {
+    return result?.message || result?.error || result?.errorMessage || '';
+  }
+
+  async function checkZAPIStatus(evt) {
+    const button = evt?.target;
+    setButtonLoading(button, true, 'Verificando...');
+
+    try {
+      const result = await zapiRequest('/status');
+      const connected = isZAPIConnectedResponse(result);
+      const smartphoneConnected = result.smartphoneConnected === true || connected;
+      const status = connected ? 'connected' : 'disconnected';
+      const statusMessage = getZAPIStatusMessage(result);
+
+      await updateInstanceStatus({
+        status,
+        smartphoneConnected,
+        message: statusMessage || (connected ? 'Instância conectada.' : 'Instância desconectada.')
+      });
+
+      updateStatusUI({
+        ...result,
+        connected,
+        smartphoneConnected
+      });
+
+      await insertInstanceLog(
+        'status_check',
+        null,
+        normalizePhone(document.getElementById('connectedPhone').value),
+        status,
+        JSON.stringify(result)
+      );
+
+      showMessage(
+        connected
+          ? 'Instância conectada com sucesso.'
+          : 'Instância não conectada. Gere o QR Code para conectar outro número.',
+        connected ? 'success' : 'warning'
+      );
+    } catch (error) {
+      if (isAlreadyConnectedMessage(error.message)) {
+        const connectedResult = {
+          connected: true,
+          smartphoneConnected: true,
+          message: error.message
+        };
+
+        await updateInstanceStatus({
+          status: 'connected',
+          smartphoneConnected: true,
+          message: 'Instância conectada.'
+        });
+
+        updateStatusUI(connectedResult);
+
+        await insertInstanceLog(
+          'status_check',
+          null,
+          normalizePhone(document.getElementById('connectedPhone').value),
+          'connected',
+          error.message
+        );
+
+        showMessage('Instância conectada com sucesso.', 'success');
+        return;
+      }
+
+      showMessage('Erro ao verificar status: ' + error.message, 'error');
+    } finally {
+      setButtonLoading(button, false);
+    }
+  }
+
+  async function disconnectNumber(evt) {
+    const ok = confirm('Deseja desconectar o número atual desta instância? A instância ficará sem enviar mensagens até conectar outro WhatsApp.');
+    if (!ok) return;
+    const button = evt?.target;
+    setButtonLoading(button, true, 'Desconectando...');
+    try {
+      const oldPhone = normalizePhone(document.getElementById('connectedPhone').value);
+      const result = await zapiRequest('/disconnect');
+      await updateInstanceStatus({ status: 'disconnected', smartphoneConnected: false, message: 'Número desconectado.', disconnectedAt: new Date().toISOString() });
+      await insertInstanceLog('disconnect', oldPhone, null, 'disconnected', JSON.stringify(result));
+      updateStatusUI({ connected: false, smartphoneConnected: false, error: 'Número desconectado.' });
+      showMessage('Número desconectado. Agora gere o QR Code para conectar outro WhatsApp.', 'success');
+    } catch (error) { showMessage('Erro ao desconectar número: ' + error.message, 'error'); }
+    finally { setButtonLoading(button, false); }
+  }
+
+  async function getQRCode(evt) {
+    const button = evt?.target;
+    setButtonLoading(button, true, 'Gerando...');
+    try {
+      const result = await zapiRequest('/qr-code/image');
+      const value = result.value || result.qrcode || result.qrCode || '';
+      if (!value) throw new Error('A Z-API não retornou imagem do QR Code.');
+      const imageSrc = value.startsWith('data:image') ? value : `data:image/png;base64,${value}`;
+      document.getElementById('qrBox').innerHTML = `<img src="${imageSrc}" alt="QR Code Z-API" />`;
+      await updateInstanceStatus({ status: 'waiting_qrcode', smartphoneConnected: false, message: 'QR Code gerado.', qrcodeAt: new Date().toISOString() });
+      await insertInstanceLog('generate_qrcode', null, normalizePhone(document.getElementById('connectedPhone').value), 'waiting_qrcode', 'QR Code gerado para pareamento.');
+      showMessage('QR Code gerado. Leia pelo WhatsApp do novo número.', 'success');
+    } catch (error) { showMessage('Erro ao gerar QR Code: ' + error.message, 'error'); }
+    finally { setButtonLoading(button, false); }
+  }
+
+  async function getPhoneCode(evt) {
+    const button = evt?.target;
+    setButtonLoading(button, true, 'Gerando código...');
+    try {
+      const phone = normalizePhoneWithDDI(document.getElementById('connectedPhone').value);
+      if (!phone) throw new Error('Informe o número desejado antes de gerar o código.');
+      const result = await zapiRequest(`/phone-code/${encodeURIComponent(phone)}`);
+      const code = result.value || result.code || '';
+      if (!code) throw new Error('A Z-API não retornou o código.');
+      document.getElementById('qrBox').innerHTML = `<div><h2 style="font-size:34px;color:#0f172a;margin-bottom:10px;">${escapeHTML(code)}</h2><p>Use este código no WhatsApp do novo número para conectar a instância.</p></div>`;
+      await updateInstanceStatus({ status: 'waiting_phone_code', smartphoneConnected: false, message: 'Código por telefone gerado.', qrcodeAt: new Date().toISOString() });
+      await insertInstanceLog('generate_phone_code', null, phone, 'waiting_phone_code', `Código gerado: ${code}`);
+      showMessage('Código gerado com sucesso.', 'success');
+    } catch (error) { showMessage('Erro ao gerar código: ' + error.message, 'error'); }
+    finally { setButtonLoading(button, false); }
+  }
+
+  async function testSend(evt) {
+    const button = evt?.target;
+    setButtonLoading(button, true, 'Enviando...');
+    try {
+      const phone = normalizePhoneWithDDI(document.getElementById('testPhone').value || document.getElementById('connectedPhone').value);
+      if (!phone) throw new Error('Informe um número para teste.');
+      const message = `✅ Teste de envio Convidou\n\nSua instância Z-API está configurada e enviando mensagens.\n\n${new Date().toLocaleString('pt-BR')}`;
+      const result = await zapiRequest('/send-text', { method: 'POST', body: { phone, message } });
+      await insertInstanceLog('test_send', null, phone, 'sent', JSON.stringify(result));
+      showMessage('Mensagem de teste enviada com sucesso.', 'success');
+    } catch (error) { showMessage('Erro no teste de envio: ' + error.message, 'error'); }
+    finally { setButtonLoading(button, false); }
+  }
+
+  async function updateInstanceStatus({ status, smartphoneConnected, message, qrcodeAt, disconnectedAt }) {
+    if (!zapiInstanceRow?.id) return;
+    const payload = { status, smartphone_connected: smartphoneConnected, last_status_message: message || null, updated_at: new Date().toISOString() };
+    if (qrcodeAt) payload.last_qrcode_at = qrcodeAt;
+    if (disconnectedAt) payload.last_disconnected_at = disconnectedAt;
+    if (status === 'connected') payload.last_connected_at = new Date().toISOString();
+    const { data, error } = await supabaseClient.from('user_zapi_instances').update(payload).eq('id', zapiInstanceRow.id).select('*').maybeSingle();
+    if (!error && data) zapiInstanceRow = data;
+  }
+
+  async function insertInstanceLog(action, oldPhone, newPhone, status, details) {
+    const loggedUser = getLoggedUser();
+    await supabaseClient.from('user_zapi_instance_logs').insert({
+      user_id: loggedUser?.id || null,
+      zapi_instance_id: zapiInstanceRow?.id || null,
+      action,
+      old_phone: oldPhone || null,
+      new_phone: newPhone || null,
+      status: status || null,
+      details: String(details || '').substring(0, 1000)
+    });
+  }
+
+  function updateStatusUI(status) {
+    const badge = document.getElementById('connectionBadge');
+    const connected = status?.connected === true;
+    const smartphoneConnected = status?.smartphoneConnected === true;
+    badge.className = connected ? 'badge connected' : status ? 'badge disconnected' : 'badge unknown';
+    badge.textContent = connected ? '● Conectado' : status ? '● Desconectado' : '● Não verificado';
+    document.getElementById('savedPhoneText').textContent = formatPhoneBR(document.getElementById('connectedPhone').value || zapiInstanceRow?.connected_phone || '') || '-';
+    document.getElementById('connectedText').textContent = connected ? 'Sim' : status ? 'Não' : '-';
+    document.getElementById('smartphoneText').textContent = smartphoneConnected ? 'Sim' : status ? 'Não' : '-';
+  }
+
+  function clearLocalAndGoLogin() {
+    localStorage.removeItem('convidou_user_session');
+    localStorage.removeItem('convidou_user_id');
+    localStorage.removeItem('user_id');
+    window.location.href = '/login/';
+  }
+
+  function setButtonLoading(button, loading, text) {
+    if (!button) return;
+    if (loading) {
+      button.dataset.oldText = button.innerHTML;
+      button.disabled = true;
+      button.innerHTML = `<span class="loading-spinner"></span>${text || 'Processando...'}`;
+      return;
+    }
+    button.disabled = false;
+    if (button.dataset.oldText) {
+      button.innerHTML = button.dataset.oldText;
+      delete button.dataset.oldText;
+    }
+  }
+
+  function normalizePhone(value) {
+    if (!value) return '';
+    return String(value).replace(/\D/g, '').replace(/^55/, '').slice(0, 11);
+  }
+
+  function normalizePhoneWithDDI(value) {
+    const phone = normalizePhone(value);
+    if (!phone) return '';
+    return `55${phone}`;
+  }
+
+  function formatPhoneInput(value) {
+    const numbers = normalizePhone(value);
+    if (numbers.length <= 10) {
+      return numbers.replace(/^(\d{2})(\d)/g, '($1) $2').replace(/(\d{4})(\d)/, '$1-$2');
+    }
+    return numbers.replace(/^(\d{2})(\d)/g, '($1) $2').replace(/(\d{5})(\d)/, '$1-$2');
+  }
+
+  function formatPhoneBR(value) {
+    const phone = normalizePhone(value);
+    if (!phone) return '';
+    if (phone.length === 11) return phone.replace(/^(\d{2})(\d{5})(\d{4})$/, '($1) $2-$3');
+    if (phone.length === 10) return phone.replace(/^(\d{2})(\d{4})(\d{4})$/, '($1) $2-$3');
+    return phone;
+  }
+
+  function escapeHTML(value) {
+    return String(value || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+  }
+
+  function showMessage(text, type) {
+    const message = document.getElementById('message');
+    message.textContent = text;
+    message.className = `message ${type}`;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setTimeout(() => { message.className = 'message'; message.textContent = ''; }, 6000);
+  }
+</script>
+</body>
+</html>

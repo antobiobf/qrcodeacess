@@ -4,6 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link href="../image/favicon.ico" rel="icon" type="image/x-icon" />
   <title>Eventos - Controle de Acesso</title>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -728,7 +729,7 @@
           title="Adicionar evento">
 
           <span>➕</span>
-          <strong>Adicionar</strong>
+          <strong>Criar evento</strong>
         </button>
 
         <!-- Apenas administrador -->
@@ -1060,25 +1061,24 @@
 
             <div class="event-actions">
 
-              <a class="btn-link action-card action-green" href="/acesso/?event_id=${eventId}">
-                <strong>🟢 Bipagem</strong>
-                <span>Validar entrada</span>
+              <a class="btn-link action-card action-purple" href="/convidados/?event_id=${eventId}">
+                <strong>👥 Convidados</strong>
+                <span>Lista e disparos</span>
               </a>
-
               <a class="btn-link action-card action-blue" href="/controle-qrcode/?event_id=${eventId}">
                 <strong>🎟️ QR Codes</strong>
                 <span>Cadastro e geração</span>
               </a>
-
+              <a class="btn-link action-card action-green" href="/acesso/?event_id=${eventId}">
+                <strong>🟢 Bipagem</strong>
+                <span>Validar entrada</span>
+              </a>
               <a class="btn-link action-card action-dark" href="/dashboard/?event_id=${eventId}">
                 <strong>📊 Dashboard</strong>
                 <span>Acompanhar acessos</span>
               </a>
 
-              <a class="btn-link action-card action-purple" href="/convidados/?event_id=${eventId}">
-                <strong>👥 Convidados</strong>
-                <span>Lista e disparos</span>
-              </a>
+          
 
             </div>
 

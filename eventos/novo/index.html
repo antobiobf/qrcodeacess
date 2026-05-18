@@ -1,8 +1,10 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link href="../../image/favicon.ico" rel="icon" type="image/x-icon" />
   <title>Criar Evento - Controle de Acesso</title>
 
   <!--
@@ -224,7 +226,7 @@
       height: 54px;
       border: none;
       background: transparent;
-      color: white;
+      /* color: white; */
       padding: 0 18px;
       display: inline-flex;
       align-items: center;
@@ -237,7 +239,7 @@
       white-space: nowrap;
     }
 
-    .toolbar-button + .toolbar-button {
+    .toolbar-button+.toolbar-button {
       border-left: 1px solid rgba(255, 255, 255, 0.16);
     }
 
@@ -681,6 +683,7 @@
     }
   </style>
 </head>
+
 <body>
   <div class="container">
     <div class="header">
@@ -688,19 +691,12 @@
         <div class="header-content">
           <span class="header-badge">✨ Novo evento</span>
           <h1>Criar Evento</h1>
-          <p>Cadastre seu evento, defina o limite de convidados, envie o convite e vincule o responsável ao usuário cadastrado.</p>
+          <p>Cadastre seu evento, defina o limite de convidados, envie o convite e vincule o responsável ao usuário
+            cadastrado.</p>
         </div>
 
         <div class="toolbar" aria-label="Ações da página">
-          <button class="toolbar-button" onclick="goHome()" title="Voltar para eventos">
-            <span>🏠</span>
-            <strong>Eventos</strong>
-          </button>
 
-          <button class="toolbar-button" onclick="toggleConfig()" title="Configurações">
-            <span>⚙️</span>
-            <strong>Configurações</strong>
-          </button>
         </div>
       </div>
     </div>
@@ -737,8 +733,47 @@
         </div>
       </div>
 
+      <div class="card-title" style="margin-top:22px;margin-bottom:14px;">
+        <div>
+          <h2>Configuração Z-API</h2>
+          <p>Essas credenciais serão usadas para enviar a mensagem automática ao responsável quando o evento for criado.
+          </p>
+        </div>
+      </div>
+
+      <div class="grid-3">
+        <div class="form-group">
+          <label for="zapiInstanceId">Instance ID</label>
+          <input id="zapiInstanceId" type="text" placeholder="ID da instância Z-API" />
+        </div>
+        <div class="form-group">
+          <label for="zapiToken">Token da instância</label>
+          <input id="zapiToken" type="password" placeholder="Token da instância" />
+        </div>
+        <div class="form-group">
+          <label for="zapiClientToken">Client-Token</label>
+          <input id="zapiClientToken" type="password" placeholder="Client-Token da conta" />
+        </div>
+      </div>
+
       <div class="actions">
         <button class="btn-primary" onclick="saveConfig()">Salvar configurações</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="toolbar" aria-label="Ações da página">
+
+        <button class="toolbar-button" onclick="goHome()" title="Voltar para eventos">
+          <span>🏠</span>
+          <strong>Eventos</strong>
+        </button>
+
+        <button class="toolbar-button" onclick="toggleConfig()" title="Configurações">
+          <span>⚙️</span>
+          <strong>Configurações</strong>
+        </button>
+
       </div>
     </div>
 
@@ -764,7 +799,8 @@
       <div class="form-group" style="margin-top:16px;">
         <label for="googleMapsLink">Link do Google Maps</label>
         <input id="googleMapsLink" type="url" placeholder="Cole aqui o link do Google Maps do local" />
-        <p class="small-text">Esse link ficará salvo no evento para usarmos depois nos convites, confirmações e páginas públicas.</p>
+        <p class="small-text">Esse link ficará salvo no evento para usarmos depois nos convites, confirmações e páginas
+          públicas.</p>
       </div>
 
       <div class="grid-3" style="margin-top:16px;">
@@ -794,7 +830,8 @@
       <div class="grid-2">
         <div class="form-group">
           <label for="invitationImage">Upload do convite</label>
-          <input id="invitationImage" type="file" accept="image/jpeg,image/png,.jpg,.jpeg,.png" onchange="previewInvitationImage()" />
+          <input id="invitationImage" type="file" accept="image/jpeg,image/png,.jpg,.jpeg,.png"
+            onchange="previewInvitationImage()" />
           <p class="small-text">Formatos aceitos: JPG ou PNG. Tamanho máximo: 8MB.</p>
         </div>
         <div id="invitationPreviewBox" style="display:none;">
@@ -814,12 +851,14 @@
 
       <div class="form-group" style="margin-bottom:16px;">
         <label for="responsibleEmail">E-mail do responsável</label>
-        <input id="responsibleEmail" type="email" placeholder="Digite o e-mail para buscar ou cadastrar" onblur="findResponsibleByEmail()" />
+        <input id="responsibleEmail" type="email" placeholder="Digite o e-mail para buscar ou cadastrar"
+          onblur="findResponsibleByEmail()" />
         <p class="small-text">Se o usuário existir, nome e WhatsApp serão carregados automaticamente.</p>
       </div>
 
       <div id="userFoundBox" class="user-found">Usuário encontrado. O evento será vinculado a este usuário.</div>
-      <div id="userNewBox" class="user-new">Usuário não encontrado. Preencha os dados abaixo para cadastrar um novo usuário.</div>
+      <div id="userNewBox" class="user-new">Usuário não encontrado. Preencha os dados abaixo para cadastrar um novo
+        usuário.</div>
 
       <div class="grid-3" style="margin-top:16px;">
         <div class="form-group">
@@ -903,7 +942,8 @@
       </div>
 
       <div class="actions">
-        <button class="btn-primary" id="createPaymentButton" onclick="createPixPayment()" style="display:none;">Gerar PIX</button>
+        <button class="btn-primary" id="createPaymentButton" onclick="createPixPayment()" style="display:none;">Gerar
+          PIX</button>
         <button class="btn-success" id="createEventButton" onclick="createNewEvent()">Criar Evento</button>
       </div>
     </div>
@@ -922,11 +962,29 @@
     const savedKey = localStorage.getItem('supabase_key') || DEFAULT_SUPABASE_KEY;
     const savedCreatePaymentUrl = localStorage.getItem('create_payment_url') || '/api/create-payment';
     const savedCheckPaymentUrl = localStorage.getItem('check_payment_url') || '/api/check-payment';
+    const savedZapiInstanceId =
+      localStorage.getItem('zapi_instance_id') ||
+      localStorage.getItem('zapiInstanceId') ||
+      '';
+
+    const savedZapiToken =
+      localStorage.getItem('zapi_token') ||
+      localStorage.getItem('zapi_instance_token') ||
+      localStorage.getItem('zapiInstanceToken') ||
+      '';
+
+    const savedZapiClientToken =
+      localStorage.getItem('zapi_client_token') ||
+      localStorage.getItem('zapiClientToken') ||
+      '';
 
     document.getElementById('supabaseUrl').value = savedUrl;
     document.getElementById('supabaseKey').value = savedKey;
     document.getElementById('createPaymentUrl').value = savedCreatePaymentUrl;
     document.getElementById('checkPaymentUrl').value = savedCheckPaymentUrl;
+    document.getElementById('zapiInstanceId').value = savedZapiInstanceId;
+    document.getElementById('zapiToken').value = savedZapiToken;
+    document.getElementById('zapiClientToken').value = savedZapiClientToken;
 
     if (savedUrl && savedKey) connectSupabase(savedUrl, savedKey); else toggleConfig();
     updatePackageView();
@@ -961,6 +1019,9 @@
       const key = document.getElementById('supabaseKey').value.trim();
       const createPaymentUrl = document.getElementById('createPaymentUrl').value.trim() || '/api/create-payment';
       const checkPaymentUrl = document.getElementById('checkPaymentUrl').value.trim() || '/api/check-payment';
+      const zapiInstanceId = document.getElementById('zapiInstanceId').value.trim();
+      const zapiToken = document.getElementById('zapiToken').value.trim();
+      const zapiClientToken = document.getElementById('zapiClientToken').value.trim();
 
       if (!url || !key) {
         showMessage('Informe URL e chave do Supabase.', 'error');
@@ -971,6 +1032,10 @@
       localStorage.setItem('supabase_key', key);
       localStorage.setItem('create_payment_url', createPaymentUrl);
       localStorage.setItem('check_payment_url', checkPaymentUrl);
+      localStorage.setItem('zapi_instance_id', zapiInstanceId);
+      localStorage.setItem('zapi_token', zapiToken);
+      localStorage.setItem('zapi_instance_token', zapiToken);
+      localStorage.setItem('zapi_client_token', zapiClientToken);
 
       connectSupabase(url, key);
       showMessage('Configurações salvas com sucesso.', 'success');
@@ -1251,7 +1316,223 @@
       previewBox.style.display = 'block';
     }
 
+
+
+
+
+    function flowAlert(title, details) {
+      const text = details ? `${title}\n\n${details}` : title;
+      alert(text);
+      console.log('[CONVIDOU EVENTO]', title, details || '');
+    }
+
+    function maskConfig(config) {
+      if (!config) return 'nenhuma configuração';
+      return `Instance ID: ${String(config.instanceId || '').slice(0, 6)}...\nToken: ${String(config.instanceToken || '').slice(0, 4)}...\nClient-Token: ${String(config.clientToken || '').slice(0, 4)}...`;
+    }
+
+    async function getResponsibleZAPIConfig(userId) {
+      if (!userId || !supabaseClient) {
+        flowAlert('Z-API do responsável não consultada', 'Sem userId ou Supabase não conectado. O sistema vai tentar usar a configuração local da tela.');
+        return null;
+      }
+
+      try {
+        flowAlert('Consultando Z-API do responsável', `Buscando configuração na tabela user_zapi_instances para o usuário:
+${userId}`);
+
+        const { data, error } = await supabaseClient
+          .from('user_zapi_instances')
+          .select('instance_id, instance_token, client_token, status')
+          .eq('user_id', userId)
+          .maybeSingle();
+
+        if (error) {
+          flowAlert('Erro ao consultar Z-API do responsável', error.message || String(error));
+          console.warn('Não foi possível buscar Z-API do responsável:', error);
+          return null;
+        }
+
+        if (!data?.instance_id || !data?.instance_token || !data?.client_token) {
+          flowAlert('Responsável sem Z-API cadastrada', 'Não existe configuração completa em user_zapi_instances. O sistema vai tentar usar a configuração local da tela.');
+          return null;
+        }
+
+        const config = {
+          instanceId: data.instance_id,
+          instanceToken: data.instance_token,
+          clientToken: data.client_token
+        };
+
+        flowAlert('Z-API do responsável encontrada', `Status salvo: ${data.status || '-'}
+${maskConfig(config)}`);
+        return config;
+      } catch (error) {
+        flowAlert('Erro inesperado ao consultar Z-API', error.message || String(error));
+        console.warn('Erro ao consultar Z-API do responsável:', error);
+        return null;
+      }
+    }
+
+    function getLocalZAPIConfig() {
+      const instanceId =
+        document.getElementById('zapiInstanceId')?.value?.trim() ||
+        localStorage.getItem('zapi_instance_id') ||
+        localStorage.getItem('zapiInstanceId') ||
+        '';
+
+      const instanceToken =
+        document.getElementById('zapiToken')?.value?.trim() ||
+        localStorage.getItem('zapi_token') ||
+        localStorage.getItem('zapi_instance_token') ||
+        localStorage.getItem('zapiInstanceToken') ||
+        '';
+
+      const clientToken =
+        document.getElementById('zapiClientToken')?.value?.trim() ||
+        localStorage.getItem('zapi_client_token') ||
+        localStorage.getItem('zapiClientToken') ||
+        '';
+
+      if (!instanceId || !instanceToken || !clientToken) {
+        flowAlert('Configuração local Z-API incompleta', 'Abra Configurações e preencha Instance ID, Token da instância e Client-Token.');
+        return null;
+      }
+
+      const config = {
+        instanceId,
+        instanceToken,
+        clientToken
+      };
+
+      flowAlert('Configuração local Z-API carregada', maskConfig(config));
+      return config;
+    }
+
+    async function sendZAPITextWithConfig(config, phone, message) {
+      if (!config?.instanceId || !config?.instanceToken || !config?.clientToken) {
+        throw new Error('Credenciais Z-API não configuradas.');
+      }
+
+      const url = `https://api.z-api.io/instances/${encodeURIComponent(config.instanceId)}/token/${encodeURIComponent(config.instanceToken)}/send-text`;
+
+      flowAlert(
+        'Enviando WhatsApp pela Z-API',
+        `Destino: ${phone}
+Endpoint: /send-text
+Tamanho da mensagem: ${message.length} caracteres`
+      );
+
+      const response = await fetch(
+        url,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Client-Token': config.clientToken
+          },
+          body: JSON.stringify({
+            phone,
+            message
+          })
+        }
+      );
+
+      const result = await response.json().catch(() => ({}));
+
+      flowAlert(
+        'Retorno da Z-API',
+        `HTTP: ${response.status}
+Resposta: ${JSON.stringify(result).substring(0, 900)}`
+      );
+
+      if (!response.ok) {
+        throw new Error(result.message || result.error || result.errorMessage || `Erro Z-API HTTP ${response.status}`);
+      }
+
+      if (result.error) {
+        throw new Error(result.message || result.error || 'Erro retornado pela Z-API.');
+      }
+
+      return result;
+    }
+
+
+    function formatDateBR(dateString) {
+      if (!dateString) return '';
+
+      const parts = String(dateString).split('-');
+
+      if (parts.length !== 3) return dateString;
+
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+
+    function formatTime(timeString) {
+      if (!timeString) return '';
+
+      return String(timeString).substring(0, 5);
+    }
+
+
+    function buildEventCreatedMessage(eventData, responsibleData) {
+      const baseUrl = 'https://convidouapp.com.br';
+      const convidadosUrl = `${baseUrl}/convidados/?event_id=${eventData.id}`;
+      const qrCodesUrl = `${baseUrl}/controle-qrcode/?event_id=${eventData.id}`;
+      const acessoUrl = `${baseUrl}/acesso/?event_id=${eventData.id}`;
+      const dashboardUrl = `${baseUrl}/dashboard/?event_id=${eventData.id}`;
+
+
+      const mapsLine = eventData.google_maps_link
+        ? `🗺️ *Mapa:* ${eventData.google_maps_link}\n`
+        : '';
+
+      return `Olá ${responsibleData.name || 'responsável'} 👋
+
+Seu evento foi criado com sucesso 🎉
+
+📌 *Evento:* ${eventData.name || '-'}
+📅 *Data:* ${formatDateBR(eventData.event_date) || '-'}
+⏰ *Hora:* ${formatTime(eventData.event_time) || '-'}
+📍 *Local:* ${eventData.location || '-'}
+${mapsLine}
+📋 *Gerenciar convidados:*
+${convidadosUrl}
+
+🎟️ *Gerenciar QR Codes:*
+${qrCodesUrl}
+
+🟢 *Bipagem / controle de acesso:*
+${acessoUrl}
+
+📊 *Dashboard de acessos:*
+${dashboardUrl}
+
+Obrigado por usar o Convidou 🚀`;
+    }
+
+    async function sendEventCreatedMessage(eventData, responsibleData, responsibleUserId) {
+      const phone = `55${normalizePhone(responsibleData?.whatsapp)}`;
+
+      if (!phone || phone.length < 12) {
+        throw new Error('WhatsApp do responsável inválido ou não informado.');
+      }
+
+      const config =
+        await getResponsibleZAPIConfig(responsibleUserId) ||
+        getLocalZAPIConfig();
+
+      if (!config) {
+        throw new Error('Nenhuma configuração Z-API encontrada. Salve Instance ID, Token e Client-Token nas configurações.');
+      }
+      const message = buildEventCreatedMessage(eventData, responsibleData);
+
+      return await sendZAPITextWithConfig(config, phone, message);
+    }
+
     async function createNewEvent() {
+      // flowAlert('Iniciando criação do evento', 'O sistema começou o fluxo de cadastro do evento.');
+
       if (!supabaseClient) {
         showMessage('Configure o Supabase primeiro.', 'error');
         return;
@@ -1265,6 +1546,14 @@
       }
 
       const payload = getFormPayload();
+//       flowAlert(
+//         'Dados validados',
+//         `Evento: ${payload.name}
+// Responsável: ${payload.responsible_name}
+// WhatsApp: ${payload.responsible_whatsapp}
+// Convidados: ${payload.guest_limit}`
+//       );
+
       const button = document.getElementById('createEventButton');
       button.disabled = true;
       button.textContent = 'Criando evento...';
@@ -1273,7 +1562,9 @@
       let invitationUpload = null;
 
       try {
-        userId = await getOrCreateUser(payload);
+        // flowAlert('Buscando/criando responsável', payload.responsible_email);
+        // userId = await getOrCreateUser(payload);
+        // flowAlert('Responsável definido', `user_id: ${userId}`);
       } catch (error) {
         button.disabled = false;
         button.textContent = 'Criar Evento';
@@ -1282,7 +1573,9 @@
       }
 
       try {
+        flowAlert('Verificando convite', 'Se houver imagem selecionada, o sistema fará upload agora.');
         invitationUpload = await uploadInvitationImage();
+        flowAlert('Upload do convite finalizado', invitationUpload ? `URL: ${invitationUpload.url}` : 'Nenhuma imagem selecionada.');
       } catch (error) {
         button.disabled = false;
         button.textContent = 'Criar Evento';
@@ -1308,6 +1601,8 @@
         payment_id: currentPayment?.payment_id || null
       };
 
+      flowAlert('Criando evento no banco', JSON.stringify(eventPayload, null, 2).substring(0, 1000));
+
       const { data, error } = await supabaseClient
         .from('events')
         .insert(eventPayload)
@@ -1315,11 +1610,15 @@
         .maybeSingle();
 
       if (error) {
+        flowAlert('Erro ao criar evento no Supabase', error.message || String(error));
         button.disabled = false;
         button.textContent = 'Criar Evento';
         showMessage('Erro ao criar evento: ' + error.message, 'error');
         return;
       }
+
+      flowAlert('Evento criado no banco', `ID: ${data.id}
+Nome: ${data.name}`);
 
       if (currentPackage.paymentRequired && currentPayment) {
         await supabaseClient.from('event_payments').insert({
@@ -1339,11 +1638,33 @@
           paid_at: new Date().toISOString()
         });
       }
+      showMessage('Evento criado com sucesso. Enviando mensagem ao responsável...', 'success');
+      flowAlert('Evento criado. Agora vou enviar o WhatsApp', `Evento ID: ${data.id}
+Responsável: ${payload.responsible_name}`);
 
-      showMessage('Evento criado com sucesso. Redirecionando...', 'success');
+      try {
+        await sendEventCreatedMessage(
+          data,
+          {
+            name: payload.responsible_name,
+            whatsapp: payload.responsible_whatsapp
+          },
+          userId
+        );
+
+        showMessage('Evento criado e mensagem enviada ao responsável. Redirecionando...', 'success');
+        flowAlert('Confirmação final', 'Evento criado e WhatsApp enviado ao responsável com sucesso.');
+      } catch (sendError) {
+        console.error('Evento criado, mas a mensagem ao responsável falhou:', sendError);
+        flowAlert('Falha no envio do WhatsApp', sendError.message || String(sendError));
+        showMessage(
+          'Evento criado, mas NÃO foi possível enviar a mensagem ao responsável: ' + sendError.message,
+          'warning'
+        );
+      }
       setTimeout(() => {
         window.location.href = `/eventos/?event_id=${encodeURIComponent(data.id)}`;
-      }, 900);
+      }, 2200);
     }
 
     function validateForm(requirePaymentCheck) {
@@ -1483,4 +1804,5 @@
     }
   </script>
 </body>
+
 </html>
