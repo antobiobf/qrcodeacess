@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -270,12 +271,35 @@ Para confirmar sua participação, basta clicar no link abaixo:
       cursor: not-allowed;
     }
 
-    .btn-primary { background: #2563eb; color: white; }
-    .btn-success { background: #16a34a; color: white; }
-    .btn-warning { background: #f59e0b; color: white; }
-    .btn-danger { background: #dc2626; color: white; }
-    .btn-secondary { background: #e5e7eb; color: #111827; }
-    .btn-dark { background: #111827; color: white; }
+    .btn-primary {
+      background: #2563eb;
+      color: white;
+    }
+
+    .btn-success {
+      background: #16a34a;
+      color: white;
+    }
+
+    .btn-warning {
+      background: #f59e0b;
+      color: white;
+    }
+
+    .btn-danger {
+      background: #dc2626;
+      color: white;
+    }
+
+    .btn-secondary {
+      background: #e5e7eb;
+      color: #111827;
+    }
+
+    .btn-dark {
+      background: #111827;
+      color: white;
+    }
 
     .message {
       display: none;
@@ -285,10 +309,29 @@ Para confirmar sua participação, basta clicar no link abaixo:
       font-size: 14px;
     }
 
-    .message.success { display: block; background: #dcfce7; color: #166534; }
-    .message.error { display: block; background: #fee2e2; color: #991b1b; }
-    .message.info { display: block; background: #dbeafe; color: #1e40af; }
-    .message.warning { display: block; background: #fef3c7; color: #92400e; }
+    .message.success {
+      display: block;
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .message.error {
+      display: block;
+      background: #fee2e2;
+      color: #991b1b;
+    }
+
+    .message.info {
+      display: block;
+      background: #dbeafe;
+      color: #1e40af;
+    }
+
+    .message.warning {
+      display: block;
+      background: #fef3c7;
+      color: #92400e;
+    }
 
     .config-box {
       display: none;
@@ -401,10 +444,25 @@ Para confirmar sua participação, basta clicar no link abaixo:
       white-space: nowrap;
     }
 
-    .badge-green { background: #dcfce7; color: #166534; }
-    .badge-yellow { background: #fef3c7; color: #92400e; }
-    .badge-gray { background: #f3f4f6; color: #4b5563; }
-    .badge-red { background: #fee2e2; color: #991b1b; }
+    .badge-green {
+      background: #dcfce7;
+      color: #166534;
+    }
+
+    .badge-yellow {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .badge-gray {
+      background: #f3f4f6;
+      color: #4b5563;
+    }
+
+    .badge-red {
+      background: #fee2e2;
+      color: #991b1b;
+    }
 
     .small-text {
       color: #6b7280;
@@ -562,17 +620,32 @@ Para confirmar sua participação, basta clicar no link abaixo:
     }
 
     @media(max-width: 900px) {
-      body { padding: 12px; }
+      body {
+        padding: 12px;
+      }
+
       .grid-4,
       .grid-3,
       .grid-2,
       .send-controls,
       .tools,
-      .import-section { grid-template-columns: 1fr; }
-      .header h1 { font-size: 26px; }
+      .import-section {
+        grid-template-columns: 1fr;
+      }
+
+      .header h1 {
+        font-size: 26px;
+      }
+
       button,
-      .btn-link { width: 100%; }
-      table { display: block; overflow-x: auto; }
+      .btn-link {
+        width: 100%;
+      }
+
+      table {
+        display: block;
+        overflow-x: auto;
+      }
 
       .message-layout {
         grid-template-columns: 1fr;
@@ -583,8 +656,25 @@ Para confirmar sua participação, basta clicar no link abaixo:
       }
 
     }
+
+    .loading-spinner {
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255, 255, 255, .45);
+      border-top-color: white;
+      border-radius: 999px;
+      display: inline-block;
+      animation: spin .75s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
   </style>
 </head>
+
 <body>
   <div class="container">
     <div class="header">
@@ -635,7 +725,8 @@ Para confirmar sua participação, basta clicar no link abaixo:
       </div>
 
       <p class="small-text">
-        Atenção: deixar tokens no HTML facilita o teste, mas em produção o ideal é enviar pela Z-API usando backend/proxy para proteger suas chaves.
+        Atenção: deixar tokens no HTML facilita o teste, mas em produção o ideal é enviar pela Z-API usando
+        backend/proxy para proteger suas chaves.
       </p>
     </div>
 
@@ -696,7 +787,8 @@ Para confirmar sua participação, basta clicar no link abaixo:
           <span class="accordion-icon">📥</span>
           <div>
             <h2>Importar planilha</h2>
-            <p class="small-text" style="margin-top:0;">Importe convidados em lote usando o modelo aceito pelo sistema.</p>
+            <p class="small-text" style="margin-top:0;">Importe convidados em lote usando o modelo aceito pelo sistema.
+            </p>
           </div>
         </div>
         <span class="accordion-toggle">Exibir</span>
@@ -707,13 +799,15 @@ Para confirmar sua participação, basta clicar no link abaixo:
           <div class="form-group">
             <label for="spreadsheetFile">Planilha Excel ou CSV</label>
             <input type="file" id="spreadsheetFile" accept=".xlsx,.xls,.csv" />
-            <p class="small-text">A planilha deve conter as colunas: <strong>Nome do Convidado</strong>, <strong>Nome do Grupo</strong> e <strong>Whatsapp</strong>.</p>
+            <p class="small-text">A planilha deve conter as colunas: <strong>Nome do Convidado</strong>, <strong>Nome do
+                Grupo</strong> e <strong>Whatsapp</strong>.</p>
           </div>
           <button id="importButton" class="btn-primary" onclick="importSpreadsheet()">Importar convidados</button>
         </div>
 
         <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:14px;">
-          <button class="btn-secondary" onclick="downloadGuestSpreadsheetTemplate()">⬇️ Baixar modelo da planilha</button>
+          <button class="btn-secondary" onclick="downloadGuestSpreadsheetTemplate()">⬇️ Baixar modelo da
+            planilha</button>
         </div>
       </div>
     </div>
@@ -724,7 +818,8 @@ Para confirmar sua participação, basta clicar no link abaixo:
           <span class="accordion-icon">💬</span>
           <div>
             <h2>Mensagem padrão</h2>
-            <p class="small-text" style="margin-top:0;">Escolha um modelo ativo cadastrado no banco ou escreva uma mensagem avulsa.</p>
+            <p class="small-text" style="margin-top:0;">Escolha um modelo ativo cadastrado no banco ou escreva uma
+              mensagem avulsa.</p>
           </div>
         </div>
         <span class="accordion-toggle">Exibir</span>
@@ -756,7 +851,8 @@ Sua presença é muito importante para nós ❤️
 Para confirmar sua participação, basta clicar no link abaixo:
 
 👉 {{link}}</textarea>
-              <p class="small-text">Variáveis disponíveis: <strong>{{nome}}, {{grupo}}, {{evento}}, {{data}}, {{hora}}, {{local}}, {{maps}}, {{link}}</strong></p>
+              <p class="small-text">Variáveis disponíveis: <strong>{{nome}}, {{grupo}}, {{evento}}, {{data}}, {{hora}},
+                  {{local}}, {{maps}}, {{link}}</strong></p>
             </div>
           </div>
 
@@ -769,10 +865,7 @@ Para confirmar sua participação, basta clicar no link abaixo:
 
             <div class="form-group" style="margin-top:14px;">
               <label for="eventInviteImage">Subir / alterar convite</label>
-              <input
-                id="eventInviteImage"
-                type="file"
-                accept="image/jpeg,image/png,.jpg,.jpeg,.png"
+              <input id="eventInviteImage" type="file" accept="image/jpeg,image/png,.jpg,.jpeg,.png"
                 onchange="previewAndUploadEventInvite()" />
               <p class="invite-help">Se houver convite cadastrado, ele será enviado junto com o texto pela Z-API.</p>
             </div>
@@ -791,6 +884,49 @@ Para confirmar sua participação, basta clicar no link abaixo:
       </div>
     </div>
 
+
+    <div class="card accordion-card" id="accordionSearch">
+      <button class="accordion-header" type="button" onclick="toggleAccordion('accordionSearch')">
+        <div class="accordion-title">
+          <span class="accordion-icon">🔎</span>
+          <div>
+            <h2>Buscar</h2>
+            <p class="small-text" style="margin-top:0;">Filtre convidados por nome, grupo ou WhatsApp.</p>
+          </div>
+        </div>
+        <span class="accordion-toggle">Exibir</span>
+      </button>
+
+      <div class="accordion-body">
+        <div class="tools">
+          <div class="form-group">
+            <label for="searchInput">Buscar convidado</label>
+            <input id="searchInput" type="text" placeholder="Nome, grupo ou WhatsApp" oninput="renderGuests()" />
+          </div>
+          <button class="btn-secondary" onclick="loadGuests()">Atualizar lista</button>
+          <button class="btn-warning" onclick="sendNextPendingZAPI()">Enviar próximo pendente</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel accordion-card active" id="accordionGuests">
+      <button class="accordion-header" type="button" onclick="toggleAccordion('accordionGuests')">
+        <div class="accordion-title">
+          <span class="accordion-icon">📋</span>
+          <div>
+            <h2>Convidados do evento</h2>
+            <p class="small-text" style="margin-top:0;">Lista de convidados cadastrados, status de envio e confirmação.
+            </p>
+          </div>
+        </div>
+        <span class="accordion-toggle">Exibir</span>
+      </button>
+
+      <div class="accordion-body">
+        <div id="guestsTableContainer"></div>
+      </div>
+    </div>
+
     <div class="card accordion-card" id="accordionSend">
       <button class="accordion-header" type="button" onclick="toggleAccordion('accordionSend')">
         <div class="accordion-title">
@@ -806,7 +942,8 @@ Para confirmar sua participação, basta clicar no link abaixo:
       <div class="accordion-body">
         <div class="safe-send-box">
           <h3>⚠️ Envio protegido</h3>
-          <p>O envio em massa usa lotes, intervalo entre mensagens, pula quem já recebeu e registra erros. Para reduzir risco de bloqueio, comece com lotes pequenos e aumente aos poucos.</p>
+          <p>O envio em massa usa lotes, intervalo entre mensagens, pula quem já recebeu e registra erros. Para reduzir
+            risco de bloqueio, comece com lotes pequenos e aumente aos poucos.</p>
         </div>
 
         <div class="send-controls">
@@ -842,7 +979,8 @@ Para confirmar sua participação, basta clicar no link abaixo:
 
           <div class="form-group">
             <label>&nbsp;</label>
-            <button id="safeSendButton" class="btn-success" onclick="startZAPIBatchSend()">Iniciar envio em massa</button>
+            <button id="safeSendButton" class="btn-success" onclick="startZAPIBatchSend()">Iniciar envio em
+              massa</button>
           </div>
         </div>
 
@@ -854,572 +992,536 @@ Para confirmar sua participação, basta clicar no link abaixo:
         <div id="sendProgress" class="send-progress">
           <strong id="sendProgressTitle">Preparando envio...</strong>
           <p id="sendProgressText" style="margin-top:8px;">-</p>
-          <div class="progress-bar"><div class="progress-fill" id="sendProgressFill"></div></div>
+          <div class="progress-bar">
+            <div class="progress-fill" id="sendProgressFill"></div>
+          </div>
         </div>
       </div>
     </div>
 
-    <div class="card accordion-card" id="accordionSearch">
-      <button class="accordion-header" type="button" onclick="toggleAccordion('accordionSearch')">
-        <div class="accordion-title">
-          <span class="accordion-icon">🔎</span>
-          <div>
-            <h2>Buscar</h2>
-            <p class="small-text" style="margin-top:0;">Filtre convidados por nome, grupo ou WhatsApp.</p>
-          </div>
-        </div>
-        <span class="accordion-toggle">Exibir</span>
-      </button>
-
-      <div class="accordion-body">
-        <div class="tools">
-          <div class="form-group">
-            <label for="searchInput">Buscar convidado</label>
-            <input id="searchInput" type="text" placeholder="Nome, grupo ou WhatsApp" oninput="renderGuests()" />
-          </div>
-          <button class="btn-secondary" onclick="loadGuests()">Atualizar lista</button>
-          <button class="btn-warning" onclick="sendNextPendingZAPI()">Enviar próximo pendente</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="panel accordion-card active" id="accordionGuests">
-      <button class="accordion-header" type="button" onclick="toggleAccordion('accordionGuests')">
-        <div class="accordion-title">
-          <span class="accordion-icon">📋</span>
-          <div>
-            <h2>Convidados do evento</h2>
-            <p class="small-text" style="margin-top:0;">Lista de convidados cadastrados, status de envio e confirmação.</p>
-          </div>
-        </div>
-        <span class="accordion-toggle">Exibir</span>
-      </button>
-
-      <div class="accordion-body">
-        <div id="guestsTableContainer"></div>
-      </div>
-    </div>
   </div>
 
-<script>
-let supabaseClient = null;
-let currentEventId = null;
-let currentEventData = null;
-let guests = [];
-let messageTemplates = [];
-let batchSending = false;
-let stopRequested = false;
+  <script>
+    let supabaseClient = null;
+    let currentEventId = null;
+    let currentEventData = null;
+    let guests = [];
+    let messageTemplates = [];
+    let currentResponsibleData = null;
+    let batchSending = false;
+    let stopRequested = false;
 
-const DEFAULT_SUPABASE_URL = 'https://pfyctxoikdrephjogdtm.supabase.co';
-const DEFAULT_SUPABASE_KEY = 'sb_publishable_h_5hK_HTT-XJ4WUoOGzkGg_tqkBDLjv';
+    const DEFAULT_SUPABASE_URL = 'https://pfyctxoikdrephjogdtm.supabase.co';
+    const DEFAULT_SUPABASE_KEY = 'sb_publishable_h_5hK_HTT-XJ4WUoOGzkGg_tqkBDLjv';
 
-const DEFAULT_ZAPI_INSTANCE_ID = '3F32B148C8CA1249DCAE3222B0EDC9B1';
-const DEFAULT_ZAPI_TOKEN = '234C8842D08C0B205C20CC98';
-const DEFAULT_ZAPI_CLIENT_TOKEN = 'F1348d160382741d398e5d37761e89b6cS';
+    const DEFAULT_ZAPI_INSTANCE_ID = '3F32B148C8CA1249DCAE3222B0EDC9B1';
+    const DEFAULT_ZAPI_TOKEN = '234C8842D08C0B205C20CC98';
+    const DEFAULT_ZAPI_CLIENT_TOKEN = 'F1348d160382741d398e5d37761e89b6cS';
 
-const savedUrl = localStorage.getItem('supabase_url') || DEFAULT_SUPABASE_URL;
-const savedKey = localStorage.getItem('supabase_key') || DEFAULT_SUPABASE_KEY;
-const savedZapiInstanceId = localStorage.getItem('zapi_instance_id') || DEFAULT_ZAPI_INSTANCE_ID;
-const savedZapiToken = localStorage.getItem('zapi_token') || DEFAULT_ZAPI_TOKEN;
-const savedZapiClientToken = localStorage.getItem('zapi_client_token') || DEFAULT_ZAPI_CLIENT_TOKEN;
+    const savedUrl = localStorage.getItem('supabase_url') || DEFAULT_SUPABASE_URL;
+    const savedKey = localStorage.getItem('supabase_key') || DEFAULT_SUPABASE_KEY;
+    const savedZapiInstanceId = localStorage.getItem('zapi_instance_id') || DEFAULT_ZAPI_INSTANCE_ID;
+    const savedZapiToken = localStorage.getItem('zapi_token') || DEFAULT_ZAPI_TOKEN;
+    const savedZapiClientToken = localStorage.getItem('zapi_client_token') || DEFAULT_ZAPI_CLIENT_TOKEN;
 
-document.getElementById('supabaseUrl').value = savedUrl;
-document.getElementById('supabaseKey').value = savedKey;
-document.getElementById('zapiInstanceId').value = savedZapiInstanceId;
-document.getElementById('zapiToken').value = savedZapiToken;
-document.getElementById('zapiClientToken').value = savedZapiClientToken;
+    document.getElementById('supabaseUrl').value = savedUrl;
+    document.getElementById('supabaseKey').value = savedKey;
+    document.getElementById('zapiInstanceId').value = savedZapiInstanceId;
+    document.getElementById('zapiToken').value = savedZapiToken;
+    document.getElementById('zapiClientToken').value = savedZapiClientToken;
 
-const singleGuestWhatsappInput = document.getElementById('singleGuestWhatsapp');
-if (singleGuestWhatsappInput) {
-  singleGuestWhatsappInput.addEventListener('input', e => {
-    e.target.value = formatPhoneInput(e.target.value);
-  });
-}
+    const singleGuestWhatsappInput = document.getElementById('singleGuestWhatsapp');
+    if (singleGuestWhatsappInput) {
+      singleGuestWhatsappInput.addEventListener('input', e => {
+        e.target.value = formatPhoneInput(e.target.value);
+      });
+    }
 
-initializePage();
+    initializePage();
 
-async function initializePage() {
-  const params = new URLSearchParams(window.location.search);
-  currentEventId = params.get('event_id');
+    async function initializePage() {
+      const params = new URLSearchParams(window.location.search);
+      currentEventId = params.get('event_id');
 
-  if (!currentEventId) {
-    showMessage('Informe o event_id na URL. Ex: /convidados/?event_id=UUID', 'error');
-    return;
-  }
+      if (!currentEventId) {
+        showMessage('Informe o event_id na URL. Ex: /convidados/?event_id=UUID', 'error');
+        return;
+      }
 
-  if (savedUrl && savedKey) {
-    connectSupabase(savedUrl, savedKey);
-    await loadEvent();
-    await loadTemplates();
-    await loadGuests();
-  } else {
-    toggleConfig();
-    showMessage('Configure o Supabase para carregar convidados.', 'info');
-  }
-}
+      if (savedUrl && savedKey) {
+        connectSupabase(savedUrl, savedKey);
+        await loadEvent();
+        await loadTemplates();
+        await loadGuests();
+      } else {
+        toggleConfig();
+        showMessage('Configure o Supabase para carregar convidados.', 'info');
+      }
+    }
 
-function goEvents() {
-  window.location.href = '/eventos/';
-}
+    function goEvents() {
+      window.location.href = '/eventos/';
+    }
 
-function toggleConfig() {
-  const box = document.getElementById('configBox');
-  box.style.display = box.style.display === 'none' || !box.style.display ? 'block' : 'none';
-}
+    function toggleConfig() {
+      const box = document.getElementById('configBox');
+      box.style.display = box.style.display === 'none' || !box.style.display ? 'block' : 'none';
+    }
 
-function connectSupabase(url, key) {
-  const { createClient } = supabase;
-  supabaseClient = createClient(url, key);
-}
+    function connectSupabase(url, key) {
+      const { createClient } = supabase;
+      supabaseClient = createClient(url, key);
+    }
 
-async function saveConfig() {
-  const url = document.getElementById('supabaseUrl').value.trim().replace('/rest/v1/', '').replace('/rest/v1', '');
-  const key = document.getElementById('supabaseKey').value.trim();
-  const instanceId = document.getElementById('zapiInstanceId').value.trim();
-  const token = document.getElementById('zapiToken').value.trim();
-  const clientToken = document.getElementById('zapiClientToken').value.trim();
+    async function saveConfig() {
+      const url = document.getElementById('supabaseUrl').value.trim().replace('/rest/v1/', '').replace('/rest/v1', '');
+      const key = document.getElementById('supabaseKey').value.trim();
+      const instanceId = document.getElementById('zapiInstanceId').value.trim();
+      const token = document.getElementById('zapiToken').value.trim();
+      const clientToken = document.getElementById('zapiClientToken').value.trim();
 
-  if (!url || !key) {
-    showMessage('Informe URL e chave do Supabase.', 'error');
-    return;
-  }
+      if (!url || !key) {
+        showMessage('Informe URL e chave do Supabase.', 'error');
+        return;
+      }
 
-  localStorage.setItem('supabase_url', url);
-  localStorage.setItem('supabase_key', key);
-  localStorage.setItem('zapi_instance_id', instanceId);
-  localStorage.setItem('zapi_token', token);
-  localStorage.setItem('zapi_client_token', clientToken);
+      localStorage.setItem('supabase_url', url);
+      localStorage.setItem('supabase_key', key);
+      localStorage.setItem('zapi_instance_id', instanceId);
+      localStorage.setItem('zapi_token', token);
+      localStorage.setItem('zapi_client_token', clientToken);
 
-  connectSupabase(url, key);
-  await loadEvent();
-  await loadTemplates();
-  await loadGuests();
-  showMessage('Configurações salvas com sucesso.', 'success');
-}
-
-
-async function loadTemplates() {
-  if (!supabaseClient) return;
-
-  const select = document.getElementById('messageTemplateSelect');
-  if (!select) return;
-
-  select.innerHTML = '<option value="">✍️ Mensagem avulsa / personalizada</option>';
-
-  const { data, error } = await supabaseClient
-    .from('message_templates')
-    .select('id, nome, mensagem, status')
-    .eq('status', 'ativa')
-    .order('nome', { ascending: true });
-
-  if (error) {
-    console.error('Erro ao carregar modelos de mensagem:', error);
-    showMessage('Não foi possível carregar os modelos de mensagem.', 'warning');
-    return;
-  }
-
-  messageTemplates = data || [];
-
-  messageTemplates.forEach(template => {
-    const option = document.createElement('option');
-    option.value = template.id;
-    option.textContent = template.nome;
-    select.appendChild(option);
-  });
-}
-
-function applySelectedTemplate() {
-  const select = document.getElementById('messageTemplateSelect');
-  const modeInput = document.getElementById('messageTemplateMode');
-  const textarea = document.getElementById('messageTemplate');
-
-  if (!select || !textarea) return;
-
-  const templateId = select.value;
-
-  if (!templateId) {
-    if (modeInput) modeInput.value = 'Mensagem avulsa / personalizada';
-    textarea.focus();
-    return;
-  }
-
-  const template = messageTemplates.find(item => item.id === templateId);
-
-  if (!template) {
-    showMessage('Modelo não encontrado. Atualize os modelos e tente novamente.', 'error');
-    return;
-  }
-
-  textarea.value = template.mensagem || '';
-
-  if (modeInput) {
-    modeInput.value = `Modelo selecionado: ${template.nome}`;
-  }
-
-  showMessage(`Modelo "${template.nome}" carregado no campo mensagem.`, 'success');
-}
-
-async function reloadTemplates() {
-  await loadTemplates();
-  showMessage('Modelos de mensagem atualizados.', 'success');
-}
+      connectSupabase(url, key);
+      await loadEvent();
+      await loadTemplates();
+      await loadGuests();
+      showMessage('Configurações salvas com sucesso.', 'success');
+    }
 
 
-async function loadEvent() {
-  const { data, error } = await supabaseClient
-    .from('events')
-    .select('id, name, event_date, event_time, location, google_maps_link, invitation_image_url, invitation_image_path')
-    .eq('id', currentEventId)
-    .maybeSingle();
+    async function loadTemplates() {
+      if (!supabaseClient) return;
 
-  if (error || !data) {
-    showMessage('Evento não encontrado.', 'error');
-    return;
-  }
+      const select = document.getElementById('messageTemplateSelect');
+      if (!select) return;
 
-  currentEventData = data;
-  renderEventInvitePreview();
-  document.getElementById('eventName').textContent = data.name || '-';
-  document.getElementById('eventDate').textContent = formatDateBR(data.event_date) || '-';
-  document.getElementById('eventTime').textContent = formatTime(data.event_time) || '-';
-  document.getElementById('eventLocation').textContent = data.location || '-';
-}
+      select.innerHTML = '<option value="">✍️ Mensagem avulsa / personalizada</option>';
+
+      const { data, error } = await supabaseClient
+        .from('message_templates')
+        .select('id, nome, mensagem, status')
+        .eq('status', 'ativa')
+        .order('nome', { ascending: true });
+
+      if (error) {
+        console.error('Erro ao carregar modelos de mensagem:', error);
+        showMessage('Não foi possível carregar os modelos de mensagem.', 'warning');
+        return;
+      }
+
+      messageTemplates = data || [];
+
+      messageTemplates.forEach(template => {
+        const option = document.createElement('option');
+        option.value = template.id;
+        option.textContent = template.nome;
+        select.appendChild(option);
+      });
+    }
+
+    function applySelectedTemplate() {
+      const select = document.getElementById('messageTemplateSelect');
+      const modeInput = document.getElementById('messageTemplateMode');
+      const textarea = document.getElementById('messageTemplate');
+
+      if (!select || !textarea) return;
+
+      const templateId = select.value;
+
+      if (!templateId) {
+        if (modeInput) modeInput.value = 'Mensagem avulsa / personalizada';
+        textarea.focus();
+        return;
+      }
+
+      const template = messageTemplates.find(item => item.id === templateId);
+
+      if (!template) {
+        showMessage('Modelo não encontrado. Atualize os modelos e tente novamente.', 'error');
+        return;
+      }
+
+      textarea.value = template.mensagem || '';
+
+      if (modeInput) {
+        modeInput.value = `Modelo selecionado: ${template.nome}`;
+      }
+
+      showMessage(`Modelo "${template.nome}" carregado no campo mensagem.`, 'success');
+    }
+
+    async function reloadTemplates() {
+      await loadTemplates();
+      showMessage('Modelos de mensagem atualizados.', 'success');
+    }
 
 
-function renderEventInvitePreview() {
-  const area = document.getElementById('inviteImagePreviewArea');
-  if (!area) return;
+    async function loadEvent() {
+      const { data, error } = await supabaseClient
+        .from('events')
+        .select('id, user_id, name, event_date, event_time, location, google_maps_link, invitation_image_url, invitation_image_path')
+        .eq('id', currentEventId)
+        .maybeSingle();
 
-  if (currentEventData?.invitation_image_url) {
-    area.innerHTML = `
+      if (error || !data) {
+        showMessage('Evento não encontrado.', 'error');
+        return;
+      }
+
+      currentEventData = data;
+      renderEventInvitePreview();
+      document.getElementById('eventName').textContent = data.name || '-';
+      document.getElementById('eventDate').textContent = formatDateBR(data.event_date) || '-';
+      document.getElementById('eventTime').textContent = formatTime(data.event_time) || '-';
+      document.getElementById('eventLocation').textContent = data.location || '-';
+    }
+
+
+    function renderEventInvitePreview() {
+      const area = document.getElementById('inviteImagePreviewArea');
+      if (!area) return;
+
+      if (currentEventData?.invitation_image_url) {
+        area.innerHTML = `
       <img
         src="${escapeHTML(currentEventData.invitation_image_url)}"
         alt="Convite do evento" />
     `;
-    return;
-  }
+        return;
+      }
 
-  area.innerHTML = 'Nenhum convite cadastrado.';
-}
+      area.innerHTML = 'Nenhum convite cadastrado.';
+    }
 
-async function previewAndUploadEventInvite() {
-  const input = document.getElementById('eventInviteImage');
-  const file = input?.files?.[0];
+    async function previewAndUploadEventInvite() {
+      const input = document.getElementById('eventInviteImage');
+      const file = input?.files?.[0];
 
-  if (!file) return;
+      if (!file) return;
 
-  if (!supabaseClient || !currentEventId) {
-    showMessage('Evento ou Supabase não carregado.', 'error');
-    input.value = '';
-    return;
-  }
+      if (!supabaseClient || !currentEventId) {
+        showMessage('Evento ou Supabase não carregado.', 'error');
+        input.value = '';
+        return;
+      }
 
-  if (!['image/jpeg', 'image/png'].includes(file.type)) {
-    showMessage('O convite precisa ser JPG ou PNG.', 'error');
-    input.value = '';
-    return;
-  }
+      if (!['image/jpeg', 'image/png'].includes(file.type)) {
+        showMessage('O convite precisa ser JPG ou PNG.', 'error');
+        input.value = '';
+        return;
+      }
 
-  if (file.size > 8 * 1024 * 1024) {
-    showMessage('O arquivo deve ter no máximo 8MB.', 'error');
-    input.value = '';
-    return;
-  }
+      if (file.size > 8 * 1024 * 1024) {
+        showMessage('O arquivo deve ter no máximo 8MB.', 'error');
+        input.value = '';
+        return;
+      }
 
-  try {
-    showMessage('Enviando convite...', 'info');
+      try {
+        showMessage('Enviando convite...', 'info');
 
-    const extension = file.name.split('.').pop().toLowerCase();
-    const path = `convites/${currentEventId}-${Date.now()}.${extension}`;
+        const extension = file.name.split('.').pop().toLowerCase();
+        const path = `convites/${currentEventId}-${Date.now()}.${extension}`;
 
-    const { error: uploadError } = await supabaseClient.storage
-      .from('event-invitations')
-      .upload(path, file, {
-        cacheControl: '3600',
-        upsert: true
+        const { error: uploadError } = await supabaseClient.storage
+          .from('event-invitations')
+          .upload(path, file, {
+            cacheControl: '3600',
+            upsert: true
+          });
+
+        if (uploadError) throw uploadError;
+
+        const { data: publicData } = supabaseClient.storage
+          .from('event-invitations')
+          .getPublicUrl(path);
+
+        const { error: updateError } = await supabaseClient
+          .from('events')
+          .update({
+            invitation_image_url: publicData.publicUrl,
+            invitation_image_path: path
+          })
+          .eq('id', currentEventId);
+
+        if (updateError) throw updateError;
+
+        currentEventData.invitation_image_url = publicData.publicUrl;
+        currentEventData.invitation_image_path = path;
+
+        renderEventInvitePreview();
+        showMessage('Convite atualizado com sucesso.', 'success');
+      } catch (error) {
+        showMessage('Erro ao atualizar convite: ' + error.message, 'error');
+      } finally {
+        input.value = '';
+      }
+    }
+
+    async function removeEventInvite() {
+      if (!currentEventData?.invitation_image_url) {
+        showMessage('Nenhum convite cadastrado para remover.', 'info');
+        return;
+      }
+
+      const ok = confirm('Deseja remover o convite deste evento?');
+      if (!ok) return;
+
+      const { error } = await supabaseClient
+        .from('events')
+        .update({
+          invitation_image_url: null,
+          invitation_image_path: null
+        })
+        .eq('id', currentEventId);
+
+      if (error) {
+        showMessage('Erro ao remover convite: ' + error.message, 'error');
+        return;
+      }
+
+      currentEventData.invitation_image_url = null;
+      currentEventData.invitation_image_path = null;
+
+      renderEventInvitePreview();
+      showMessage('Convite removido com sucesso.', 'success');
+    }
+
+
+    async function loadGuests() {
+      if (!supabaseClient || !currentEventId) return;
+
+      const { data, error } = await supabaseClient
+        .from('event_guests')
+        .select('*')
+        .eq('event_id', currentEventId)
+        .order('created_at', { ascending: true });
+
+      if (error) {
+        showMessage('Erro ao carregar convidados: ' + error.message, 'error');
+        return;
+      }
+
+      guests = data || [];
+      renderGuests();
+      updateSummary();
+    }
+
+    async function importSpreadsheet() {
+      const input = document.getElementById('spreadsheetFile');
+      const file = input.files[0];
+      const button = document.getElementById('importButton');
+
+      if (!file) {
+        showMessage('Selecione uma planilha para importar.', 'error');
+        return;
+      }
+
+      if (!currentEventId) {
+        showMessage('Evento não carregado.', 'error');
+        return;
+      }
+
+      button.disabled = true;
+      button.textContent = 'Importando...';
+
+      try {
+        const rows = await readSpreadsheet(file);
+        const guestsToInsert = rows.map(normalizeRow).filter(item => item.guest_name);
+
+        if (guestsToInsert.length === 0) {
+          showMessage('Nenhum convidado válido encontrado na planilha.', 'error');
+          return;
+        }
+
+        const { error } = await supabaseClient.from('event_guests').insert(guestsToInsert);
+
+        if (error) {
+          showMessage('Erro ao importar convidados: ' + error.message, 'error');
+          return;
+        }
+
+        input.value = '';
+        await loadGuests();
+        showMessage(`${guestsToInsert.length} convidados importados com sucesso.`, 'success');
+      } catch (error) {
+        showMessage('Erro ao ler planilha: ' + error.message, 'error');
+      } finally {
+        button.disabled = false;
+        button.textContent = 'Importar convidados';
+      }
+    }
+
+
+    async function addSingleGuest() {
+      if (!supabaseClient || !currentEventId) {
+        showMessage('Evento ou Supabase não carregado.', 'error');
+        return;
+      }
+
+      const button = document.getElementById('addSingleGuestButton');
+      const guestName = document.getElementById('singleGuestName').value.trim();
+      const groupName = document.getElementById('singleGuestGroup').value.trim();
+      const whatsapp = normalizePhone(document.getElementById('singleGuestWhatsapp').value);
+
+      if (!guestName) {
+        showMessage('Informe o nome do convidado.', 'error');
+        return;
+      }
+
+      if (!whatsapp) {
+        showMessage('Informe o WhatsApp do convidado.', 'error');
+        return;
+      }
+
+      button.disabled = true;
+      button.textContent = 'Adicionando...';
+
+      const { error } = await supabaseClient
+        .from('event_guests')
+        .insert({
+          event_id: currentEventId,
+          guest_name: guestName,
+          group_name: groupName || null,
+          whatsapp,
+          confirmed: false,
+          message_sent: false,
+          last_send_error: null
+        });
+
+      button.disabled = false;
+      button.textContent = 'Adicionar convidado';
+
+      if (error) {
+        showMessage('Erro ao adicionar convidado: ' + error.message, 'error');
+        return;
+      }
+
+      clearSingleGuestForm();
+      await loadGuests();
+      showMessage('Convidado adicionado com sucesso.', 'success');
+    }
+
+    function clearSingleGuestForm() {
+      document.getElementById('singleGuestName').value = '';
+      document.getElementById('singleGuestGroup').value = '';
+      document.getElementById('singleGuestWhatsapp').value = '';
+    }
+
+    function downloadGuestSpreadsheetTemplate() {
+      const rows = [
+        ['Nome do Convidado', 'Nome do Grupo', 'Whatsapp'],
+        ['Maria Silva', 'Família', '81999999999'],
+        ['João Santos', 'Amigos', '81988888888']
+      ];
+
+      const csvContent = rows
+        .map(row => row.map(value => '"' + String(value).replace(/"/g, '""') + '"').join(';'))
+        .join(String.fromCharCode(10));
+
+      const blob = new Blob([String.fromCharCode(65279) + csvContent], {
+        type: 'text/csv;charset=utf-8;'
       });
 
-    if (uploadError) throw uploadError;
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'modelo-importacao-convidados.csv';
+      link.style.display = 'none';
 
-    const { data: publicData } = supabaseClient.storage
-      .from('event-invitations')
-      .getPublicUrl(path);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
 
-    const { error: updateError } = await supabaseClient
-      .from('events')
-      .update({
-        invitation_image_url: publicData.publicUrl,
-        invitation_image_path: path
-      })
-      .eq('id', currentEventId);
-
-    if (updateError) throw updateError;
-
-    currentEventData.invitation_image_url = publicData.publicUrl;
-    currentEventData.invitation_image_path = path;
-
-    renderEventInvitePreview();
-    showMessage('Convite atualizado com sucesso.', 'success');
-  } catch (error) {
-    showMessage('Erro ao atualizar convite: ' + error.message, 'error');
-  } finally {
-    input.value = '';
-  }
-}
-
-async function removeEventInvite() {
-  if (!currentEventData?.invitation_image_url) {
-    showMessage('Nenhum convite cadastrado para remover.', 'info');
-    return;
-  }
-
-  const ok = confirm('Deseja remover o convite deste evento?');
-  if (!ok) return;
-
-  const { error } = await supabaseClient
-    .from('events')
-    .update({
-      invitation_image_url: null,
-      invitation_image_path: null
-    })
-    .eq('id', currentEventId);
-
-  if (error) {
-    showMessage('Erro ao remover convite: ' + error.message, 'error');
-    return;
-  }
-
-  currentEventData.invitation_image_url = null;
-  currentEventData.invitation_image_path = null;
-
-  renderEventInvitePreview();
-  showMessage('Convite removido com sucesso.', 'success');
-}
-
-
-async function loadGuests() {
-  if (!supabaseClient || !currentEventId) return;
-
-  const { data, error } = await supabaseClient
-    .from('event_guests')
-    .select('*')
-    .eq('event_id', currentEventId)
-    .order('created_at', { ascending: true });
-
-  if (error) {
-    showMessage('Erro ao carregar convidados: ' + error.message, 'error');
-    return;
-  }
-
-  guests = data || [];
-  renderGuests();
-  updateSummary();
-}
-
-async function importSpreadsheet() {
-  const input = document.getElementById('spreadsheetFile');
-  const file = input.files[0];
-  const button = document.getElementById('importButton');
-
-  if (!file) {
-    showMessage('Selecione uma planilha para importar.', 'error');
-    return;
-  }
-
-  if (!currentEventId) {
-    showMessage('Evento não carregado.', 'error');
-    return;
-  }
-
-  button.disabled = true;
-  button.textContent = 'Importando...';
-
-  try {
-    const rows = await readSpreadsheet(file);
-    const guestsToInsert = rows.map(normalizeRow).filter(item => item.guest_name);
-
-    if (guestsToInsert.length === 0) {
-      showMessage('Nenhum convidado válido encontrado na planilha.', 'error');
-      return;
+      setTimeout(() => URL.revokeObjectURL(url), 3000);
+      showMessage('Modelo da planilha baixado.', 'success');
     }
 
-    const { error } = await supabaseClient.from('event_guests').insert(guestsToInsert);
-
-    if (error) {
-      showMessage('Erro ao importar convidados: ' + error.message, 'error');
-      return;
+    function toggleAccordion(id) {
+      const card = document.getElementById(id);
+      if (!card) return;
+      card.classList.toggle('active');
     }
 
-    input.value = '';
-    await loadGuests();
-    showMessage(`${guestsToInsert.length} convidados importados com sucesso.`, 'success');
-  } catch (error) {
-    showMessage('Erro ao ler planilha: ' + error.message, 'error');
-  } finally {
-    button.disabled = false;
-    button.textContent = 'Importar convidados';
-  }
-}
+    function readSpreadsheet(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = event => {
+          try {
+            const data = new Uint8Array(event.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+            const rows = XLSX.utils.sheet_to_json(firstSheet, { defval: '' });
+            resolve(rows);
+          } catch (error) {
+            reject(error);
+          }
+        };
+        reader.onerror = () => reject(new Error('Não foi possível ler o arquivo.'));
+        reader.readAsArrayBuffer(file);
+      });
+    }
 
+    function normalizeRow(row) {
+      const guestName = getValueByPossibleNames(row, ['Nome do Convidado', 'Nome', 'Convidado', 'guest_name']);
+      const groupName = getValueByPossibleNames(row, ['Nome do Grupo', 'Grupo', 'group_name']);
+      const whatsapp = getValueByPossibleNames(row, ['Whatsapp', 'WhatsApp', 'Telefone', 'Celular', 'whatsapp']);
 
-async function addSingleGuest() {
-  if (!supabaseClient || !currentEventId) {
-    showMessage('Evento ou Supabase não carregado.', 'error');
-    return;
-  }
+      return {
+        event_id: currentEventId,
+        guest_name: String(guestName || '').trim(),
+        group_name: String(groupName || '').trim() || null,
+        whatsapp: normalizePhone(whatsapp),
+        confirmed: false,
+        message_sent: false,
+        last_send_error: null
+      };
+    }
 
-  const button = document.getElementById('addSingleGuestButton');
-  const guestName = document.getElementById('singleGuestName').value.trim();
-  const groupName = document.getElementById('singleGuestGroup').value.trim();
-  const whatsapp = normalizePhone(document.getElementById('singleGuestWhatsapp').value);
+    function getValueByPossibleNames(row, names) {
+      const normalizedMap = {};
+      Object.keys(row).forEach(key => {
+        normalizedMap[normalizeText(key)] = row[key];
+      });
 
-  if (!guestName) {
-    showMessage('Informe o nome do convidado.', 'error');
-    return;
-  }
-
-  if (!whatsapp) {
-    showMessage('Informe o WhatsApp do convidado.', 'error');
-    return;
-  }
-
-  button.disabled = true;
-  button.textContent = 'Adicionando...';
-
-  const { error } = await supabaseClient
-    .from('event_guests')
-    .insert({
-      event_id: currentEventId,
-      guest_name: guestName,
-      group_name: groupName || null,
-      whatsapp,
-      confirmed: false,
-      message_sent: false,
-      last_send_error: null
-    });
-
-  button.disabled = false;
-  button.textContent = 'Adicionar convidado';
-
-  if (error) {
-    showMessage('Erro ao adicionar convidado: ' + error.message, 'error');
-    return;
-  }
-
-  clearSingleGuestForm();
-  await loadGuests();
-  showMessage('Convidado adicionado com sucesso.', 'success');
-}
-
-function clearSingleGuestForm() {
-  document.getElementById('singleGuestName').value = '';
-  document.getElementById('singleGuestGroup').value = '';
-  document.getElementById('singleGuestWhatsapp').value = '';
-}
-
-function downloadGuestSpreadsheetTemplate() {
-  const rows = [
-    ['Nome do Convidado', 'Nome do Grupo', 'Whatsapp'],
-    ['Maria Silva', 'Família', '81999999999'],
-    ['João Santos', 'Amigos', '81988888888']
-  ];
-
-  const csvContent = rows
-    .map(row => row.map(value => '"' + String(value).replace(/"/g, '""') + '"').join(';'))
-    .join(String.fromCharCode(10));
-
-  const blob = new Blob([String.fromCharCode(65279) + csvContent], {
-    type: 'text/csv;charset=utf-8;'
-  });
-
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = 'modelo-importacao-convidados.csv';
-  link.style.display = 'none';
-
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-
-  setTimeout(() => URL.revokeObjectURL(url), 3000);
-  showMessage('Modelo da planilha baixado.', 'success');
-}
-
-function toggleAccordion(id) {
-  const card = document.getElementById(id);
-  if (!card) return;
-  card.classList.toggle('active');
-}
-
-function readSpreadsheet(file) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = event => {
-      try {
-        const data = new Uint8Array(event.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-        const rows = XLSX.utils.sheet_to_json(firstSheet, { defval: '' });
-        resolve(rows);
-      } catch (error) {
-        reject(error);
+      for (const name of names) {
+        const value = normalizedMap[normalizeText(name)];
+        if (value !== undefined && value !== null && String(value).trim() !== '') return value;
       }
-    };
-    reader.onerror = () => reject(new Error('Não foi possível ler o arquivo.'));
-    reader.readAsArrayBuffer(file);
-  });
-}
 
-function normalizeRow(row) {
-  const guestName = getValueByPossibleNames(row, ['Nome do Convidado', 'Nome', 'Convidado', 'guest_name']);
-  const groupName = getValueByPossibleNames(row, ['Nome do Grupo', 'Grupo', 'group_name']);
-  const whatsapp = getValueByPossibleNames(row, ['Whatsapp', 'WhatsApp', 'Telefone', 'Celular', 'whatsapp']);
+      return '';
+    }
 
-  return {
-    event_id: currentEventId,
-    guest_name: String(guestName || '').trim(),
-    group_name: String(groupName || '').trim() || null,
-    whatsapp: normalizePhone(whatsapp),
-    confirmed: false,
-    message_sent: false,
-    last_send_error: null
-  };
-}
+    function renderGuests() {
+      const container = document.getElementById('guestsTableContainer');
+      const search = document.getElementById('searchInput').value.trim().toLowerCase();
 
-function getValueByPossibleNames(row, names) {
-  const normalizedMap = {};
-  Object.keys(row).forEach(key => {
-    normalizedMap[normalizeText(key)] = row[key];
-  });
+      const filtered = guests.filter(guest => {
+        if (!search) return true;
+        const values = [guest.guest_name, guest.group_name, guest.whatsapp];
+        return values.filter(Boolean).some(value => String(value).toLowerCase().includes(search));
+      });
 
-  for (const name of names) {
-    const value = normalizedMap[normalizeText(name)];
-    if (value !== undefined && value !== null && String(value).trim() !== '') return value;
-  }
+      if (filtered.length === 0) {
+        container.innerHTML = '<div class="empty-state">Nenhum convidado encontrado.</div>';
+        return;
+      }
 
-  return '';
-}
-
-function renderGuests() {
-  const container = document.getElementById('guestsTableContainer');
-  const search = document.getElementById('searchInput').value.trim().toLowerCase();
-
-  const filtered = guests.filter(guest => {
-    if (!search) return true;
-    const values = [guest.guest_name, guest.group_name, guest.whatsapp];
-    return values.filter(Boolean).some(value => String(value).toLowerCase().includes(search));
-  });
-
-  if (filtered.length === 0) {
-    container.innerHTML = '<div class="empty-state">Nenhum convidado encontrado.</div>';
-    return;
-  }
-
-  container.innerHTML = `
+      container.innerHTML = `
     <table>
       <thead>
         <tr>
+          <th>Ações</th>
           <th>Status</th>
           <th>Mensagem</th>
           <th>Convidado</th>
@@ -1427,418 +1529,639 @@ function renderGuests() {
           <th>WhatsApp</th>
           <th>Confirmado em</th>
           <th>Erro</th>
-          <th>Ações</th>
         </tr>
       </thead>
+
       <tbody>
         ${filtered.map(guest => `
           <tr>
-            <td>${guest.confirmed ? '<span class="badge badge-green">Confirmado</span>' : '<span class="badge badge-yellow">Pendente</span>'}</td>
-            <td>${guest.message_sent ? '<span class="badge badge-gray">Enviada</span>' : '<span class="badge badge-yellow">Não enviada</span>'}</td>
+            <td>
+              <div class="table-actions">
+                <button
+                  class="btn-secondary"
+                  onclick="copyConfirmationLink('${guest.id}')">
+                  Copiar link
+                </button>
+
+                <button
+                  id="sendBtn-${guest.id}"
+                  class="btn-success"
+                  onclick="sendSingleGuestZAPIWithLoading('${guest.id}')">
+                  Enviar Z-API
+                </button>
+
+                <button
+                  class="btn-dark"
+                  onclick="markMessageSent('${guest.id}')"
+                  ${guest.message_sent ? 'disabled' : ''}>
+                  Marcar enviado
+                </button>
+              </div>
+            </td>
+
+            <td>
+              ${guest.confirmed
+          ? '<span class="badge badge-green">Confirmado</span>'
+          : '<span class="badge badge-yellow">Pendente</span>'}
+            </td>
+
+            <td>
+              ${guest.message_sent
+          ? '<span class="badge badge-gray">Enviada</span>'
+          : '<span class="badge badge-yellow">Não enviada</span>'}
+            </td>
+
             <td>${escapeHTML(guest.guest_name)}</td>
             <td>${escapeHTML(guest.group_name || '-')}</td>
             <td>${escapeHTML(formatPhoneBR(guest.whatsapp) || '-')}</td>
             <td>${formatDateTimeBR(guest.confirmed_at) || '-'}</td>
-            <td>${guest.last_send_error ? `<span class="badge badge-red">${escapeHTML(guest.last_send_error)}</span>` : '-'}</td>
+
             <td>
-              <div class="table-actions">
-                <button class="btn-secondary" onclick="copyConfirmationLink('${guest.id}')">Copiar link</button>
-                <button class="btn-success" onclick="sendSingleGuestZAPI('${guest.id}')">Enviar Z-API</button>
-                <button class="btn-dark" onclick="markMessageSent('${guest.id}')">Marcar enviado</button>
-              </div>
+              ${guest.last_send_error
+          ? `<span class="badge badge-red">${escapeHTML(guest.last_send_error)}</span>`
+          : '-'}
             </td>
           </tr>
         `).join('')}
       </tbody>
     </table>
   `;
-}
-
-function updateSummary() {
-  const total = guests.length;
-  const confirmed = guests.filter(item => item.confirmed === true).length;
-  const pending = total - confirmed;
-  const groups = new Set(guests.map(item => item.group_name).filter(Boolean));
-
-  document.getElementById('totalGuests').textContent = total;
-  document.getElementById('confirmedGuests').textContent = confirmed;
-  document.getElementById('pendingGuests').textContent = pending;
-  document.getElementById('totalGroups').textContent = groups.size;
-}
-
-function getConfirmationLink(guestId) {
-  return `${window.location.origin}/confirmar-presenca/?guest_id=${encodeURIComponent(guestId)}`;
-}
-
-function buildGuestMessage(guest) {
-  const template = document.getElementById('messageTemplate').value;
-  const link = getConfirmationLink(guest.id);
-  const maps = currentEventData?.google_maps_link || '';
-
-  return template
-    .replaceAll('{{nome}}', guest.guest_name || '')
-    .replaceAll('{{grupo}}', guest.group_name || '')
-    .replaceAll('{{evento}}', currentEventData?.name || '')
-    .replaceAll('{{data}}', formatDateBR(currentEventData?.event_date) || '')
-    .replaceAll('{{hora}}', formatTime(currentEventData?.event_time) || '')
-    .replaceAll('{{local}}', currentEventData?.location || '')
-    .replaceAll('{{maps}}', maps)
-    .replaceAll('{{link}}', link);
-}
-
-async function copyConfirmationLink(guestId) {
-  const link = getConfirmationLink(guestId);
-  await navigator.clipboard.writeText(link);
-  showMessage('Link de confirmação copiado.', 'success');
-}
-
-function getZAPIConfig() {
-  return {
-    instanceId: document.getElementById('zapiInstanceId').value.trim() || DEFAULT_ZAPI_INSTANCE_ID,
-    token: document.getElementById('zapiToken').value.trim() || DEFAULT_ZAPI_TOKEN,
-    clientToken: document.getElementById('zapiClientToken').value.trim() || DEFAULT_ZAPI_CLIENT_TOKEN
-  };
-}
-
-function validateZAPIConfig() {
-  const config = getZAPIConfig();
-  if (!config.instanceId || !config.token || !config.clientToken) {
-    showMessage('Configure Instance ID, Token e Client-Token da Z-API.', 'error');
-    toggleConfig();
-    return null;
-  }
-  return config;
-}
-
-async function testZAPIConfig() {
-  const config = validateZAPIConfig();
-  if (!config) return;
-  showMessage('Configuração Z-API carregada. Faça um envio para um convidado de teste.', 'success');
-}
-
-async function sendTextZAPI(phone, message) {
-  const config = validateZAPIConfig();
-  if (!config) throw new Error('Z-API não configurada.');
-
-  const url = `https://api.z-api.io/instances/${encodeURIComponent(config.instanceId)}/token/${encodeURIComponent(config.token)}/send-text`;
-
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Client-Token': config.clientToken
-    },
-    body: JSON.stringify({
-      phone,
-      message
-    })
-  });
-
-  const result = await response.json().catch(() => ({}));
-
-  if (!response.ok) {
-    throw new Error(result.message || result.error || result.errorMessage || `Erro Z-API HTTP ${response.status}`);
-  }
-
-  if (result.error) {
-    throw new Error(result.message || result.error || 'Erro retornado pela Z-API.');
-  }
-
-  return result;
-}
-
-async function sendImageZAPI(phone, imageUrl, caption) {
-  const config = validateZAPIConfig();
-  if (!config) throw new Error('Z-API não configurada.');
-
-  const url = `https://api.z-api.io/instances/${encodeURIComponent(config.instanceId)}/token/${encodeURIComponent(config.token)}/send-image`;
-
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Client-Token': config.clientToken
-    },
-    body: JSON.stringify({
-      phone,
-      image: imageUrl,
-      caption: caption || ''
-    })
-  });
-
-  const result = await response.json().catch(() => ({}));
-
-  if (!response.ok) {
-    throw new Error(result.message || result.error || result.errorMessage || `Erro Z-API HTTP ${response.status}`);
-  }
-
-  if (result.error) {
-    throw new Error(result.message || result.error || 'Erro retornado pela Z-API.');
-  }
-
-  return result;
-}
-
-
-function getPendingToSend() {
-  return guests.filter(item => !item.confirmed && !item.message_sent && normalizePhoneWithDDI(item.whatsapp));
-}
-
-async function sendSingleGuestZAPI(guestId) {
-  const guest = guests.find(item => item.id === guestId);
-  if (!guest) return;
-
-  try {
-    await sendGuestZAPI(guest);
-    await loadGuests();
-    showMessage(`Mensagem enviada para ${guest.guest_name}.`, 'success');
-  } catch (error) {
-    await saveSendError(guest.id, error.message);
-    await loadGuests();
-    showMessage('Erro ao enviar Z-API: ' + error.message, 'error');
-  }
-}
-
-async function sendNextPendingZAPI() {
-  const pending = getPendingToSend();
-  if (pending.length === 0) {
-    showMessage('Nenhum convidado pendente disponível para envio.', 'info');
-    return;
-  }
-
-  await sendSingleGuestZAPI(pending[0].id);
-}
-
-async function sendGuestZAPI(guest) {
-  const phone = normalizePhoneWithDDI(guest.whatsapp);
-  if (!phone) throw new Error('Telefone inválido.');
-
-  const message = buildGuestMessage(guest);
-  const inviteImageUrl = currentEventData?.invitation_image_url || '';
-  let zapiResult = null;
-
-  if (inviteImageUrl) {
-    zapiResult = await sendImageZAPI(phone, inviteImageUrl, message);
-  } else {
-    zapiResult = await sendTextZAPI(phone, message);
-  }
-
-  await supabaseClient
-    .from('event_guests')
-    .update({
-      message_sent: true,
-      message_sent_at: new Date().toISOString(),
-      last_send_error: null
-    })
-    .eq('id', guest.id);
-
-  return zapiResult;
-}
-
-async function saveSendError(guestId, errorMessage) {
-  await supabaseClient
-    .from('event_guests')
-    .update({
-      last_send_error: String(errorMessage || 'Erro desconhecido').substring(0, 250)
-    })
-    .eq('id', guestId);
-}
-
-async function startZAPIBatchSend() {
-  if (batchSending) return;
-
-  const config = validateZAPIConfig();
-  if (!config) return;
-
-  const pending = getPendingToSend();
-  if (pending.length === 0) {
-    showMessage('Nenhum convidado pendente com WhatsApp disponível para envio.', 'info');
-    return;
-  }
-
-  const batchLimit = Number(document.getElementById('batchLimit').value);
-  const delaySeconds = Number(document.getElementById('delaySeconds').value);
-  const pauseMinutes = Number(document.getElementById('pauseMinutes').value);
-  const selected = pending.slice(0, batchLimit);
-
-  const ok = confirm(
-    `Envio em massa via Z-API\n\nSerão enviadas ${selected.length} mensagens neste lote.\nIntervalo: ${delaySeconds}s entre mensagens.\nPausa recomendada depois: ${pauseMinutes} minuto(s).\n\nDeseja iniciar?`
-  );
-
-  if (!ok) return;
-
-  batchSending = true;
-  stopRequested = false;
-  document.getElementById('safeSendButton').disabled = true;
-  document.getElementById('stopSendButton').disabled = false;
-  showSendProgress(true, 'Iniciando envio pela Z-API...', 'Preparando contatos...', 0);
-
-  let successCount = 0;
-  let errorCount = 0;
-
-  for (let i = 0; i < selected.length; i++) {
-    if (stopRequested) break;
-
-    const guest = selected[i];
-
-    try {
-      await sendGuestZAPI(guest);
-      successCount++;
-    } catch (error) {
-      errorCount++;
-      await saveSendError(guest.id, error.message);
-      console.error('Erro ao enviar para', guest.guest_name, error);
     }
 
-    const percent = Math.round(((i + 1) / selected.length) * 100);
-    showSendProgress(true, `Enviando ${i + 1} de ${selected.length}`, `Sucesso: ${successCount} | Erros: ${errorCount} | Atual: ${guest.guest_name}`, percent);
+    async function sendSingleGuestZAPIWithLoading(guestId) {
+      const button = document.getElementById(`sendBtn-${guestId}`);
 
-    await sleep(delaySeconds * 1000);
-  }
+      if (button) {
+        button.disabled = true;
+        button.innerHTML = `
+      <span class="loading-spinner"></span>
+      Enviando...
+    `;
+      }
 
-  await loadGuests();
+      try {
+        await sendSingleGuestZAPI(guestId);
+      } finally {
+        if (button) {
+          button.disabled = false;
+          button.innerHTML = 'Enviar Z-API';
+        }
+      }
+    }
 
-  if (stopRequested) {
-    showMessage('Envio interrompido pelo usuário.', 'warning');
-    showSendProgress(true, 'Envio interrompido', `Sucesso: ${successCount} | Erros: ${errorCount}`, 100);
-  } else {
-    showMessage(`Lote finalizado. Enviadas: ${successCount}. Erros: ${errorCount}. Pausa recomendada: ${pauseMinutes} minuto(s).`, 'success');
-    showSendProgress(true, 'Lote finalizado', `Enviadas: ${successCount}. Erros: ${errorCount}.`, 100);
-  }
+    function updateSummary() {
+      const total = guests.length;
+      const confirmed = guests.filter(item => item.confirmed === true).length;
+      const pending = total - confirmed;
+      const groups = new Set(guests.map(item => item.group_name).filter(Boolean));
 
-  batchSending = false;
-  document.getElementById('safeSendButton').disabled = false;
-  document.getElementById('stopSendButton').disabled = true;
-}
+      document.getElementById('totalGuests').textContent = total;
+      document.getElementById('confirmedGuests').textContent = confirmed;
+      document.getElementById('pendingGuests').textContent = pending;
+      document.getElementById('totalGroups').textContent = groups.size;
+    }
 
-function stopBatchSend() {
-  stopRequested = true;
-}
+    function getConfirmationLink(guestId) {
+      return `${window.location.origin}/confirmar-presenca/?guest_id=${encodeURIComponent(guestId)}`;
+    }
 
-async function resetMessageSentForPending() {
-  const ok = confirm('Isso vai permitir reenviar mensagens para convidados pendentes já marcados como mensagem enviada. Deseja continuar?');
-  if (!ok) return;
+    async function getEventResponsible(forceReload = false) {
+      if (!forceReload && currentResponsibleData) {
+        return currentResponsibleData;
+      }
 
-  const { error } = await supabaseClient
-    .from('event_guests')
-    .update({
-      message_sent: false,
-      message_sent_at: null,
-      last_send_error: null
-    })
-    .eq('event_id', currentEventId)
-    .eq('confirmed', false);
+      if (!currentEventData?.user_id) {
+        currentResponsibleData = null;
+        return null;
+      }
 
-  if (error) {
-    showMessage('Erro ao liberar reenvio: ' + error.message, 'error');
-    return;
-  }
+      const { data, error } = await supabaseClient
+        .from('users')
+        .select('id, name, whatsapp')
+        .eq('id', currentEventData.user_id)
+        .maybeSingle();
 
-  await loadGuests();
-  showMessage('Reenvio liberado para convidados pendentes.', 'success');
-}
+      if (error) {
+        console.error('Erro ao carregar responsável do evento:', error);
+        currentResponsibleData = null;
+        return null;
+      }
 
-async function markMessageSent(guestId) {
-  const { error } = await supabaseClient
-    .from('event_guests')
-    .update({
-      message_sent: true,
-      message_sent_at: new Date().toISOString(),
-      last_send_error: null
-    })
-    .eq('id', guestId);
+      currentResponsibleData = data || null;
+      return currentResponsibleData;
+    }
 
-  if (error) {
-    showMessage('Erro ao marcar mensagem como enviada: ' + error.message, 'error');
-    return;
-  }
+    function buildResponsibleFooter(responsible) {
+      if (!responsible?.whatsapp) {
+        return '';
+      }
 
-  await loadGuests();
-  showMessage('Mensagem marcada como enviada.', 'success');
-}
+      return `
 
-function showSendProgress(active, title, text, percent) {
-  const box = document.getElementById('sendProgress');
-  box.classList.toggle('active', active);
-  document.getElementById('sendProgressTitle').textContent = title;
-  document.getElementById('sendProgressText').textContent = text;
-  document.getElementById('sendProgressFill').style.width = `${percent}%`;
-}
+---
 
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
+📲 *Dúvidas ou respostas?*
+Fale diretamente com ${responsible.name || 'o responsável'}:
+${formatPhoneBR(responsible.whatsapp)}`;
+    }
 
-function normalizePhone(value) {
-  if (!value) return '';
-  return String(value).replace(/\D/g, '').replace(/^55/, '').slice(0, 11);
-}
+    function buildIndividualSendLog(guest, status, errorMessage = '') {
+      return `📩 *Log de envio - Convidou*
 
-function normalizePhoneWithDDI(value) {
-  const phone = normalizePhone(value);
-  if (!phone) return '';
-  return `55${phone}`;
-}
+🎉 *Evento:* ${currentEventData?.name || '-'}
 
-function formatPhoneBR(value) {
-  const phone = normalizePhone(value);
-  if (!phone) return '';
-  if (phone.length === 11) return phone.replace(/^(\d{2})(\d{5})(\d{4})$/, '($1) $2-$3');
-  if (phone.length === 10) return phone.replace(/^(\d{2})(\d{4})(\d{4})$/, '($1) $2-$3');
-  return phone;
-}
+👤 *Convidado:* ${guest.guest_name || '-'}
+📱 *WhatsApp:* ${formatPhoneBR(guest.whatsapp) || '-'}
 
-function normalizeText(value) {
-  return String(value || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-zA-Z0-9]/g, '')
-    .toLowerCase();
-}
+📌 *Status:* ${status}
 
-function formatDateBR(dateString) {
-  if (!dateString) return '';
-  const parts = String(dateString).split('-');
-  if (parts.length !== 3) return dateString;
-  return `${parts[2]}/${parts[1]}/${parts[0]}`;
-}
+${errorMessage ? `⚠️ *Erro:* ${errorMessage}` : '✅ Mensagem enviada com sucesso.'}
 
-function formatTime(timeString) {
-  if (!timeString) return '';
-  return String(timeString).substring(0, 5);
-}
+🕒 ${new Date().toLocaleString('pt-BR')}`;
+    }
 
-function formatDateTimeBR(dateString) {
-  if (!dateString) return '';
-  const date = new Date(dateString);
-  if (Number.isNaN(date.getTime())) return dateString;
-  return date.toLocaleString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-}
+    function buildBatchSendLog(summary) {
+      const sentList = (summary.items || [])
+        .map((item, index) => {
+          return `${index + 1}. ${item.name} - ${item.whatsapp} - ${item.status}`;
+        })
+        .join('\n');
 
-function escapeHTML(value) {
-  return String(value || '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-}
+      return `📊 *Resumo do envio em massa - Convidou*
 
-function showMessage(text, type) {
-  const message = document.getElementById('message');
-  message.textContent = text;
-  message.className = `message ${type}`;
-  setTimeout(() => {
-    message.className = 'message';
-    message.textContent = '';
-  }, 5000);
-}
-</script>
+🎉 *Evento:* ${currentEventData?.name || '-'}
+
+✅ *Enviadas:* ${summary.sent}
+⚠️ *Erros:* ${summary.errors}
+⏭️ *Não processadas:* ${summary.skipped}
+📌 *Total do lote:* ${summary.total}
+
+📋 *Log dos envios:*
+${sentList || '-'}
+
+🕒 Finalizado em:
+${new Date().toLocaleString('pt-BR')}`;
+    }
+
+    async function sendLogToResponsible(message) {
+      const responsible = await getEventResponsible();
+
+      if (!responsible?.whatsapp) {
+        console.warn('Responsável do evento sem WhatsApp para receber log.');
+        return;
+      }
+
+      const phone = normalizePhoneWithDDI(responsible.whatsapp);
+
+      if (!phone) {
+        console.warn('WhatsApp do responsável inválido.');
+        return;
+      }
+
+      await sendTextZAPI(phone, message);
+    }
+
+    async function buildGuestMessage(guest) {
+      const template = document.getElementById('messageTemplate').value;
+      const link = getConfirmationLink(guest.id);
+      const maps = currentEventData?.google_maps_link || '';
+      const responsible = await getEventResponsible();
+
+      let message = template
+        .replaceAll('{{nome}}', guest.guest_name || '')
+        .replaceAll('{{grupo}}', guest.group_name || '')
+        .replaceAll('{{evento}}', currentEventData?.name || '')
+        .replaceAll('{{data}}', formatDateBR(currentEventData?.event_date) || '')
+        .replaceAll('{{hora}}', formatTime(currentEventData?.event_time) || '')
+        .replaceAll('{{local}}', currentEventData?.location || '')
+        .replaceAll('{{maps}}', maps)
+        .replaceAll('{{link}}', link);
+
+      message += buildResponsibleFooter(responsible);
+
+      return message;
+    }
+
+    async function copyConfirmationLink(guestId) {
+      const link = getConfirmationLink(guestId);
+      await navigator.clipboard.writeText(link);
+      showMessage('Link de confirmação copiado.', 'success');
+    }
+
+    function getZAPIConfig() {
+      return {
+        instanceId: document.getElementById('zapiInstanceId').value.trim() || DEFAULT_ZAPI_INSTANCE_ID,
+        token: document.getElementById('zapiToken').value.trim() || DEFAULT_ZAPI_TOKEN,
+        clientToken: document.getElementById('zapiClientToken').value.trim() || DEFAULT_ZAPI_CLIENT_TOKEN
+      };
+    }
+
+    function validateZAPIConfig() {
+      const config = getZAPIConfig();
+      if (!config.instanceId || !config.token || !config.clientToken) {
+        showMessage('Configure Instance ID, Token e Client-Token da Z-API.', 'error');
+        toggleConfig();
+        return null;
+      }
+      return config;
+    }
+
+    async function testZAPIConfig() {
+      const config = validateZAPIConfig();
+      if (!config) return;
+      showMessage('Configuração Z-API carregada. Faça um envio para um convidado de teste.', 'success');
+    }
+
+    async function sendTextZAPI(phone, message) {
+      const config = validateZAPIConfig();
+      if (!config) throw new Error('Z-API não configurada.');
+
+      const url = `https://api.z-api.io/instances/${encodeURIComponent(config.instanceId)}/token/${encodeURIComponent(config.token)}/send-text`;
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Client-Token': config.clientToken
+        },
+        body: JSON.stringify({
+          phone,
+          message
+        })
+      });
+
+      const result = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(result.message || result.error || result.errorMessage || `Erro Z-API HTTP ${response.status}`);
+      }
+
+      if (result.error) {
+        throw new Error(result.message || result.error || 'Erro retornado pela Z-API.');
+      }
+
+      return result;
+    }
+
+    async function sendImageZAPI(phone, imageUrl, caption) {
+      const config = validateZAPIConfig();
+      if (!config) throw new Error('Z-API não configurada.');
+
+      const url = `https://api.z-api.io/instances/${encodeURIComponent(config.instanceId)}/token/${encodeURIComponent(config.token)}/send-image`;
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Client-Token': config.clientToken
+        },
+        body: JSON.stringify({
+          phone,
+          image: imageUrl,
+          caption: caption || ''
+        })
+      });
+
+      const result = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw new Error(result.message || result.error || result.errorMessage || `Erro Z-API HTTP ${response.status}`);
+      }
+
+      if (result.error) {
+        throw new Error(result.message || result.error || 'Erro retornado pela Z-API.');
+      }
+
+      return result;
+    }
+
+
+    function getPendingToSend() {
+      return guests.filter(item => !item.confirmed && !item.message_sent && normalizePhoneWithDDI(item.whatsapp));
+    }
+
+    async function sendSingleGuestZAPI(guestId) {
+      const guest = guests.find(item => item.id === guestId);
+      if (!guest) return;
+
+      try {
+        await sendGuestZAPI(guest);
+
+        try {
+          await sendLogToResponsible(
+            buildIndividualSendLog(guest, 'Enviado')
+          );
+        } catch (logError) {
+          console.warn('Mensagem enviada, mas não foi possível enviar o log ao responsável:', logError);
+        }
+
+        await loadGuests();
+        showMessage(`Mensagem enviada para ${guest.guest_name}. Log enviado ao responsável do evento.`, 'success');
+      } catch (error) {
+        await saveSendError(guest.id, error.message);
+
+        try {
+          await sendLogToResponsible(
+            buildIndividualSendLog(guest, 'Erro', error.message)
+          );
+        } catch (logError) {
+          console.warn('Erro no envio e também no log ao responsável:', logError);
+        }
+
+        await loadGuests();
+        showMessage('Erro ao enviar Z-API: ' + error.message, 'error');
+      }
+    }
+
+    async function sendNextPendingZAPI() {
+      const pending = getPendingToSend();
+      if (pending.length === 0) {
+        showMessage('Nenhum convidado pendente disponível para envio.', 'info');
+        return;
+      }
+
+      await sendSingleGuestZAPI(pending[0].id);
+    }
+
+    async function sendGuestZAPI(guest) {
+      const phone = normalizePhoneWithDDI(guest.whatsapp);
+      if (!phone) throw new Error('Telefone inválido.');
+
+      const message = await buildGuestMessage(guest);
+      const inviteImageUrl = currentEventData?.invitation_image_url || '';
+      let zapiResult = null;
+
+      if (inviteImageUrl) {
+        zapiResult = await sendImageZAPI(phone, inviteImageUrl, message);
+      } else {
+        zapiResult = await sendTextZAPI(phone, message);
+      }
+
+      await supabaseClient
+        .from('event_guests')
+        .update({
+          message_sent: true,
+          message_sent_at: new Date().toISOString(),
+          last_send_error: null
+        })
+        .eq('id', guest.id);
+
+      return zapiResult;
+    }
+
+    async function saveSendError(guestId, errorMessage) {
+      await supabaseClient
+        .from('event_guests')
+        .update({
+          last_send_error: String(errorMessage || 'Erro desconhecido').substring(0, 250)
+        })
+        .eq('id', guestId);
+    }
+
+    async function startZAPIBatchSend() {
+      if (batchSending) return;
+
+      const config = validateZAPIConfig();
+      if (!config) return;
+
+      const pending = getPendingToSend();
+      if (pending.length === 0) {
+        showMessage('Nenhum convidado pendente com WhatsApp disponível para envio.', 'info');
+        return;
+      }
+
+      const batchLimit = Number(document.getElementById('batchLimit').value);
+      const delaySeconds = Number(document.getElementById('delaySeconds').value);
+      const pauseMinutes = Number(document.getElementById('pauseMinutes').value);
+      const selected = pending.slice(0, batchLimit);
+
+      const ok = confirm(
+        `Envio em massa via Z-API\n\nSerão enviadas ${selected.length} mensagens neste lote.\nIntervalo: ${delaySeconds}s entre mensagens.\nPausa recomendada depois: ${pauseMinutes} minuto(s).\n\nDeseja iniciar?`
+      );
+
+      if (!ok) return;
+
+      batchSending = true;
+      stopRequested = false;
+      document.getElementById('safeSendButton').disabled = true;
+      document.getElementById('stopSendButton').disabled = false;
+      showSendProgress(true, 'Iniciando envio pela Z-API...', 'Preparando contatos...', 0);
+
+      const summary = {
+        sent: 0,
+        errors: 0,
+        skipped: 0,
+        total: selected.length,
+        items: []
+      };
+
+      for (let i = 0; i < selected.length; i++) {
+        if (stopRequested) {
+          summary.skipped = selected.length - i;
+          break;
+        }
+
+        const guest = selected[i];
+
+        try {
+          await sendGuestZAPI(guest);
+          summary.sent++;
+          summary.items.push({
+            name: guest.guest_name || '-',
+            whatsapp: formatPhoneBR(guest.whatsapp) || '-',
+            status: 'Enviado'
+          });
+        } catch (error) {
+          summary.errors++;
+          summary.items.push({
+            name: guest.guest_name || '-',
+            whatsapp: formatPhoneBR(guest.whatsapp) || '-',
+            status: 'Erro: ' + (error.message || 'Erro desconhecido')
+          });
+          await saveSendError(guest.id, error.message);
+          console.error('Erro ao enviar para', guest.guest_name, error);
+        }
+
+        const percent = Math.round(((i + 1) / selected.length) * 100);
+        showSendProgress(true, `Enviando ${i + 1} de ${selected.length}`, `Sucesso: ${summary.sent} | Erros: ${summary.errors} | Atual: ${guest.guest_name}`, percent);
+
+        await sleep(delaySeconds * 1000);
+      }
+
+      await loadGuests();
+
+      try {
+        await sendLogToResponsible(
+          buildBatchSendLog(summary)
+        );
+      } catch (logError) {
+        console.warn('Envio em massa finalizado, mas não foi possível enviar o resumo ao responsável:', logError);
+      }
+
+      if (stopRequested) {
+        showMessage('Envio interrompido pelo usuário. Resumo enviado ao responsável do evento.', 'warning');
+        showSendProgress(true, 'Envio interrompido', `Sucesso: ${summary.sent} | Erros: ${summary.errors} | Não processados: ${summary.skipped}`, 100);
+      } else {
+        showMessage(`Lote finalizado. Enviadas: ${summary.sent}. Erros: ${summary.errors}. Resumo enviado ao responsável. Pausa recomendada: ${pauseMinutes} minuto(s).`, 'success');
+        showSendProgress(true, 'Lote finalizado', `Enviadas: ${summary.sent}. Erros: ${summary.errors}.`, 100);
+      }
+
+      batchSending = false;
+      document.getElementById('safeSendButton').disabled = false;
+      document.getElementById('stopSendButton').disabled = true;
+    }
+
+    function stopBatchSend() {
+      stopRequested = true;
+    }
+
+    async function resetMessageSentForPending() {
+      const ok = confirm('Isso vai permitir reenviar mensagens para convidados pendentes já marcados como mensagem enviada. Deseja continuar?');
+      if (!ok) return;
+
+      const { error } = await supabaseClient
+        .from('event_guests')
+        .update({
+          message_sent: false,
+          message_sent_at: null,
+          last_send_error: null
+        })
+        .eq('event_id', currentEventId)
+        .eq('confirmed', false);
+
+      if (error) {
+        showMessage('Erro ao liberar reenvio: ' + error.message, 'error');
+        return;
+      }
+
+      await loadGuests();
+      showMessage('Reenvio liberado para convidados pendentes.', 'success');
+    }
+
+    async function markMessageSent(guestId) {
+      const { error } = await supabaseClient
+        .from('event_guests')
+        .update({
+          message_sent: true,
+          message_sent_at: new Date().toISOString(),
+          last_send_error: null
+        })
+        .eq('id', guestId);
+
+      if (error) {
+        showMessage('Erro ao marcar mensagem como enviada: ' + error.message, 'error');
+        return;
+      }
+
+      await loadGuests();
+      showMessage('Mensagem marcada como enviada.', 'success');
+    }
+
+    function showSendProgress(active, title, text, percent) {
+      const box = document.getElementById('sendProgress');
+      box.classList.toggle('active', active);
+      document.getElementById('sendProgressTitle').textContent = title;
+      document.getElementById('sendProgressText').textContent = text;
+      document.getElementById('sendProgressFill').style.width = `${percent}%`;
+    }
+
+    function sleep(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    function formatPhoneInput(value) {
+      const numbers = String(value || '')
+        .replace(/\D/g, '')
+        .substring(0, 11);
+
+      if (numbers.length <= 2) {
+        return numbers;
+      }
+
+      if (numbers.length <= 6) {
+        return numbers.replace(/^(\d{2})(\d+)/, '($1) $2');
+      }
+
+      if (numbers.length <= 10) {
+        return numbers
+          .replace(/^(\d{2})(\d{4})(\d+)/, '($1) $2-$3');
+      }
+
+      return numbers
+        .replace(/^(\d{2})(\d{5})(\d+)/, '($1) $2-$3');
+    }
+
+    function normalizePhone(value) {
+      if (!value) return '';
+      return String(value).replace(/\D/g, '').replace(/^55/, '').slice(0, 11);
+    }
+
+    function normalizePhoneWithDDI(value) {
+      const phone = normalizePhone(value);
+      if (!phone) return '';
+      return `55${phone}`;
+    }
+
+    function formatPhoneBR(value) {
+      const phone = normalizePhone(value);
+      if (!phone) return '';
+      if (phone.length === 11) return phone.replace(/^(\d{2})(\d{5})(\d{4})$/, '($1) $2-$3');
+      if (phone.length === 10) return phone.replace(/^(\d{2})(\d{4})(\d{4})$/, '($1) $2-$3');
+      return phone;
+    }
+
+    function normalizeText(value) {
+      return String(value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-zA-Z0-9]/g, '')
+        .toLowerCase();
+    }
+
+    function formatDateBR(dateString) {
+      if (!dateString) return '';
+      const parts = String(dateString).split('-');
+      if (parts.length !== 3) return dateString;
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+
+    function formatTime(timeString) {
+      if (!timeString) return '';
+      return String(timeString).substring(0, 5);
+    }
+
+    function formatDateTimeBR(dateString) {
+      if (!dateString) return '';
+      const date = new Date(dateString);
+      if (Number.isNaN(date.getTime())) return dateString;
+      return date.toLocaleString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+
+    function escapeHTML(value) {
+      return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function showMessage(text, type) {
+      const message = document.getElementById('message');
+      message.textContent = text;
+      message.className = `message ${type}`;
+      setTimeout(() => {
+        message.className = 'message';
+        message.textContent = '';
+      }, 5000);
+    }
+  </script>
 </body>
+
 </html>

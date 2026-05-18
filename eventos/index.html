@@ -90,7 +90,7 @@
       height: 54px;
       border: none;
       background: transparent;
-      color: white;
+      /* color: white; */
       padding: 0 18px;
       display: inline-flex;
       align-items: center;
@@ -459,6 +459,173 @@
       background: linear-gradient(135deg, #4f46e5, #8b5cf6);
     }
 
+
+    .modern-event-card {
+      position: relative;
+      overflow: hidden;
+      border-radius: 32px;
+      padding: 28px;
+      background: rgba(255, 255, 255, .94);
+      backdrop-filter: blur(18px);
+      border: 1px solid rgba(255, 255, 255, .68);
+      box-shadow:
+        0 22px 60px rgba(15, 23, 42, .10),
+        inset 0 1px 0 rgba(255, 255, 255, .78);
+      transition:
+        transform .25s ease,
+        box-shadow .25s ease;
+    }
+
+    .modern-event-card:hover {
+      transform: translateY(-5px);
+      box-shadow:
+        0 32px 74px rgba(15, 23, 42, .14),
+        inset 0 1px 0 rgba(255, 255, 255, .78);
+    }
+
+    .modern-event-card::before {
+      display: none;
+    }
+
+    .event-card-top-bar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 7px;
+      background: linear-gradient(90deg, #22c55e, #3b82f6, #0f172a);
+    }
+
+    .event-title-row-modern {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: flex-start;
+    }
+
+    .event-title-block h2 {
+      font-size: 28px;
+      line-height: 1.08;
+      letter-spacing: -0.9px;
+      color: #0f172a;
+      margin-bottom: 12px;
+    }
+
+    .event-owner {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      border-radius: 18px;
+      background: rgba(248, 250, 252, .92);
+      border: 1px solid rgba(226, 232, 240, .95);
+    }
+
+    .owner-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, #22c55e, #3b82f6);
+      box-shadow: 0 0 0 5px rgba(34, 197, 94, .10);
+      flex-shrink: 0;
+    }
+
+    .owner-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .owner-info small {
+      font-size: 10px;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      font-weight: 900;
+    }
+
+    .owner-info strong {
+      font-size: 13px;
+      color: #0f172a;
+      line-height: 1.2;
+    }
+
+    .owner-phone {
+      font-size: 12px;
+      color: #64748b;
+      font-weight: 700;
+    }
+
+    .modern-meta {
+      display: grid;
+      gap: 14px;
+      margin-top: 8px;
+    }
+
+    .meta-item {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .meta-icon-box {
+      width: 52px;
+      height: 52px;
+      border-radius: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(15, 23, 42, .04);
+      font-size: 22px;
+      flex-shrink: 0;
+    }
+
+    .meta-item small {
+      display: block;
+      font-size: 11px;
+      color: #94a3b8;
+      margin-bottom: 3px;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      font-weight: 900;
+    }
+
+    .meta-item strong {
+      color: #475569;
+      font-size: 15px;
+      line-height: 1.25;
+    }
+
+    .modern-event-id {
+      margin-top: 4px;
+      padding: 15px 16px;
+      border-radius: 18px;
+      background: rgba(248, 250, 252, .95);
+      border: 1px solid rgba(226, 232, 240, .95);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .modern-event-id span {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: #94a3b8;
+      font-weight: 900;
+    }
+
+    .modern-event-id strong {
+      font-size: 13px;
+      color: #64748b;
+      word-break: break-all;
+      line-height: 1.35;
+    }
+
+    .modern-event-card .event-actions {
+      margin-top: 4px;
+    }
+
     .empty-state {
       text-align: center;
       padding: 56px 20px;
@@ -532,34 +699,7 @@
           <p>Escolha um evento para bipar, gerar QR Codes, gerenciar convidados ou acompanhar o dashboard.</p>
         </div>
 
-        <div class="toolbar" aria-label="Ações da página">
 
-          <button class="toolbar-button"
-            onclick="window.location.href='/eventos/novo/?user_id=' + encodeURIComponent(loggedUser.id)"
-            title="Adicionar evento">
-
-            <span>➕</span>
-            <strong>Adicionar</strong>
-          </button>
-
-          <!-- Apenas administrador -->
-          <button id="configToolbarButton" class="toolbar-button" onclick="toggleConfig()" title="Configurações"
-            style="display:none;">
-
-            <span>⚙️</span>
-            <strong>Configurações</strong>
-          </button>
-
-          <button class="toolbar-button toolbar-danger" onclick="logoutUser()" title="Sair da sessão">
-
-            <span>🚪</span>
-
-            <strong id="logoutButtonText">
-              Sair
-            </strong>
-          </button>
-
-        </div>
 
       </div>
     </div>
@@ -580,6 +720,36 @@
       <button class="btn-primary" onclick="saveConfig()">Salvar e conectar</button>
     </div>
 
+    <div class="card">
+      <div class="toolbar" aria-label="Ações da página">
+
+        <button class="toolbar-button"
+          onclick="window.location.href='/eventos/novo/?user_id=' + encodeURIComponent(loggedUser.id)"
+          title="Adicionar evento">
+
+          <span>➕</span>
+          <strong>Adicionar</strong>
+        </button>
+
+        <!-- Apenas administrador -->
+        <button id="configToolbarButton" class="toolbar-button" onclick="toggleConfig()" title="Configurações"
+          style="display:none;">
+
+          <span>⚙️</span>
+          <strong>Configurações</strong>
+        </button>
+
+        <button class="toolbar-button toolbar-danger" onclick="logoutUser()" title="Sair da sessão">
+
+          <span>🚪</span>
+
+          <strong id="logoutButtonText">
+            Sair
+          </strong>
+        </button>
+
+      </div>
+    </div>
     <div class="card">
       <div class="search-toolbar">
         <div class="form-group">
@@ -710,7 +880,19 @@
 
       let query = supabaseClient
         .from('events')
-        .select('id, name, event_date, event_time, location, created_at, user_id')
+        .select(`
+          id,
+          name,
+          event_date,
+          event_time,
+          location,
+          created_at,
+          user_id,
+          users (
+            name,
+            whatsapp
+          )
+        `)
         .order('event_date', { ascending: true });
 
       // usuário comum vê apenas os próprios eventos
@@ -725,7 +907,11 @@
         return;
       }
 
-      events = data || [];
+      events = (data || []).map(event => ({
+        ...event,
+        user_name: event.users?.name || '',
+        user_whatsapp: event.users?.whatsapp || ''
+      }));
 
       renderEvents();
       updateSummary();
@@ -750,7 +936,9 @@
           event.name,
           event.location,
           event.event_date,
-          event.event_time
+          event.event_time,
+          event.user_name,
+          event.user_whatsapp
         ];
 
         return values
@@ -769,30 +957,109 @@
       }
 
       container.className = 'events-grid';
+
       container.innerHTML = filtered.map(event => {
         const eventId = encodeURIComponent(event.id);
         const isPast = isPastEvent(event.event_date);
 
+        const responsibleName =
+          event.user_name ||
+          event.responsible_name ||
+          'Responsável não informado';
+
+        const responsibleWhatsapp =
+          formatPhoneBR(
+            event.user_whatsapp ||
+            event.responsible_whatsapp ||
+            ''
+          );
+
         return `
-          <div class="event-card">
-            <div class="event-title-row">
-              <h2>${escapeHTML(event.name || 'Evento sem nome')}</h2>
+          <div class="event-card modern-event-card">
+
+            <div class="event-card-top-bar"></div>
+
+            <div class="event-title-row-modern">
+
+              <div class="event-title-block">
+
+                <h2>${escapeHTML(event.name || 'Evento sem nome')}</h2>
+
+                <div class="event-owner">
+
+                  <span class="owner-dot"></span>
+
+                  <div class="owner-info">
+
+                    <small>Responsável</small>
+
+                    <strong>${escapeHTML(responsibleName)}</strong>
+
+                    ${responsibleWhatsapp ? `
+                      <span class="owner-phone">
+                        ${escapeHTML(responsibleWhatsapp)}
+                      </span>
+                    ` : ''}
+
+                  </div>
+
+                </div>
+
+              </div>
+
               <span class="event-status-badge ${isPast ? 'past' : 'upcoming'}">
                 ${isPast ? 'Passado' : 'Próximo'}
               </span>
+
             </div>
 
-            <div class="event-meta">
-              <div><span class="meta-icon">📅</span><strong>${formatDateBR(event.event_date) || '-'}</strong></div>
-              <div><span class="meta-icon">⏰</span><strong>${formatTime(event.event_time) || '-'}</strong></div>
-              <div><span class="meta-icon">📍</span><strong>${escapeHTML(event.location || '-')}</strong></div>
+            <div class="event-meta modern-meta">
+
+              <div class="meta-item">
+
+                <div class="meta-icon-box">📅</div>
+
+                <div>
+                  <small>Data</small>
+                  <strong>${formatDateBR(event.event_date) || '-'}</strong>
+                </div>
+
+              </div>
+
+              <div class="meta-item">
+
+                <div class="meta-icon-box">⏰</div>
+
+                <div>
+                  <small>Hora</small>
+                  <strong>${formatTime(event.event_time) || '-'}</strong>
+                </div>
+
+              </div>
+
+              <div class="meta-item">
+
+                <div class="meta-icon-box">📍</div>
+
+                <div>
+                  <small>Local</small>
+                  <strong>${escapeHTML(event.location || '-')}</strong>
+                </div>
+
+              </div>
+
             </div>
 
-            <div class="event-id">
-              ID: ${escapeHTML(event.id)}
+            <div class="event-id modern-event-id">
+
+              <span>ID do evento</span>
+
+              <strong>${escapeHTML(event.id)}</strong>
+
             </div>
 
             <div class="event-actions">
+
               <a class="btn-link action-card action-green" href="/acesso/?event_id=${eventId}">
                 <strong>🟢 Bipagem</strong>
                 <span>Validar entrada</span>
@@ -812,7 +1079,9 @@
                 <strong>👥 Convidados</strong>
                 <span>Lista e disparos</span>
               </a>
+
             </div>
+
           </div>
         `;
       }).join('');
@@ -845,6 +1114,30 @@
       today.setHours(0, 0, 0, 0);
       const date = new Date(dateString + 'T00:00:00');
       return date < today;
+    }
+
+    function normalizePhone(value) {
+      if (!value) return '';
+      return String(value)
+        .replace(/\D/g, '')
+        .replace(/^55/, '')
+        .slice(0, 11);
+    }
+
+    function formatPhoneBR(value) {
+      const phone = normalizePhone(value);
+
+      if (!phone) return '';
+
+      if (phone.length === 11) {
+        return phone.replace(/^(\d{2})(\d{5})(\d{4})$/, '($1) $2-$3');
+      }
+
+      if (phone.length === 10) {
+        return phone.replace(/^(\d{2})(\d{4})(\d{4})$/, '($1) $2-$3');
+      }
+
+      return phone;
     }
 
     function formatDateBR(dateString) {
