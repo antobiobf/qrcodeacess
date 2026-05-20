@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -8,36 +9,63 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
+    :root {
+      --bg: #07080c;
+      --panel: rgba(18, 22, 31, .92);
+      --panel-soft: rgba(255, 255, 255, .055);
+      --border: rgba(255, 255, 255, .09);
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --muted-2: #64748b;
+      --gold: #d8a84f;
+      --gold-2: #f2c46d;
+      --green: #81d99b;
+      --blue: #7aa8ff;
+      --red: #ef7777;
+      --yellow: #f2c46d;
+      --dark: #f8fafc;
+      --line: rgba(255, 255, 255, .09);
+      --shadow: 0 30px 90px rgba(0, 0, 0, .38);
+    }
+
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
-      font-family: Arial, sans-serif;
-    }
-
-    :root {
-      --dark: #0f172a;
-      --blue: #2563eb;
-      --green: #16a34a;
-      --muted: #64748b;
-      --line: #e5e7eb;
-      --bg: #f3f4f6;
+      font-family: Inter, Arial, sans-serif;
     }
 
     body {
       min-height: 100vh;
+      color: var(--text);
       background:
-        radial-gradient(circle at top left, rgba(37, 99, 235, 0.16), transparent 34%),
-        radial-gradient(circle at bottom right, rgba(22, 163, 74, 0.14), transparent 32%),
-        var(--bg);
-      color: #111827;
+        radial-gradient(circle at top right, rgba(216, 168, 79, .18), transparent 34%),
+        radial-gradient(circle at 5% 35%, rgba(122, 168, 255, .11), transparent 30%),
+        radial-gradient(circle at bottom left, rgba(129, 217, 155, .09), transparent 31%),
+        linear-gradient(135deg, #07080c, #10131c 46%, #090b10);
       padding: 20px;
       display: flex;
       align-items: center;
       justify-content: center;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background:
+        linear-gradient(90deg, rgba(255, 255, 255, .025) 1px, transparent 1px),
+        linear-gradient(rgba(255, 255, 255, .018) 1px, transparent 1px);
+      background-size: 64px 64px;
+      mask-image: radial-gradient(circle at 50% 28%, black, transparent 76%);
+      z-index: 0;
     }
 
     .page {
+      position: relative;
+      z-index: 1;
       width: min(1180px, 100%);
       display: grid;
       grid-template-columns: 1.05fr .95fr;
@@ -53,12 +81,15 @@
       padding: 46px;
       color: white;
       background:
-        linear-gradient(rgba(2, 6, 23, .76), rgba(15, 23, 42, .72)),
+        linear-gradient(135deg, rgba(7, 8, 12, .86), rgba(15, 23, 42, .78)),
+        radial-gradient(circle at top right, rgba(216, 168, 79, .20), transparent 32%),
         url('../image/banner.jpg') center/cover no-repeat;
-      box-shadow: 0 28px 70px rgba(15, 23, 42, .24);
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(216, 168, 79, .16);
       display: flex;
       flex-direction: column;
       justify-content: space-between;
+      backdrop-filter: blur(20px);
     }
 
     .brand-panel::before {
@@ -69,7 +100,7 @@
       top: -130px;
       right: -100px;
       border-radius: 999px;
-      background: rgba(255, 255, 255, .08);
+      background: rgba(216, 168, 79, .10);
     }
 
     .brand-panel::after {
@@ -80,7 +111,7 @@
       left: 38%;
       bottom: -280px;
       border-radius: 999px;
-      background: rgba(255, 255, 255, .045);
+      background: rgba(122, 168, 255, .06);
     }
 
     .brand-content,
@@ -94,8 +125,9 @@
       align-items: center;
       gap: 12px;
       font-size: 22px;
-      font-weight: 900;
+      font-weight: 950;
       margin-bottom: 44px;
+      letter-spacing: .02em;
     }
 
     .logo-mark {
@@ -105,8 +137,10 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      background: linear-gradient(135deg, var(--blue), var(--green));
-      box-shadow: 0 14px 30px rgba(37, 99, 235, .28);
+      color: #111827;
+      background: linear-gradient(135deg, var(--gold-2), var(--gold));
+      box-shadow: 0 14px 30px rgba(216, 168, 79, .24);
+      border: 1px solid rgba(216, 168, 79, .40);
     }
 
     .badge {
@@ -115,11 +149,11 @@
       gap: 8px;
       padding: 10px 15px;
       border-radius: 999px;
-      background: rgba(255, 255, 255, .12);
-      border: 1px solid rgba(255, 255, 255, .16);
-      color: #dbeafe;
+      background: rgba(216, 168, 79, .10);
+      border: 1px solid rgba(216, 168, 79, .18);
+      color: var(--gold-2);
       font-size: 13px;
-      font-weight: 800;
+      font-weight: 900;
       margin-bottom: 22px;
       backdrop-filter: blur(10px);
     }
@@ -133,7 +167,7 @@
     }
 
     .brand-panel p {
-      color: rgba(255, 255, 255, .84);
+      color: rgba(226, 232, 240, .84);
       font-size: 19px;
       line-height: 1.6;
       max-width: 620px;
@@ -149,43 +183,61 @@
     }
 
     .proof-card {
-      background: rgba(255, 255, 255, .11);
-      border: 1px solid rgba(255, 255, 255, .14);
+      background: rgba(255, 255, 255, .075);
+      border: 1px solid rgba(255, 255, 255, .10);
       border-radius: 20px;
       padding: 16px;
       backdrop-filter: blur(12px);
+      box-shadow: 0 16px 38px rgba(0, 0, 0, .16);
     }
 
     .proof-card strong {
       display: block;
       font-size: 22px;
       margin-bottom: 5px;
+      color: var(--gold-2);
     }
 
     .proof-card span {
-      color: #dbeafe;
+      color: #cbd5e1;
       font-size: 13px;
-      font-weight: 700;
-    }
-
-    .brand-footer {
-      color: #dbeafe;
-      font-size: 14px;
       font-weight: 800;
     }
 
+    .brand-footer {
+      color: #cbd5e1;
+      font-size: 14px;
+      font-weight: 900;
+    }
+
     .auth-panel {
-      background: rgba(255, 255, 255, .94);
-      border: 1px solid rgba(226, 232, 240, .9);
+      position: relative;
+      overflow: hidden;
+      background: var(--panel);
+      border: 1px solid var(--border);
       border-radius: 34px;
       padding: 34px;
-      box-shadow: 0 24px 70px rgba(15, 23, 42, .12);
+      box-shadow: var(--shadow);
       display: flex;
       flex-direction: column;
       justify-content: center;
+      backdrop-filter: blur(20px);
+    }
+
+    .auth-panel::before {
+      content: "";
+      position: absolute;
+      width: 220px;
+      height: 220px;
+      border-radius: 999px;
+      right: -110px;
+      top: -100px;
+      background: rgba(216, 168, 79, .08);
     }
 
     .auth-card {
+      position: relative;
+      z-index: 2;
       width: 100%;
       max-width: 520px;
       margin: 0 auto;
@@ -196,7 +248,7 @@
     }
 
     .auth-head h2 {
-      color: var(--dark);
+      color: var(--text);
       font-size: 38px;
       line-height: 1;
       letter-spacing: -1.4px;
@@ -219,11 +271,13 @@
     .step-pill {
       height: 8px;
       border-radius: 999px;
-      background: #e5e7eb;
+      background: rgba(255, 255, 255, .08);
+      border: 1px solid rgba(255, 255, 255, .06);
     }
 
     .step-pill.active {
-      background: linear-gradient(90deg, var(--blue), var(--green));
+      background: linear-gradient(90deg, var(--gold-2), var(--green));
+      box-shadow: 0 0 22px rgba(216, 168, 79, .24);
     }
 
     .form-view {
@@ -243,24 +297,30 @@
 
     label {
       font-size: 14px;
-      color: var(--dark);
-      font-weight: 900;
+      color: #e5edf7;
+      font-weight: 950;
     }
 
     input {
       width: 100%;
       padding: 16px;
-      border: 1px solid #d1d5db;
+      border: 1px solid var(--border);
       border-radius: 16px;
       font-size: 15px;
       outline: none;
-      background: white;
+      background: rgba(255, 255, 255, .055);
+      color: var(--text);
       transition: .2s;
+      font-weight: 800;
+    }
+
+    input::placeholder {
+      color: #64748b;
     }
 
     input:focus {
-      border-color: var(--blue);
-      box-shadow: 0 0 0 4px rgba(37, 99, 235, .12);
+      border-color: rgba(216, 168, 79, .55);
+      box-shadow: 0 0 0 4px rgba(216, 168, 79, .12);
     }
 
     .code-grid {
@@ -273,7 +333,7 @@
     .code-grid input {
       text-align: center;
       font-size: 22px;
-      font-weight: 900;
+      font-weight: 950;
       padding: 14px 6px;
     }
 
@@ -282,7 +342,7 @@
       border: none;
       border-radius: 16px;
       padding: 15px 18px;
-      font-weight: 900;
+      font-weight: 950;
       cursor: pointer;
       display: inline-flex;
       align-items: center;
@@ -297,7 +357,7 @@
     button:hover,
     .btn:hover {
       transform: translateY(-1px);
-      filter: brightness(1.02);
+      filter: brightness(1.03);
     }
 
     button:disabled {
@@ -307,26 +367,29 @@
     }
 
     .btn-primary {
-      background: linear-gradient(135deg, var(--blue), #60a5fa);
-      color: white;
-      box-shadow: 0 14px 28px rgba(37, 99, 235, .22);
+      color: #111827;
+      background: linear-gradient(135deg, var(--gold-2), var(--gold));
+      box-shadow: 0 16px 38px rgba(216, 168, 79, .16);
+      border: 1px solid rgba(216, 168, 79, .45);
     }
 
     .btn-success {
-      background: linear-gradient(135deg, var(--green), #22c55e);
-      color: white;
-      box-shadow: 0 14px 28px rgba(22, 163, 74, .20);
+      color: #07110b;
+      background: linear-gradient(135deg, #a7f3d0, var(--green));
+      box-shadow: 0 16px 38px rgba(129, 217, 155, .14);
+      border: 1px solid rgba(129, 217, 155, .45);
     }
 
     .btn-light {
-      background: white;
-      color: var(--dark);
-      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, .075);
+      color: var(--text);
+      border: 1px solid var(--border);
     }
 
     .btn-muted {
-      background: #e5e7eb;
-      color: var(--dark);
+      background: rgba(255, 255, 255, .055);
+      color: #cbd5e1;
+      border: 1px solid var(--border);
     }
 
     .actions {
@@ -353,32 +416,37 @@
       border-radius: 16px;
       margin: 14px 0;
       font-size: 14px;
-      font-weight: 800;
+      font-weight: 900;
       line-height: 1.45;
+      border: 1px solid transparent;
     }
 
     .message.success {
       display: block;
-      background: #dcfce7;
-      color: #166534;
+      background: rgba(129, 217, 155, .12);
+      color: var(--green);
+      border-color: rgba(129, 217, 155, .18);
     }
 
     .message.error {
       display: block;
-      background: #fee2e2;
-      color: #991b1b;
+      background: rgba(239, 119, 119, .12);
+      color: var(--red);
+      border-color: rgba(239, 119, 119, .18);
     }
 
     .message.info {
       display: block;
-      background: #dbeafe;
-      color: #1e40af;
+      background: rgba(122, 168, 255, .12);
+      color: var(--blue);
+      border-color: rgba(122, 168, 255, .18);
     }
 
     .message.warning {
       display: block;
-      background: #fef3c7;
-      color: #92400e;
+      background: rgba(216, 168, 79, .12);
+      color: var(--gold-2);
+      border-color: rgba(216, 168, 79, .18);
     }
 
     .small-text {
@@ -395,14 +463,14 @@
       color: var(--muted);
       margin: 22px 0;
       font-size: 13px;
-      font-weight: 800;
+      font-weight: 900;
     }
 
     .divider::before,
     .divider::after {
       content: '';
       height: 1px;
-      background: var(--line);
+      background: var(--border);
       flex: 1;
     }
 
@@ -462,19 +530,46 @@
         width: 100%;
       }
     }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: var(--text);
+    }
+
+    .brand-mark {
+      width: 44px;
+      height: 44px;
+      border-radius: 15px;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(135deg, #111827, #1e293b);
+      border: 1px solid rgba(216, 168, 79, .35);
+      box-shadow: 0 12px 30px rgba(216, 168, 79, .10);
+      color: var(--gold-2);
+      font-size: 20px;
+    }
+
+    .brand strong {
+      letter-spacing: .08em;
+      font-size: 15px;
+    }
   </style>
 </head>
+
 <body>
   <main class="page">
     <section class="brand-panel">
       <div class="brand-content">
-        <div class="logo">
-          <div class="logo-mark">✓</div>
-          <span>Convidou</span>
-        </div>
+        <a class="brand" href="/eventos/">
+          <div class="brand-mark">◇</div>
+          <strong>CONVIDOU</strong>
+        </a>
 
-        <span class="badge">📲 Área do usuário</span>
-        <h1>Acesse seus eventos com segurança.</h1>
+        <!-- <span class="badge">📲 Área do usuário</span> -->
+        <h1 style="margin-top: 20px;">Acesse seus eventos com segurança.</h1>
         <p>Entre para gerenciar convidados, QR Codes, bipagem, mesas e dashboard em tempo real.</p>
 
         <div class="proof-grid">
@@ -491,6 +586,7 @@
     <section class="auth-panel">
       <div class="auth-card">
         <div class="auth-head">
+           <span class="badge">📲 Área do usuário</span>
           <h2 id="authTitle">Entrar</h2>
           <p id="authSubtitle">Informe seu e-mail e senha para acessar seus eventos.</p>
         </div>
@@ -566,19 +662,22 @@
         <div class="form-view" id="newPasswordView">
           <div class="form-group">
             <label for="newPassword">Nova senha</label>
-            <input id="newPassword" type="password" placeholder="Senha forte com letras, números e símbolo" autocomplete="new-password" />
+            <input id="newPassword" type="password" placeholder="Senha forte com letras, números e símbolo"
+              autocomplete="new-password" />
           </div>
 
           <div class="form-group">
             <label for="newPasswordConfirm">Confirmar nova senha</label>
-            <input id="newPasswordConfirm" type="password" placeholder="Repita a nova senha" autocomplete="new-password" />
+            <input id="newPasswordConfirm" type="password" placeholder="Repita a nova senha"
+              autocomplete="new-password" />
           </div>
 
           <button id="updatePasswordButton" class="btn-success" style="width:100%;" onclick="updatePassword()">
             Atualizar senha e entrar
           </button>
 
-          <p class="small-text">A senha precisa ter no mínimo 8 caracteres, letra maiúscula, letra minúscula, número e caractere especial.</p>
+          <p class="small-text">A senha precisa ter no mínimo 8 caracteres, letra maiúscula, letra minúscula, número e
+            caractere especial.</p>
         </div>
       </div>
     </section>
@@ -928,4 +1027,5 @@
     }
   </script>
 </body>
+
 </html>

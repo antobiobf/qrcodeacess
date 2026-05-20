@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link href="../image/favicon.ico" rel="icon" type="image/x-icon" />
+  <link href="../image/favicon.ico" rel="icon" type="image/x-icon" />
   <title>Gestão de Convidados - Z-API</title>
 
   <!--
@@ -106,79 +106,436 @@ Para confirmar sua participação, basta clicar no link abaixo:
   <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
   <style>
+    :root {
+      --bg: #07080c;
+      --panel: rgba(18, 22, 31, .92);
+      --panel-2: rgba(12, 15, 23, .84);
+      --panel-soft: rgba(255,255,255,.055);
+      --border: rgba(255,255,255,.09);
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --muted-2: #64748b;
+      --gold: #d8a84f;
+      --gold-2: #f2c46d;
+      --green: #81d99b;
+      --blue: #7aa8ff;
+      --red: #ef7777;
+      --purple: #b58cff;
+      --shadow: 0 28px 80px rgba(0,0,0,.35);
+    }
+
     * {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
-      font-family: Arial, sans-serif;
+      font-family: Inter, Arial, sans-serif;
     }
 
     body {
-      background: #f3f4f6;
-      color: #111827;
+      min-height: 100vh;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 78% 8%, rgba(216,168,79,.18), transparent 32%),
+        radial-gradient(circle at 8% 38%, rgba(122,168,255,.10), transparent 28%),
+        radial-gradient(circle at bottom left, rgba(129,217,155,.07), transparent 30%),
+        linear-gradient(135deg, #07080c, #10131c 45%, #090b10);
       padding: 20px;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background:
+        linear-gradient(90deg, rgba(255,255,255,.024) 1px, transparent 1px),
+        linear-gradient(rgba(255,255,255,.017) 1px, transparent 1px);
+      background-size: 64px 64px;
+      mask-image: radial-gradient(circle at 50% 30%, black, transparent 75%);
+      z-index: 0;
     }
 
     .container {
-      max-width: 1400px;
+      position: relative;
+      z-index: 1;
+      max-width: 1480px;
       margin: 0 auto;
     }
 
-    .header {
-      position: relative;
-      background: linear-gradient(135deg, #111827, #1e3a8a);
-      color: white;
-      border-radius: 24px;
-      padding: 30px;
+    /* NAV PADRÃO PREMIUM */
+    .top-nav {
+      position: sticky;
+      top: 14px;
+      z-index: 1000;
       margin-bottom: 24px;
-      box-shadow: 0 12px 32px rgba(17, 24, 39, .18);
+      background: rgba(7, 8, 12, .76);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 26px;
+      box-shadow:
+        0 24px 60px rgba(0,0,0,.34),
+        inset 0 1px 0 rgba(255,255,255,.04);
+      backdrop-filter: blur(22px);
     }
 
-    .header h1 {
-      font-size: 36px;
-      margin-bottom: 10px;
-      padding-right: 90px;
-    }
-
-    .header p {
-      color: #dbeafe;
-      font-size: 17px;
-      padding-right: 90px;
-    }
-
-    .header-menu {
-      position: absolute;
-      right: 22px;
-      top: 22px;
+    .nav-inner {
+      min-height: 76px;
       display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 14px 18px;
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--text);
+      text-decoration: none;
+      font-weight: 950;
+      letter-spacing: .08em;
+    }
+
+    .brand-mark {
+      width: 42px;
+      height: 42px;
+      border-radius: 15px;
+      display: grid;
+      place-items: center;
+      color: var(--gold-2);
+      background: linear-gradient(135deg, #111827, #1e293b);
+      border: 1px solid rgba(216,168,79,.35);
+      box-shadow: 0 12px 30px rgba(216,168,79,.12);
+      flex-shrink: 0;
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
       gap: 10px;
     }
 
-    .icon-button {
-      width: 44px;
-      height: 44px;
-      border-radius: 14px;
-      border: 1px solid rgba(255, 255, 255, .18);
-      background: rgba(255, 255, 255, .1);
-      color: white;
-      font-size: 18px;
-      cursor: pointer;
+    .user-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 13px 8px 8px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.065);
+      border: 1px solid rgba(255,255,255,.09);
+      color: #dbe4ef;
+      font-weight: 900;
+      font-size: 13px;
+      white-space: nowrap;
     }
 
+    .avatar {
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      color: #111827;
+      background: linear-gradient(135deg, var(--gold-2), var(--gold));
+      font-weight: 950;
+    }
+
+    button,
+    .btn-link,
+    .nav-btn {
+      border: none;
+      border-radius: 14px;
+      padding: 13px 16px;
+      font-weight: 950;
+      cursor: pointer;
+      font-size: 14px;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: .2s;
+      white-space: nowrap;
+      gap: 8px;
+    }
+
+    button:hover,
+    .btn-link:hover,
+    .nav-btn:hover {
+      transform: translateY(-1px);
+      filter: brightness(1.03);
+    }
+
+    button:disabled {
+      opacity: .6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .nav-btn {
+      min-height: 46px;
+      color: var(--text);
+      background: rgba(255,255,255,.075);
+      border: 1px solid var(--border);
+    }
+
+    .nav-btn:hover {
+      background: rgba(255,255,255,.11);
+      color: var(--gold-2);
+      border-color: rgba(216,168,79,.22);
+    }
+
+    .nav-gold {
+      color: #111827;
+      background: linear-gradient(135deg, var(--gold-2), var(--gold));
+      border: 1px solid rgba(216,168,79,.45);
+      box-shadow: 0 16px 38px rgba(216,168,79,.16);
+    }
+
+    .nav-gold:hover {
+      color: #111827;
+    }
+
+    .nav-danger {
+      color: #ffb4b4;
+      background: rgba(239,119,119,.12);
+      border: 1px solid rgba(239,119,119,.20);
+    }
+
+    .mobile-menu-button {
+      display: none;
+      width: 52px;
+      height: 52px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.06);
+      color: white;
+      font-size: 24px;
+      cursor: pointer;
+      transition: .2s;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      box-shadow:
+        0 14px 30px rgba(0,0,0,.22),
+        inset 0 1px 0 rgba(255,255,255,.08);
+      backdrop-filter: blur(18px);
+    }
+
+    .mobile-menu-button:hover {
+      background: rgba(216,168,79,.14);
+      border-color: rgba(216,168,79,.22);
+      color: var(--gold-2);
+    }
+
+    .mobile-dropdown {
+      position: absolute;
+      top: calc(100% + 14px);
+      right: 0;
+      width: 310px;
+      background: rgba(15,18,28,.98);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 24px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      backdrop-filter: blur(20px);
+      box-shadow: 0 24px 60px rgba(0,0,0,.40);
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(-10px);
+      transition: .25s;
+      z-index: 999;
+    }
+
+    .mobile-dropdown.active {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+    }
+
+    .mobile-user {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      margin-bottom: 4px;
+    }
+
+    .mobile-user strong {
+      color: var(--text);
+      display: block;
+    }
+
+    .mobile-user p {
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 3px;
+    }
+
+    .mobile-link {
+      width: 100%;
+      min-height: 48px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.08);
+      background: rgba(255,255,255,.05);
+      color: white;
+      padding: 0 16px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      font-size: 14px;
+      font-weight: 950;
+      cursor: pointer;
+      text-decoration: none;
+      transition: .2s;
+    }
+
+    .mobile-link:hover {
+      background: rgba(255,255,255,.10);
+    }
+
+    .mobile-link.gold {
+      background: linear-gradient(135deg, var(--gold-2), var(--gold));
+      color: #111827;
+      border-color: rgba(216,168,79,.48);
+    }
+
+    .mobile-link.danger {
+      color: #ffb4b4;
+      border-color: rgba(239,119,119,.20);
+      background: rgba(239,119,119,.10);
+    }
+
+    /* HERO */
+    .header {
+      position: relative;
+      overflow: hidden;
+      background:
+        linear-gradient(135deg, rgba(39,37,34,.88), rgba(16,20,31,.92)),
+        radial-gradient(circle at top right, rgba(216,168,79,.22), transparent 36%);
+      color: white;
+      border-radius: 34px;
+      padding: 38px 34px;
+      margin-bottom: 18px;
+      border: 1px solid rgba(216,168,79,.16);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(20px);
+    }
+
+    .header::before {
+      content: '';
+      position: absolute;
+      width: 340px;
+      height: 340px;
+      top: -140px;
+      right: -90px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.055);
+    }
+
+    .header::after {
+      content: '';
+      position: absolute;
+      inset: auto 0 0 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, rgba(216,168,79,.6), transparent);
+    }
+
+    .header-content {
+      position: relative;
+      z-index: 2;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 24px;
+      align-items: center;
+    }
+
+    .header-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(216,168,79,.10);
+      border: 1px solid rgba(216,168,79,.18);
+      border-radius: 999px;
+      padding: 9px 14px;
+      color: var(--gold-2);
+      font-size: 13px;
+      font-weight: 950;
+      margin-bottom: 18px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .header h1 {
+      font-size: clamp(34px, 5vw, 60px);
+      line-height: .96;
+      letter-spacing: -2px;
+      margin-bottom: 14px;
+      max-width: 850px;
+    }
+
+    .header p {
+      color: rgba(226,232,240,.82);
+      font-size: 17px;
+      line-height: 1.6;
+      max-width: 760px;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .hero-actions button {
+      min-height: 48px;
+    }
+
+    /* CARDS E FORM */
     .card,
-    .panel {
-      background: white;
-      border-radius: 20px;
+    .panel,
+    .info-box {
+      position: relative;
+      overflow: hidden;
+      background: var(--panel);
+      border-radius: 26px;
       padding: 24px;
-      margin-bottom: 24px;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, .06);
+      margin-bottom: 20px;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+      backdrop-filter: blur(18px);
+    }
+
+    .card::after,
+    .panel::after,
+    .info-box::after {
+      content: '';
+      position: absolute;
+      width: 150px;
+      height: 150px;
+      border-radius: 999px;
+      right: -78px;
+      top: -78px;
+      background: rgba(216,168,79,.055);
+      pointer-events: none;
+    }
+
+    .card > *,
+    .panel > *,
+    .info-box > * {
+      position: relative;
+      z-index: 2;
     }
 
     .grid-4 {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
       gap: 16px;
-      margin-bottom: 24px;
+      margin-bottom: 20px;
     }
 
     .grid-3 {
@@ -194,25 +551,37 @@ Para confirmar sua participação, basta clicar no link abaixo:
     }
 
     .info-box {
-      background: white;
-      border-radius: 18px;
-      padding: 18px;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, .06);
+      margin-bottom: 0;
+      padding: 20px;
+      min-height: 118px;
     }
 
     .info-box span {
       display: block;
-      color: #6b7280;
-      font-size: 13px;
-      margin-bottom: 6px;
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 8px;
+      font-weight: 950;
+      text-transform: uppercase;
+      letter-spacing: .08em;
     }
 
     .info-box strong {
       font-size: 24px;
+      color: var(--text);
+      letter-spacing: -.6px;
+      word-break: break-word;
     }
 
     .summary-box strong {
-      font-size: 34px;
+      font-size: 36px;
+      color: var(--gold-2);
+    }
+
+    h2,
+    h3 {
+      color: var(--text);
+      letter-spacing: -.5px;
     }
 
     .form-group {
@@ -222,8 +591,9 @@ Para confirmar sua participação, basta clicar no link abaixo:
     }
 
     label {
-      font-weight: bold;
+      font-weight: 950;
       font-size: 14px;
+      color: #e5edf7;
     }
 
     input,
@@ -231,11 +601,24 @@ Para confirmar sua participação, basta clicar no link abaixo:
     select {
       width: 100%;
       padding: 14px;
-      border: 1px solid #d1d5db;
-      border-radius: 12px;
+      border: 1px solid var(--border);
+      border-radius: 15px;
       font-size: 15px;
       outline: none;
-      background: white;
+      background: rgba(255,255,255,.055);
+      color: var(--text);
+      transition: .2s;
+      font-weight: 800;
+    }
+
+    select option {
+      color: #111827;
+      background: #f8fafc;
+    }
+
+    input::placeholder,
+    textarea::placeholder {
+      color: #64748b;
     }
 
     textarea {
@@ -247,95 +630,93 @@ Para confirmar sua participação, basta clicar no link abaixo:
     input:focus,
     textarea:focus,
     select:focus {
-      border-color: #2563eb;
-      box-shadow: 0 0 0 3px rgba(37, 99, 235, .14);
-    }
-
-    button,
-    .btn-link {
-      border: none;
-      border-radius: 12px;
-      padding: 13px 16px;
-      font-weight: bold;
-      cursor: pointer;
-      font-size: 14px;
-      text-decoration: none;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      transition: .2s;
-      white-space: nowrap;
-    }
-
-    button:disabled {
-      opacity: .6;
-      cursor: not-allowed;
+      border-color: rgba(216,168,79,.55);
+      box-shadow: 0 0 0 4px rgba(216,168,79,.12);
     }
 
     .btn-primary {
-      background: #2563eb;
-      color: white;
+      color: #111827;
+      background: linear-gradient(135deg, var(--gold-2), var(--gold));
+      box-shadow: 0 16px 38px rgba(216,168,79,.16);
+      border: 1px solid rgba(216,168,79,.45);
     }
 
     .btn-success {
-      background: #16a34a;
-      color: white;
+      color: #07110b;
+      background: linear-gradient(135deg, #a7f3d0, var(--green));
+      box-shadow: 0 16px 38px rgba(129,217,155,.14);
+      border: 1px solid rgba(129,217,155,.45);
     }
 
     .btn-warning {
-      background: #f59e0b;
-      color: white;
+      background: rgba(216,168,79,.14);
+      color: var(--gold-2);
+      border: 1px solid rgba(216,168,79,.22);
     }
 
     .btn-danger {
-      background: #dc2626;
-      color: white;
+      background: rgba(239,119,119,.12);
+      color: var(--red);
+      border: 1px solid rgba(239,119,119,.20);
     }
 
     .btn-secondary {
-      background: #e5e7eb;
-      color: #111827;
+      background: rgba(255,255,255,.075);
+      color: var(--text);
+      border: 1px solid var(--border);
     }
 
     .btn-dark {
-      background: #111827;
-      color: white;
+      background: rgba(255,255,255,.09);
+      color: var(--text);
+      border: 1px solid var(--border);
     }
 
     .message {
       display: none;
-      padding: 14px;
-      border-radius: 14px;
+      padding: 14px 16px;
+      border-radius: 16px;
       margin-bottom: 18px;
       font-size: 14px;
+      font-weight: 900;
+      border: 1px solid transparent;
     }
 
     .message.success {
       display: block;
-      background: #dcfce7;
-      color: #166534;
+      background: rgba(129,217,155,.12);
+      color: var(--green);
+      border-color: rgba(129,217,155,.18);
     }
 
     .message.error {
       display: block;
-      background: #fee2e2;
-      color: #991b1b;
+      background: rgba(239,119,119,.12);
+      color: var(--red);
+      border-color: rgba(239,119,119,.18);
     }
 
     .message.info {
       display: block;
-      background: #dbeafe;
-      color: #1e40af;
+      background: rgba(122,168,255,.12);
+      color: var(--blue);
+      border-color: rgba(122,168,255,.18);
     }
 
     .message.warning {
       display: block;
-      background: #fef3c7;
-      color: #92400e;
+      background: rgba(216,168,79,.12);
+      color: var(--gold-2);
+      border-color: rgba(216,168,79,.18);
     }
 
     .config-box {
       display: none;
+    }
+
+    .config-box.active,
+    .config-box[style*="block"] {
+      display: block;
     }
 
     .import-section {
@@ -350,20 +731,20 @@ Para confirmar sua participação, basta clicar no link abaixo:
     }
 
     .safe-send-box {
-      border: 1px solid #fde68a;
-      background: #fffbeb;
+      border: 1px solid rgba(216,168,79,.20);
+      background: rgba(216,168,79,.10);
       border-radius: 18px;
       padding: 18px;
       margin-bottom: 18px;
     }
 
     .safe-send-box h3 {
-      color: #92400e;
+      color: var(--gold-2);
       margin-bottom: 8px;
     }
 
     .safe-send-box p {
-      color: #92400e;
+      color: #e9d8a6;
       line-height: 1.45;
       font-size: 14px;
     }
@@ -380,9 +761,9 @@ Para confirmar sua participação, basta clicar no link abaixo:
       margin-top: 18px;
       padding: 16px;
       border-radius: 16px;
-      background: #eff6ff;
-      border: 1px solid #bfdbfe;
-      color: #1e3a8a;
+      background: rgba(122,168,255,.12);
+      border: 1px solid rgba(122,168,255,.18);
+      color: var(--blue);
     }
 
     .send-progress.active {
@@ -392,16 +773,18 @@ Para confirmar sua participação, basta clicar no link abaixo:
     .progress-bar {
       height: 14px;
       border-radius: 999px;
-      background: #dbeafe;
+      background: rgba(255,255,255,.075);
       overflow: hidden;
       margin-top: 10px;
+      border: 1px solid var(--border);
     }
 
     .progress-fill {
       height: 100%;
       width: 0%;
-      background: #2563eb;
+      background: linear-gradient(90deg, var(--gold), var(--green));
       transition: .3s;
+      box-shadow: 0 0 22px rgba(216,168,79,.28);
     }
 
     .tools {
@@ -415,20 +798,35 @@ Para confirmar sua participação, basta clicar no link abaixo:
       width: 100%;
       border-collapse: collapse;
       font-size: 14px;
+      min-width: 980px;
+    }
+
+    #guestsTableContainer {
+      overflow-x: auto;
+      border-radius: 18px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,.035);
     }
 
     th,
     td {
       padding: 12px;
       text-align: left;
-      border-bottom: 1px solid #e5e7eb;
+      border-bottom: 1px solid rgba(255,255,255,.07);
       vertical-align: top;
+      color: #cbd5e1;
     }
 
     th {
-      color: #6b7280;
+      color: var(--muted);
       font-size: 12px;
       text-transform: uppercase;
+      letter-spacing: .05em;
+      background: rgba(255,255,255,.045);
+    }
+
+    tr:hover td {
+      background: rgba(255,255,255,.045);
     }
 
     .table-actions {
@@ -441,32 +839,39 @@ Para confirmar sua participação, basta clicar no link abaixo:
       padding: 7px 10px;
       border-radius: 999px;
       font-size: 12px;
-      font-weight: bold;
+      font-weight: 950;
       white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
     }
 
     .badge-green {
-      background: #dcfce7;
-      color: #166534;
+      background: rgba(129,217,155,.12);
+      color: var(--green);
+      border: 1px solid rgba(129,217,155,.18);
     }
 
     .badge-yellow {
-      background: #fef3c7;
-      color: #92400e;
+      background: rgba(216,168,79,.12);
+      color: var(--gold-2);
+      border: 1px solid rgba(216,168,79,.18);
     }
 
     .badge-gray {
-      background: #f3f4f6;
-      color: #4b5563;
+      background: rgba(255,255,255,.075);
+      color: #cbd5e1;
+      border: 1px solid var(--border);
     }
 
     .badge-red {
-      background: #fee2e2;
-      color: #991b1b;
+      background: rgba(239,119,119,.12);
+      color: var(--red);
+      border: 1px solid rgba(239,119,119,.18);
     }
 
     .small-text {
-      color: #6b7280;
+      color: var(--muted);
       font-size: 13px;
       line-height: 1.45;
       margin-top: 8px;
@@ -475,12 +880,11 @@ Para confirmar sua participação, basta clicar no link abaixo:
     .empty-state {
       text-align: center;
       padding: 40px 20px;
-      color: #6b7280;
-      background: white;
-      border: 1px dashed #d1d5db;
+      color: var(--muted);
+      background: rgba(255,255,255,.035);
+      border: 1px dashed var(--border);
       border-radius: 18px;
     }
-
 
     .accordion-card {
       overflow: hidden;
@@ -496,12 +900,13 @@ Para confirmar sua participação, basta clicar no link abaixo:
       gap: 16px;
       padding: 0;
       cursor: pointer;
-      color: #111827;
+      color: var(--text);
       text-align: left;
     }
 
     .accordion-header:hover {
       transform: none;
+      filter: none;
     }
 
     .accordion-title {
@@ -514,8 +919,9 @@ Para confirmar sua participação, basta clicar no link abaixo:
       width: 44px;
       height: 44px;
       border-radius: 14px;
-      background: #eff6ff;
-      color: #1d4ed8;
+      background: rgba(216,168,79,.12);
+      color: var(--gold-2);
+      border: 1px solid rgba(216,168,79,.18);
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -526,16 +932,17 @@ Para confirmar sua participação, basta clicar no link abaixo:
     .accordion-title h2 {
       margin-bottom: 4px;
       font-size: 22px;
-      color: #111827;
+      color: var(--text);
     }
 
     .accordion-toggle {
-      background: #f3f4f6;
-      color: #111827;
+      background: rgba(255,255,255,.075);
+      color: var(--text);
+      border: 1px solid var(--border);
       border-radius: 999px;
       padding: 10px 14px;
       font-size: 13px;
-      font-weight: 900;
+      font-weight: 950;
       flex-shrink: 0;
     }
 
@@ -543,7 +950,7 @@ Para confirmar sua participação, basta clicar no link abaixo:
       display: none;
       padding-top: 22px;
       margin-top: 20px;
-      border-top: 1px solid #e5e7eb;
+      border-top: 1px solid rgba(255,255,255,.07);
     }
 
     .accordion-card.active .accordion-body {
@@ -551,10 +958,10 @@ Para confirmar sua participação, basta clicar no link abaixo:
     }
 
     .accordion-card.active .accordion-toggle {
-      background: #2563eb;
-      color: white;
+      background: linear-gradient(135deg, var(--gold-2), var(--gold));
+      color: #111827;
+      border-color: rgba(216,168,79,.45);
     }
-
 
     .message-layout {
       display: grid;
@@ -568,8 +975,8 @@ Para confirmar sua participação, basta clicar no link abaixo:
     }
 
     .invite-preview-box {
-      background: #f8fafc;
-      border: 1px solid #e5e7eb;
+      background: rgba(255,255,255,.045);
+      border: 1px solid rgba(255,255,255,.07);
       border-radius: 18px;
       padding: 18px;
     }
@@ -581,10 +988,10 @@ Para confirmar sua participação, basta clicar no link abaixo:
 
     .invite-preview-empty {
       min-height: 360px;
-      border: 1px dashed #cbd5e1;
+      border: 1px dashed rgba(255,255,255,.14);
       border-radius: 16px;
-      background: white;
-      color: #64748b;
+      background: rgba(0,0,0,.14);
+      color: var(--muted);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -615,47 +1022,9 @@ Para confirmar sua participação, basta clicar no link abaixo:
 
     .invite-help {
       margin-top: 10px;
-      color: #64748b;
+      color: var(--muted);
       font-size: 13px;
       line-height: 1.45;
-    }
-
-    @media(max-width: 900px) {
-      body {
-        padding: 12px;
-      }
-
-      .grid-4,
-      .grid-3,
-      .grid-2,
-      .send-controls,
-      .tools,
-      .import-section {
-        grid-template-columns: 1fr;
-      }
-
-      .header h1 {
-        font-size: 26px;
-      }
-
-      button,
-      .btn-link {
-        width: 100%;
-      }
-
-      table {
-        display: block;
-        overflow-x: auto;
-      }
-
-      .message-layout {
-        grid-template-columns: 1fr;
-      }
-
-      .invite-actions button {
-        width: 100%;
-      }
-
     }
 
     .loading-spinner {
@@ -669,8 +1038,108 @@ Para confirmar sua participação, basta clicar no link abaixo:
     }
 
     @keyframes spin {
-      to {
-        transform: rotate(360deg);
+      to { transform: rotate(360deg); }
+    }
+
+    @media(max-width: 980px) {
+      body {
+        padding: 12px;
+      }
+
+      .top-nav {
+        top: 10px;
+        border-radius: 22px;
+      }
+
+      .desktop-nav {
+        display: none;
+      }
+
+      .mobile-menu-button {
+        display: flex;
+      }
+
+      .mobile-dropdown {
+        width: min(310px, calc(100vw - 48px));
+      }
+
+      .header {
+        padding: 28px;
+        border-radius: 26px;
+      }
+
+      .header-content {
+        grid-template-columns: 1fr;
+      }
+
+      .hero-actions {
+        justify-content: flex-start;
+      }
+
+      .grid-4,
+      .grid-3,
+      .grid-2,
+      .send-controls,
+      .tools,
+      .import-section {
+        grid-template-columns: 1fr;
+      }
+
+      button,
+      .btn-link {
+        width: 100%;
+      }
+
+      .mobile-menu-button {
+        width: 52px;
+      }
+
+      #guestsTableContainer,
+      table {
+        display: block;
+        overflow-x: auto;
+      }
+
+      .message-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .invite-actions button {
+        width: 100%;
+      }
+
+      .accordion-header {
+        align-items: flex-start;
+      }
+    }
+
+    @media(max-width: 640px) {
+      .nav-inner {
+        min-height: 68px;
+        padding: 12px;
+      }
+
+      .brand strong {
+        font-size: 14px;
+      }
+
+      .header h1 {
+        font-size: 34px;
+      }
+
+      .header p {
+        font-size: 15px;
+      }
+
+      .hero-actions {
+        flex-direction: column;
+      }
+
+      .card,
+      .panel,
+      .info-box {
+        border-radius: 22px;
+        padding: 20px;
       }
     }
   </style>
@@ -678,13 +1147,78 @@ Para confirmar sua participação, basta clicar no link abaixo:
 
 <body>
   <div class="container">
-    <div class="header">
-      <div class="header-menu">
-        <button class="icon-button" onclick="goEvents()" title="Eventos">🏠</button>
-        <button class="icon-button" onclick="toggleConfig()" title="Configurações">⚙️</button>
+    <nav class="top-nav">
+      <div class="nav-inner">
+        <a class="brand" href="/eventos/">
+          <div class="brand-mark">◇</div>
+          <strong>CONVIDOU</strong>
+        </a>
+
+        <div class="nav-actions desktop-nav">
+          <div class="user-chip">
+            <div class="avatar" id="userAvatar">U</div>
+            <span id="userName">Usuário</span>
+          </div>
+
+          <button class="nav-btn nav-gold" onclick="goEvents()">
+            ← Eventos
+          </button>
+
+          <button class="nav-btn" onclick="toggleConfig()">
+            ⚙️ Configurações
+          </button>
+
+          <button class="nav-btn nav-danger" onclick="logoutUser()">
+            🚪 Sair
+          </button>
+        </div>
+
+        <button class="mobile-menu-button" onclick="toggleMobileMenu()" title="Menu">
+          ☰
+        </button>
+
+        <div class="mobile-dropdown" id="mobileDropdown">
+          <div class="mobile-user">
+            <div class="avatar" id="userAvatarMobile">U</div>
+            <div>
+              <strong id="userNameMobile">Usuário</strong>
+              <p>Gestão de convidados</p>
+            </div>
+          </div>
+
+          <button class="mobile-link gold" onclick="goEvents()">
+            ← Eventos
+          </button>
+
+          <button class="mobile-link" onclick="toggleConfig(); closeMobileMenu();">
+            ⚙️ Configurações
+          </button>
+
+          <button class="mobile-link danger" onclick="logoutUser()">
+            🚪 Sair
+          </button>
+        </div>
       </div>
-      <h1>Gestão de Convidados</h1>
-      <p>Importe convidados, envie confirmações pela Z-API e acompanhe presenças.</p>
+    </nav>
+
+    <div class="header">
+      <div class="header-content">
+        <div>
+          <div class="header-badge">Área interna</div>
+          <h1>Gestão de convidados</h1>
+          <p>
+            Importe convidados, cadastre avulsos, envie mensagens pela Z-API,
+            acompanhe confirmações e controle cada disparo em uma tela mais limpa e elegante.
+          </p>
+        </div>
+
+        <div class="hero-actions">
+          <button class="btn-secondary" onclick="loadGuests()">Atualizar lista</button>
+          <button class="btn-primary" onclick="document.getElementById('accordionAddGuest')?.classList.add('active')">
+            + Adicionar convidado
+          </button>
+        </div>
+      </div>
     </div>
 
     <div id="message" class="message"></div>
@@ -945,6 +1479,8 @@ Para confirmar sua participação, basta clicar no link abaixo:
           <h3>⚠️ Envio protegido</h3>
           <p>O envio em massa usa lotes, intervalo entre mensagens, pula quem já recebeu e registra erros. Para reduzir
             risco de bloqueio, comece com lotes pequenos e aumente aos poucos.</p>
+          <p style="margin-top:10px;"><strong>Importante:</strong> se o WhatsApp já estiver com restrição, o sistema deve parar o envio.
+            Use apenas para contatos que aceitaram receber mensagens e prefira ferramentas oficiais para grandes volumes.</p>
         </div>
 
         <div class="send-controls">
@@ -962,10 +1498,10 @@ Para confirmar sua participação, basta clicar no link abaixo:
           <div class="form-group">
             <label for="delaySeconds">Intervalo entre mensagens</label>
             <select id="delaySeconds">
-              <option value="5">5 segundos</option>
-              <option value="8" selected>8 segundos</option>
-              <option value="12">12 segundos</option>
-              <option value="20">20 segundos</option>
+              <option value="30" selected>30 segundos - seguro</option>
+              <option value="45">45 segundos</option>
+              <option value="60">60 segundos</option>
+              <option value="90">90 segundos</option>
             </select>
           </div>
 
@@ -1302,21 +1838,41 @@ Para confirmar sua participação, basta clicar no link abaixo:
     async function loadGuests() {
       if (!supabaseClient || !currentEventId) return;
 
-      const { data, error } = await supabaseClient
-        .from('event_guests')
-        .select('*')
-        .eq('event_id', currentEventId)
-        .order('created_at', { ascending: true });
+      let allGuests = [];
+      let from = 0;
+      const limit = 1000;
 
-      if (error) {
-        showMessage('Erro ao carregar convidados: ' + error.message, 'error');
-        return;
+      while (true) {
+        const { data, error } = await supabaseClient
+          .from('event_guests')
+          .select('*')
+          .eq('event_id', currentEventId)
+          .order('created_at', { ascending: true })
+          .range(from, from + limit - 1);
+
+        if (error) {
+          showMessage('Erro ao carregar convidados: ' + error.message, 'error');
+          return;
+        }
+
+        if (!data || data.length === 0) {
+          break;
+        }
+
+        allGuests = allGuests.concat(data);
+
+        if (data.length < limit) {
+          break;
+        }
+
+        from += limit;
       }
 
-      guests = data || [];
+      guests = allGuests;
       renderGuests();
       updateSummary();
     }
+
 
     async function importSpreadsheet() {
       const input = document.getElementById('spreadsheetFile');
@@ -1660,7 +2216,6 @@ Para confirmar sua participação, basta clicar no link abaixo:
       return `
 
 ---
-
 📲 *Dúvidas ou respostas?*
 Fale diretamente com ${responsible.name || 'o responsável'}:
 ${formatPhoneBR(responsible.whatsapp)}`;
@@ -1738,7 +2293,7 @@ ${new Date().toLocaleString('pt-BR')}`;
         .replaceAll('{{maps}}', maps)
         .replaceAll('{{link}}', link);
 
-      message += buildResponsibleFooter(responsible);
+      // message += buildResponsibleFooter(responsible);
 
       return message;
     }
@@ -1773,35 +2328,120 @@ ${new Date().toLocaleString('pt-BR')}`;
       showMessage('Configuração Z-API carregada. Faça um envio para um convidado de teste.', 'success');
     }
 
+
+    function isValidZAPIQueuedResult(result) {
+      if (!result || typeof result !== 'object') return false;
+      if (result.error || result.errorMessage) return false;
+      return Boolean(result.messageId || result.zaapId || result.id);
+    }
+
+    function getZAPIErrorMessage(result, fallback = 'Erro retornado pela Z-API.') {
+      if (!result || typeof result !== 'object') return fallback;
+      return result.message || result.error || result.errorMessage || result.exception || fallback;
+    }
+
+    function detectWhatsAppRestriction(result) {
+      const text = JSON.stringify(result || {}).toLowerCase();
+
+      return text.includes('restricted') ||
+        text.includes('restrita') ||
+        text.includes('restrição') ||
+        text.includes('restriction') ||
+        text.includes('ban') ||
+        text.includes('bloque') ||
+        text.includes('spam') ||
+        text.includes('mass') ||
+        text.includes('automática') ||
+        text.includes('automatic');
+    }
+
+    async function fetchZAPI(url, payload, timeoutMs = 45000) {
+      const config = validateZAPIConfig();
+      if (!config) throw new Error('Z-API não configurada.');
+
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+      let response;
+      let result = {};
+
+      try {
+        response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Client-Token': config.clientToken
+          },
+          body: JSON.stringify(payload),
+          signal: controller.signal
+        });
+
+        result = await response.json().catch(() => ({}));
+      } catch (error) {
+        if (error.name === 'AbortError') {
+          throw new Error('Timeout na Z-API. O envio pode ter ficado preso na fila.');
+        }
+
+        throw new Error('Falha de conexão com a Z-API: ' + (error.message || 'erro desconhecido'));
+      } finally {
+        clearTimeout(timeout);
+      }
+
+      if (!response.ok) {
+        throw new Error(getZAPIErrorMessage(result, `Erro Z-API HTTP ${response.status}`));
+      }
+
+      if (detectWhatsAppRestriction(result)) {
+        throw new Error('A Z-API retornou indício de restrição/bloqueio do WhatsApp. Envio interrompido para proteger a conta.');
+      }
+
+      if (!isValidZAPIQueuedResult(result)) {
+        throw new Error('A Z-API respondeu, mas não confirmou o enfileiramento da mensagem.');
+      }
+
+      return result;
+    }
+
+    async function retrySendZAPI(sendFn, retries = 2) {
+      let lastError = null;
+
+      for (let attempt = 1; attempt <= retries; attempt++) {
+        try {
+          return await sendFn();
+        } catch (error) {
+          lastError = error;
+
+          const message = String(error.message || '').toLowerCase();
+
+          if (
+            message.includes('restrição') ||
+            message.includes('restrita') ||
+            message.includes('bloqueio') ||
+            message.includes('restricted') ||
+            message.includes('ban')
+          ) {
+            throw error;
+          }
+
+          if (attempt < retries) {
+            await sleep(6000);
+          }
+        }
+      }
+
+      throw lastError;
+    }
+
     async function sendTextZAPI(phone, message) {
       const config = validateZAPIConfig();
       if (!config) throw new Error('Z-API não configurada.');
 
       const url = `https://api.z-api.io/instances/${encodeURIComponent(config.instanceId)}/token/${encodeURIComponent(config.token)}/send-text`;
 
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Client-Token': config.clientToken
-        },
-        body: JSON.stringify({
-          phone,
-          message
-        })
+      return fetchZAPI(url, {
+        phone,
+        message
       });
-
-      const result = await response.json().catch(() => ({}));
-
-      if (!response.ok) {
-        throw new Error(result.message || result.error || result.errorMessage || `Erro Z-API HTTP ${response.status}`);
-      }
-
-      if (result.error) {
-        throw new Error(result.message || result.error || 'Erro retornado pela Z-API.');
-      }
-
-      return result;
     }
 
     async function sendImageZAPI(phone, imageUrl, caption) {
@@ -1810,30 +2450,11 @@ ${new Date().toLocaleString('pt-BR')}`;
 
       const url = `https://api.z-api.io/instances/${encodeURIComponent(config.instanceId)}/token/${encodeURIComponent(config.token)}/send-image`;
 
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Client-Token': config.clientToken
-        },
-        body: JSON.stringify({
-          phone,
-          image: imageUrl,
-          caption: caption || ''
-        })
-      });
-
-      const result = await response.json().catch(() => ({}));
-
-      if (!response.ok) {
-        throw new Error(result.message || result.error || result.errorMessage || `Erro Z-API HTTP ${response.status}`);
-      }
-
-      if (result.error) {
-        throw new Error(result.message || result.error || 'Erro retornado pela Z-API.');
-      }
-
-      return result;
+      return fetchZAPI(url, {
+        phone,
+        image: imageUrl,
+        caption: caption || ''
+      }, 60000);
     }
 
 
@@ -1892,10 +2513,21 @@ ${new Date().toLocaleString('pt-BR')}`;
       const inviteImageUrl = currentEventData?.invitation_image_url || '';
       let zapiResult = null;
 
+      /*
+        Importante:
+        - Retorno com messageId/zaapId/id significa que a Z-API ACEITOU/ENFILEIROU.
+        - Isso não garante entrega no WhatsApp.
+        - Se a conta estiver restrita, pare o envio e use ferramenta oficial do WhatsApp.
+      */
+
       if (inviteImageUrl) {
-        zapiResult = await sendImageZAPI(phone, inviteImageUrl, message);
+        zapiResult = await retrySendZAPI(() => sendImageZAPI(phone, inviteImageUrl, message), 2);
       } else {
-        zapiResult = await sendTextZAPI(phone, message);
+        zapiResult = await retrySendZAPI(() => sendTextZAPI(phone, message), 2);
+      }
+
+      if (!isValidZAPIQueuedResult(zapiResult)) {
+        throw new Error('Mensagem não confirmada pela Z-API.');
       }
 
       await supabaseClient
@@ -1931,13 +2563,31 @@ ${new Date().toLocaleString('pt-BR')}`;
         return;
       }
 
-      const batchLimit = Number(document.getElementById('batchLimit').value);
-      const delaySeconds = Number(document.getElementById('delaySeconds').value);
+      const selectedBatchLimit = Number(document.getElementById('batchLimit').value);
+      const selectedDelaySeconds = Number(document.getElementById('delaySeconds').value);
       const pauseMinutes = Number(document.getElementById('pauseMinutes').value);
+
+      /*
+        Proteção:
+        Depois que o WhatsApp mostra restrição, não é seguro iniciar muitas conversas.
+        O sistema força lote menor e intervalo maior para evitar marcação falsa como enviado.
+      */
+      const batchLimit = Math.min(selectedBatchLimit, 10);
+      const delaySeconds = Math.max(selectedDelaySeconds, 30);
       const selected = pending.slice(0, batchLimit);
 
       const ok = confirm(
-        `Envio em massa via Z-API\n\nSerão enviadas ${selected.length} mensagens neste lote.\nIntervalo: ${delaySeconds}s entre mensagens.\nPausa recomendada depois: ${pauseMinutes} minuto(s).\n\nDeseja iniciar?`
+        `Envio em massa via Z-API
+
+` +
+        `Serão processadas ${selected.length} mensagens neste lote.
+` +
+        `Intervalo aplicado: ${delaySeconds}s entre mensagens.
+
+` +
+        `Atenção: se o WhatsApp estiver restrito, o envio será interrompido no primeiro erro.
+` +
+        `Deseja iniciar?`
       );
 
       if (!ok) return;
@@ -1965,28 +2615,57 @@ ${new Date().toLocaleString('pt-BR')}`;
         const guest = selected[i];
 
         try {
-          await sendGuestZAPI(guest);
+          const result = await sendGuestZAPI(guest);
+
           summary.sent++;
           summary.items.push({
             name: guest.guest_name || '-',
             whatsapp: formatPhoneBR(guest.whatsapp) || '-',
-            status: 'Enviado'
+            status: `Enfileirado Z-API: ${result.messageId || result.zaapId || result.id || '-'}`
           });
         } catch (error) {
           summary.errors++;
+
+          const errorMessage = error.message || 'Erro desconhecido';
+
           summary.items.push({
             name: guest.guest_name || '-',
             whatsapp: formatPhoneBR(guest.whatsapp) || '-',
-            status: 'Erro: ' + (error.message || 'Erro desconhecido')
+            status: 'Erro: ' + errorMessage
           });
-          await saveSendError(guest.id, error.message);
+
+          await saveSendError(guest.id, errorMessage);
           console.error('Erro ao enviar para', guest.guest_name, error);
+
+          const lower = String(errorMessage).toLowerCase();
+          const shouldStop =
+            lower.includes('restrição') ||
+            lower.includes('restrita') ||
+            lower.includes('bloqueio') ||
+            lower.includes('restricted') ||
+            lower.includes('ban') ||
+            lower.includes('timeout') ||
+            lower.includes('não confirmou');
+
+          if (shouldStop) {
+            stopRequested = true;
+            summary.skipped = selected.length - i - 1;
+            showMessage('Envio interrompido: ' + errorMessage, 'error');
+            break;
+          }
         }
 
         const percent = Math.round(((i + 1) / selected.length) * 100);
-        showSendProgress(true, `Enviando ${i + 1} de ${selected.length}`, `Sucesso: ${summary.sent} | Erros: ${summary.errors} | Atual: ${guest.guest_name}`, percent);
+        showSendProgress(
+          true,
+          `Processando ${i + 1} de ${selected.length}`,
+          `Enfileiradas: ${summary.sent} | Erros: ${summary.errors} | Atual: ${guest.guest_name}`,
+          percent
+        );
 
-        await sleep(delaySeconds * 1000);
+        if (i < selected.length - 1) {
+          await sleep(delaySeconds * 1000);
+        }
       }
 
       await loadGuests();
@@ -2000,11 +2679,11 @@ ${new Date().toLocaleString('pt-BR')}`;
       }
 
       if (stopRequested) {
-        showMessage('Envio interrompido pelo usuário. Resumo enviado ao responsável do evento.', 'warning');
-        showSendProgress(true, 'Envio interrompido', `Sucesso: ${summary.sent} | Erros: ${summary.errors} | Não processados: ${summary.skipped}`, 100);
+        showMessage('Envio interrompido. Verifique o WhatsApp/Z-API antes de continuar.', 'warning');
+        showSendProgress(true, 'Envio interrompido', `Enfileiradas: ${summary.sent} | Erros: ${summary.errors} | Não processadas: ${summary.skipped}`, 100);
       } else {
-        showMessage(`Lote finalizado. Enviadas: ${summary.sent}. Erros: ${summary.errors}. Resumo enviado ao responsável. Pausa recomendada: ${pauseMinutes} minuto(s).`, 'success');
-        showSendProgress(true, 'Lote finalizado', `Enviadas: ${summary.sent}. Erros: ${summary.errors}.`, 100);
+        showMessage(`Lote finalizado. Enfileiradas: ${summary.sent}. Erros: ${summary.errors}. Pausa recomendada: ${pauseMinutes} minuto(s).`, 'success');
+        showSendProgress(true, 'Lote finalizado', `Enfileiradas: ${summary.sent}. Erros: ${summary.errors}.`, 100);
       }
 
       batchSending = false;
@@ -2153,6 +2832,92 @@ ${new Date().toLocaleString('pt-BR')}`;
         .replace(/'/g, '&#039;');
     }
 
+
+    function getLoggedUserForNav() {
+      const keys = [
+        'convidou_user_session',
+        'loggedUser',
+        'user_session',
+        'currentUser'
+      ];
+
+      for (const key of keys) {
+        try {
+          const value = localStorage.getItem(key);
+          if (!value) continue;
+          const parsed = JSON.parse(value);
+          if (parsed && (parsed.name || parsed.email || parsed.id)) return parsed;
+        } catch (error) {}
+      }
+
+      return {
+        name: 'Usuário'
+      };
+    }
+
+    function getFirstName(value) {
+      return String(value || 'Usuário').trim().split(' ')[0] || 'Usuário';
+    }
+
+    function getInitials(value) {
+      return String(value || 'U')
+        .split(' ')
+        .filter(Boolean)
+        .slice(0, 2)
+        .map(part => part[0])
+        .join('')
+        .toUpperCase() || 'U';
+    }
+
+    function setupPremiumNav() {
+      const user = getLoggedUserForNav();
+      const label = user.name || user.email || 'Usuário';
+      const firstName = getFirstName(label);
+      const initials = getInitials(label);
+
+      const userName = document.getElementById('userName');
+      const userAvatar = document.getElementById('userAvatar');
+      const userNameMobile = document.getElementById('userNameMobile');
+      const userAvatarMobile = document.getElementById('userAvatarMobile');
+
+      if (userName) userName.textContent = firstName;
+      if (userAvatar) userAvatar.textContent = initials;
+      if (userNameMobile) userNameMobile.textContent = firstName;
+      if (userAvatarMobile) userAvatarMobile.textContent = initials;
+    }
+
+    function toggleMobileMenu() {
+      const menu = document.getElementById('mobileDropdown');
+      if (menu) menu.classList.toggle('active');
+    }
+
+    function closeMobileMenu() {
+      const menu = document.getElementById('mobileDropdown');
+      if (menu) menu.classList.remove('active');
+    }
+
+    function logoutUser() {
+      localStorage.removeItem('convidou_user_session');
+      localStorage.removeItem('loggedUser');
+      localStorage.removeItem('user_session');
+      localStorage.removeItem('currentUser');
+      window.location.href = '/login/';
+    }
+
+    document.addEventListener('click', function(event) {
+      const menu = document.getElementById('mobileDropdown');
+      const button = document.querySelector('.mobile-menu-button');
+
+      if (
+        menu &&
+        button &&
+        !menu.contains(event.target) &&
+        !button.contains(event.target)
+      ) {
+        menu.classList.remove('active');
+      }
+    });
+
     function showMessage(text, type) {
       const message = document.getElementById('message');
       message.textContent = text;
@@ -2162,6 +2927,7 @@ ${new Date().toLocaleString('pt-BR')}`;
         message.textContent = '';
       }, 5000);
     }
+    setupPremiumNav();
   </script>
 </body>
 
