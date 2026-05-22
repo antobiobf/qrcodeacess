@@ -217,9 +217,11 @@
           </div>
           <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:18px;">
             <button class="btn-danger" onclick="disconnectNumber(event)">Desconectar número atual</button>
+            <button class="btn-warning" onclick="clearZAPIQueue(event)">Limpar fila de mensagens</button>
             <button class="btn-primary" onclick="getQRCode(event)">Gerar QR Code</button>
             <button class="btn-warning" onclick="getPhoneCode(event)">Conectar por código</button>
           </div>
+          <p class="small-text">Antes de conectar um novo número, limpe a fila para evitar que mensagens antigas presas sejam reenviadas automaticamente.</p>
         </div>
         <div>
           <div id="qrBox" class="qr-box">O QR Code aparecerá aqui.</div>
@@ -443,6 +445,32 @@
       showMessage('Número desconectado. Agora gere o QR Code para conectar outro WhatsApp.', 'success');
     } catch (error) { showMessage('Erro ao desconectar número: ' + error.message, 'error'); }
     finally { setButtonLoading(button, false); }
+  }
+
+  async function clearZAPIQueue(evt) {
+    const ok = confirm('Tem certeza que deseja limpar a fila de mensagens da Z-API? Mensagens pendentes serão apagadas e não serão reenviadas ao conectar um novo número.');
+    if (!ok) return;
+
+    const button = evt?.target;
+    setButtonLoading(button, true, 'Limpando fila...');
+
+    try {
+      const result = await zapiRequest('/queue', { method: 'DELETE' });
+
+      await insertInstanceLog(
+        'clear_queue',
+        null,
+        normalizePhone(document.getElementById('connectedPhone').value),
+        'queue_cleared',
+        JSON.stringify(result || { message: 'Fila limpa.' })
+      );
+
+      showMessage('Fila de mensagens limpa com sucesso. Agora você pode conectar o novo número sem reenviar mensagens antigas.', 'success');
+    } catch (error) {
+      showMessage('Erro ao limpar fila de mensagens: ' + error.message, 'error');
+    } finally {
+      setButtonLoading(button, false);
+    }
   }
 
   async function getQRCode(evt) {
