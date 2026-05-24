@@ -7,16 +7,6 @@
   <link href="../image/favicon.ico" rel="icon" type="image/x-icon" />
   <title>Gestão de Convidados - Bot WhatsApp</title>
 
-  <!--
-    Para salvar o meio de envio por evento, execute no Supabase:
-
-    alter table public.events
-    add column if not exists send_provider text default 'bot',
-    add column if not exists zapi_instance_id text,
-    add column if not exists zapi_instance_token text,
-    add column if not exists zapi_client_token text;
-  -->
-
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
@@ -1106,19 +1096,6 @@
       }
     }
 
-
-    .provider-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:12px 0 18px}
-    .provider-card{position:relative;cursor:pointer;display:block}
-    .provider-card input{position:absolute;opacity:0;pointer-events:none}
-    .provider-content{min-height:118px;border-radius:20px;border:1px solid var(--border);background:rgba(255,255,255,.045);padding:18px;transition:.2s;display:flex;flex-direction:column;justify-content:space-between;gap:10px}
-    .provider-content strong{color:var(--text);font-size:17px;display:flex;align-items:center;gap:8px}
-    .provider-content span{color:var(--muted);font-size:13px;line-height:1.45;font-weight:800}
-    .provider-card input:checked + .provider-content{border-color:rgba(216,168,79,.50);background:linear-gradient(135deg,rgba(216,168,79,.13),rgba(255,255,255,.045));box-shadow:0 18px 44px rgba(216,168,79,.12)}
-    .provider-card input:checked + .provider-content::after{content:'Selecionado';position:absolute;top:14px;right:14px;padding:7px 10px;border-radius:999px;background:linear-gradient(135deg,var(--gold-2),var(--gold));color:#111827;font-size:11px;font-weight:950}
-    .provider-settings{display:none;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.035);border-radius:20px;padding:18px;margin-top:14px}
-    .provider-settings.active{display:block}
-    @media(max-width:980px){.provider-grid{grid-template-columns:1fr}}
-
   </style>
 </head>
 
@@ -1216,67 +1193,24 @@
         </div>
       </div>
 
-      <h3 style="margin:22px 0 12px;">Meio de envio</h3>
-
-      <div class="provider-grid">
-        <label class="provider-card">
-          <input type="radio" name="sendProvider" id="providerBot" value="bot" onchange="handleSendProviderChange()" checked />
-          <div class="provider-content">
-            <strong>🔗 Bot WhatsApp / Link</strong>
-            <span>Usa o endpoint bot-whatsapp-leila.clin.digital com o celular sincronizado no QR Code.</span>
-          </div>
-        </label>
-
-        <label class="provider-card">
-          <input type="radio" name="sendProvider" id="providerZapi" value="zapi" onchange="handleSendProviderChange()" />
-          <div class="provider-content">
-            <strong>⚡ Z-API</strong>
-            <span>Usa a instância Z-API configurada abaixo para enviar texto ou imagem com legenda.</span>
-          </div>
-        </label>
-      </div>
-
-      <div id="botSettingsBox" class="provider-settings active">
-        <h3 style="margin-bottom:12px;">Bot WhatsApp / Link</h3>
-        <div class="safe-send-box" style="margin-bottom:0;">
-          <h3>📲 Sincronização do celular</h3>
-          <p>
-            Para sincronizar o celular que fará os envios, acesse
-            <a href="https://bot-whatsapp-leila.clin.digital/" target="_blank" rel="noopener" style="color:var(--gold-2);font-weight:950;">
-              https://bot-whatsapp-leila.clin.digital/
-            </a>
-            e leia o QR Code pelo WhatsApp.
-          </p>
-          <p style="margin-top:10px;">
-            O envio usa o endpoint <strong>POST /message</strong> com intervalo automático entre 100ms e 500ms por requisição.
-          </p>
-        </div>
-      </div>
-
-      <div id="zapiSettingsBox" class="provider-settings">
-        <h3 style="margin-bottom:12px;">Z-API</h3>
-        <div class="grid-3">
-          <div class="form-group">
-            <label for="zapiInstanceId">Instance ID</label>
-            <input id="zapiInstanceId" type="text" placeholder="Instance ID da Z-API" />
-          </div>
-
-          <div class="form-group">
-            <label for="zapiInstanceToken">Instance Token</label>
-            <input id="zapiInstanceToken" type="password" placeholder="Token da instância" />
-          </div>
-
-          <div class="form-group">
-            <label for="zapiClientToken">Client Token</label>
-            <input id="zapiClientToken" type="password" placeholder="Client-Token" />
-          </div>
-        </div>
-        <p class="small-text">A escolha do meio de envio será salva na tabela <strong>events</strong> deste evento.</p>
+      <h3 style="margin:22px 0 12px;">Bot WhatsApp</h3>
+      <div class="safe-send-box" style="margin-bottom:0;">
+        <h3>📲 Sincronização do celular</h3>
+        <p>
+          Para sincronizar o celular que fará os envios, acesse
+          <a href="https://bot-whatsapp-leila.clin.digital/" target="_blank" rel="noopener" style="color:var(--gold-2);font-weight:950;">
+            https://bot-whatsapp-leila.clin.digital/
+          </a>
+          e leia o QR Code pelo WhatsApp.
+        </p>
+        <p style="margin-top:10px;">
+          O envio usa o endpoint <strong>POST /message</strong> com intervalo automático entre 100ms e 500ms por requisição.
+        </p>
       </div>
 
       <div style="margin-top:16px; display:flex; gap:12px; flex-wrap:wrap;">
         <button class="btn-primary" onclick="saveConfig()">Salvar configurações</button>
-        <button class="btn-secondary" onclick="testSelectedSendProvider()">Testar meio selecionado</button>
+        <button class="btn-secondary" onclick="testBotWhatsappConfig()">Testar conexão do bot</button>
       </div>
     </div>
 
@@ -1442,7 +1376,7 @@
           </div>
           <button class="btn-secondary" onclick="loadGuests()">Atualizar lista</button>
           <button class="btn-warning" onclick="exportGuestsExcel()">📥 Exportar Excel</button>
-          <button class="btn-warning" onclick="sendNextPending()">Enviar próximo pendente</button>
+          <button class="btn-warning" onclick="sendNextPendingBotWhatsapp()">Enviar próximo pendente</button>
         </div>
       </div>
     </div>
@@ -1470,8 +1404,8 @@
         <div class="accordion-title">
           <span class="accordion-icon">🚀</span>
           <div>
-            <h2>Envio em massa</h2>
-            <p class="small-text" style="margin-top:0;">Envie convites por lote usando o meio selecionado nas configurações.</p>
+            <h2>Envio em massa pelo Bot WhatsApp</h2>
+            <p class="small-text" style="margin-top:0;">Envie convites por lote, com intervalo e controle de erros.</p>
           </div>
         </div>
         <span class="accordion-toggle">Exibir</span>
@@ -1514,7 +1448,7 @@
 
           <div class="form-group">
             <label>&nbsp;</label>
-            <button id="safeSendButton" class="btn-success" onclick="startBatchSend()">Iniciar envio em
+            <button id="safeSendButton" class="btn-success" onclick="startBotWhatsappBatchSend()">Iniciar envio em
               massa</button>
           </div>
         </div>
@@ -1552,31 +1486,11 @@
     const BOT_WHATSAPP_BASE_URL = 'https://bot-whatsapp-leila.clin.digital';
     const BOT_WHATSAPP_MESSAGE_URL = BOT_WHATSAPP_BASE_URL + '/message';
 
-    const SEND_PROVIDER_STORAGE_KEY = 'send_provider';
-    const DEFAULT_SEND_PROVIDER = 'bot';
-
-    const DEFAULT_ZAPI_INSTANCE_ID = '3F32B148C8CA1249DCAE3222B0EDC9B1';
-    const DEFAULT_ZAPI_INSTANCE_TOKEN = '234C8842D08C0B205C20CC98';
-    const DEFAULT_ZAPI_CLIENT_TOKEN = 'F1348d160382741d398e5d37761e89b6cS';
-
-    let currentSendProvider = localStorage.getItem(SEND_PROVIDER_STORAGE_KEY) || DEFAULT_SEND_PROVIDER;
-
-
     const savedUrl = localStorage.getItem('supabase_url') || DEFAULT_SUPABASE_URL;
     const savedKey = localStorage.getItem('supabase_key') || DEFAULT_SUPABASE_KEY;
 
     document.getElementById('supabaseUrl').value = savedUrl;
     document.getElementById('supabaseKey').value = savedKey;
-
-    const savedZapiInstanceId = localStorage.getItem('zapi_instance_id') || DEFAULT_ZAPI_INSTANCE_ID;
-    const savedZapiInstanceToken = localStorage.getItem('zapi_instance_token') || DEFAULT_ZAPI_INSTANCE_TOKEN;
-    const savedZapiClientToken = localStorage.getItem('zapi_client_token') || DEFAULT_ZAPI_CLIENT_TOKEN;
-
-    if (document.getElementById('zapiInstanceId')) document.getElementById('zapiInstanceId').value = savedZapiInstanceId;
-    if (document.getElementById('zapiInstanceToken')) document.getElementById('zapiInstanceToken').value = savedZapiInstanceToken;
-    if (document.getElementById('zapiClientToken')) document.getElementById('zapiClientToken').value = savedZapiClientToken;
-    applySavedSendProviderUI();
-
 
     const singleGuestWhatsappInput = document.getElementById('singleGuestWhatsapp');
     if (singleGuestWhatsappInput) {
@@ -1616,96 +1530,6 @@
       box.style.display = box.style.display === 'none' || !box.style.display ? 'block' : 'none';
     }
 
-
-    function applySavedSendProviderUI() {
-      const provider = currentSendProvider || DEFAULT_SEND_PROVIDER;
-      const botRadio = document.getElementById('providerBot');
-      const zapiRadio = document.getElementById('providerZapi');
-
-      if (botRadio) botRadio.checked = provider === 'bot';
-      if (zapiRadio) zapiRadio.checked = provider === 'zapi';
-
-      handleSendProviderChange(false);
-    }
-
-    function getSelectedSendProvider() {
-      const selected = document.querySelector('input[name="sendProvider"]:checked');
-      return selected?.value || DEFAULT_SEND_PROVIDER;
-    }
-
-    function handleSendProviderChange(shouldPersist = true) {
-      currentSendProvider = getSelectedSendProvider();
-
-      const botBox = document.getElementById('botSettingsBox');
-      const zapiBox = document.getElementById('zapiSettingsBox');
-
-      if (botBox) botBox.classList.toggle('active', currentSendProvider === 'bot');
-      if (zapiBox) zapiBox.classList.toggle('active', currentSendProvider === 'zapi');
-
-      if (shouldPersist) {
-        localStorage.setItem(SEND_PROVIDER_STORAGE_KEY, currentSendProvider);
-      }
-    }
-
-    function getZAPIConfigFromInputs() {
-      return {
-        instanceId: document.getElementById('zapiInstanceId')?.value.trim() || '',
-        token: document.getElementById('zapiInstanceToken')?.value.trim() || '',
-        clientToken: document.getElementById('zapiClientToken')?.value.trim() || ''
-      };
-    }
-
-    function validateZAPIConfig(showAlert = true) {
-      const config = getZAPIConfigFromInputs();
-
-      if (!config.instanceId || !config.token || !config.clientToken) {
-        if (showAlert) showMessage('Preencha Instance ID, Instance Token e Client Token da Z-API.', 'error');
-        return null;
-      }
-
-      return config;
-    }
-
-    async function saveSendProviderOnEvent() {
-      if (!supabaseClient || !currentEventId) return;
-
-      const provider = getSelectedSendProvider();
-      const zapiConfig = getZAPIConfigFromInputs();
-
-      const payload = {
-        send_provider: provider,
-        zapi_instance_id: zapiConfig.instanceId || null,
-        zapi_instance_token: zapiConfig.token || null,
-        zapi_client_token: zapiConfig.clientToken || null
-      };
-
-      const { error } = await supabaseClient
-        .from('events')
-        .update(payload)
-        .eq('id', currentEventId);
-
-      if (error) {
-        throw new Error(
-          'Não foi possível salvar o meio de envio. Crie as colunas send_provider, zapi_instance_id, zapi_instance_token e zapi_client_token na tabela events. ' +
-          error.message
-        );
-      }
-
-      currentEventData = { ...(currentEventData || {}), ...payload };
-    }
-
-    async function testSelectedSendProvider() {
-      const provider = getSelectedSendProvider();
-
-      if (provider === 'zapi') {
-        if (!validateZAPIConfig(true)) return;
-        showMessage('Configuração Z-API preenchida. Faça um envio único para validar a instância.', 'success');
-        return;
-      }
-
-      await testBotWhatsappConfig();
-    }
-
     function connectSupabase(url, key) {
       const { createClient } = supabase;
       supabaseClient = createClient(url, key);
@@ -1714,45 +1538,20 @@
     async function saveConfig() {
       const url = document.getElementById('supabaseUrl').value.trim().replace('/rest/v1/', '').replace('/rest/v1', '');
       const key = document.getElementById('supabaseKey').value.trim();
-      const provider = getSelectedSendProvider();
-      const zapiConfig = getZAPIConfigFromInputs();
 
       if (!url || !key) {
         showMessage('Informe URL e chave do Supabase.', 'error');
         return;
       }
 
-      if (provider === 'zapi' && !validateZAPIConfig(true)) {
-        return;
-      }
-
       localStorage.setItem('supabase_url', url);
       localStorage.setItem('supabase_key', key);
-      localStorage.setItem(SEND_PROVIDER_STORAGE_KEY, provider);
-      localStorage.setItem('zapi_instance_id', zapiConfig.instanceId);
-      localStorage.setItem('zapi_instance_token', zapiConfig.token);
-      localStorage.setItem('zapi_client_token', zapiConfig.clientToken);
 
-      currentSendProvider = provider;
       connectSupabase(url, key);
-
-      try {
-        await saveSendProviderOnEvent();
-      } catch (error) {
-        showMessage(error.message, 'error');
-        return;
-      }
-
       await loadEvent();
       await loadTemplates();
       await loadGuests();
-
-      showMessage(
-        provider === 'zapi'
-          ? 'Configurações salvas. Envio configurado para Z-API.'
-          : 'Configurações salvas. Envio configurado para Bot WhatsApp / Link.',
-        'success'
-      );
+      showMessage('Configurações salvas com sucesso.', 'success');
     }
 
 
@@ -1830,83 +1629,17 @@
         .eq('id', currentEventId)
         .maybeSingle();
 
-      if (error) {
-        console.error('Erro ao carregar evento:', error);
-        showMessage('Erro ao carregar evento: ' + error.message, 'error');
-        return;
-      }
-
-      if (!data) {
-        showMessage('Evento não encontrado para o ID informado.', 'error');
+      if (error || !data) {
+        showMessage('Evento não encontrado.', 'error');
         return;
       }
 
       currentEventData = data;
-
-      /*
-        Campos opcionais do meio de envio.
-        Se as colunas ainda não existirem no banco, esta consulta falha silenciosamente
-        e a tela continua carregando o evento normalmente.
-      */
-      const { data: providerData, error: providerError } = await supabaseClient
-        .from('events')
-        .select('send_provider, zapi_instance_id, zapi_instance_token, zapi_client_token')
-        .eq('id', currentEventId)
-        .maybeSingle();
-
-      if (!providerError && providerData) {
-        currentEventData = {
-          ...currentEventData,
-          ...providerData
-        };
-
-        if (providerData.send_provider) {
-          currentSendProvider = providerData.send_provider;
-          localStorage.setItem(SEND_PROVIDER_STORAGE_KEY, currentSendProvider);
-        }
-
-        if (providerData.zapi_instance_id) localStorage.setItem('zapi_instance_id', providerData.zapi_instance_id);
-        if (providerData.zapi_instance_token) localStorage.setItem('zapi_instance_token', providerData.zapi_instance_token);
-        if (providerData.zapi_client_token) localStorage.setItem('zapi_client_token', providerData.zapi_client_token);
-      } else if (providerError) {
-        console.warn(
-          'Campos de meio de envio ainda não existem na tabela events. Rode o ALTER TABLE informado no arquivo.',
-          providerError
-        );
-      }
-
-      const zapiInstanceIdInputEvent = document.getElementById('zapiInstanceId');
-      const zapiInstanceTokenInputEvent = document.getElementById('zapiInstanceToken');
-      const zapiClientTokenInputEvent = document.getElementById('zapiClientToken');
-
-      if (zapiInstanceIdInputEvent) {
-        zapiInstanceIdInputEvent.value =
-          currentEventData.zapi_instance_id ||
-          localStorage.getItem('zapi_instance_id') ||
-          DEFAULT_ZAPI_INSTANCE_ID;
-      }
-
-      if (zapiInstanceTokenInputEvent) {
-        zapiInstanceTokenInputEvent.value =
-          currentEventData.zapi_instance_token ||
-          localStorage.getItem('zapi_instance_token') ||
-          DEFAULT_ZAPI_INSTANCE_TOKEN;
-      }
-
-      if (zapiClientTokenInputEvent) {
-        zapiClientTokenInputEvent.value =
-          currentEventData.zapi_client_token ||
-          localStorage.getItem('zapi_client_token') ||
-          DEFAULT_ZAPI_CLIENT_TOKEN;
-      }
-
-      applySavedSendProviderUI();
-
       renderEventInvitePreview();
-      document.getElementById('eventName').textContent = currentEventData.name || '-';
-      document.getElementById('eventDate').textContent = formatDateBR(currentEventData.event_date) || '-';
-      document.getElementById('eventTime').textContent = formatTime(currentEventData.event_time) || '-';
-      document.getElementById('eventLocation').textContent = currentEventData.location || '-';
+      document.getElementById('eventName').textContent = data.name || '-';
+      document.getElementById('eventDate').textContent = formatDateBR(data.event_date) || '-';
+      document.getElementById('eventTime').textContent = formatTime(data.event_time) || '-';
+      document.getElementById('eventLocation').textContent = data.location || '-';
     }
 
 
@@ -2289,7 +2022,7 @@
                 <button
                   id="sendBtn-${guest.id}"
                   class="btn-success action-send"
-                  onclick="sendSingleGuestWithLoading('${guest.id}')">
+                  onclick="sendSingleGuestBotWhatsappWithLoading('${guest.id}')">
                   Enviar
                 </button>
 
@@ -2463,57 +2196,6 @@
       }
     }
 
-
-    async function sendSingleGuestWithLoading(guestId) {
-      const button = document.getElementById(`sendBtn-${guestId}`);
-
-      if (button) {
-        button.disabled = true;
-        button.innerHTML = `<span class="loading-spinner"></span> Enviando...`;
-      }
-
-      try {
-        await sendSingleGuest(guestId);
-      } finally {
-        if (button) {
-          button.disabled = false;
-          button.innerHTML = 'Enviar';
-        }
-      }
-    }
-
-    async function sendSingleGuest(guestId) {
-      const provider = getSelectedSendProvider();
-      return provider === 'zapi'
-        ? sendSingleGuestZAPI(guestId)
-        : sendSingleGuestBotWhatsapp(guestId);
-    }
-
-    async function sendNextPending() {
-      const provider = getSelectedSendProvider();
-
-      if (provider === 'zapi') {
-        if (!ensureMessageTemplateFilled()) return;
-
-        const pending = getPendingToSend();
-        if (pending.length === 0) {
-          showMessage('Nenhum convidado pendente disponível para envio.', 'info');
-          return;
-        }
-
-        return sendSingleGuestZAPI(pending[0].id);
-      }
-
-      return sendNextPendingBotWhatsapp();
-    }
-
-    async function startBatchSend() {
-      const provider = getSelectedSendProvider();
-      return provider === 'zapi'
-        ? startZAPIBatchSend()
-        : startBotWhatsappBatchSend();
-    }
-
     function updateSummary() {
       const total = guests.length;
       const confirmed = guests.filter(item => item.confirmed === true).length;
@@ -2622,11 +2304,7 @@ ${new Date().toLocaleString('pt-BR')}`;
         return;
       }
 
-      if (getSelectedSendProvider() === 'zapi') {
-        await sendTextZAPI(phone, message);
-      } else {
-        await sendBotWhatsapp(phone, message);
-      }
+      await sendBotWhatsapp(phone, message);
     }
 
     function getMessageTemplateText() {
@@ -2736,211 +2414,6 @@ ${new Date().toLocaleString('pt-BR')}`;
 
     function getPendingToSend() {
       return guests.filter(item => !item.confirmed && !item.message_sent && normalizePhoneWithDDI(item.whatsapp));
-    }
-
-
-    async function sendTextZAPI(phone, message) {
-      const config = validateZAPIConfig(true);
-      if (!config) throw new Error('Z-API não configurada.');
-
-      const url = `https://api.z-api.io/instances/${encodeURIComponent(config.instanceId)}/token/${encodeURIComponent(config.token)}/send-text`;
-
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Client-Token': config.clientToken
-        },
-        body: JSON.stringify({ phone, message })
-      });
-
-      const result = await response.json().catch(() => ({}));
-
-      if (!response.ok || result.error || result.errorMessage) {
-        throw new Error(result.message || result.error || result.errorMessage || `Erro Z-API HTTP ${response.status}`);
-      }
-
-      return result;
-    }
-
-    async function sendImageZAPI(phone, imageUrl, caption) {
-      const config = validateZAPIConfig(true);
-      if (!config) throw new Error('Z-API não configurada.');
-
-      const url = `https://api.z-api.io/instances/${encodeURIComponent(config.instanceId)}/token/${encodeURIComponent(config.token)}/send-image`;
-
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Client-Token': config.clientToken
-        },
-        body: JSON.stringify({
-          phone,
-          image: imageUrl,
-          caption: caption || ''
-        })
-      });
-
-      const result = await response.json().catch(() => ({}));
-
-      if (!response.ok || result.error || result.errorMessage) {
-        throw new Error(result.message || result.error || result.errorMessage || `Erro Z-API HTTP ${response.status}`);
-      }
-
-      return result;
-    }
-
-    async function sendGuestZAPI(guest) {
-      const phone = normalizePhoneWithDDI(guest.whatsapp);
-      if (!phone) throw new Error('Telefone inválido.');
-
-      const message = await buildGuestMessage(guest);
-      const inviteImageUrl = currentEventData?.invitation_image_url || '';
-
-      if (inviteImageUrl) {
-        await sendImageZAPI(phone, inviteImageUrl, message);
-      } else {
-        await sendTextZAPI(phone, message);
-      }
-
-      await supabaseClient
-        .from('event_guests')
-        .update({
-          message_sent: true,
-          message_sent_at: new Date().toISOString(),
-          last_send_error: null
-        })
-        .eq('id', guest.id);
-    }
-
-    async function sendSingleGuestZAPI(guestId) {
-      const guest = guests.find(item => item.id === guestId);
-      if (!guest) return;
-
-      if (!ensureMessageTemplateFilled()) return;
-
-      try {
-        await sendGuestZAPI(guest);
-
-        try {
-          await sendLogToResponsible(buildIndividualSendLog(guest, 'Enviado via Z-API'));
-        } catch (logError) {
-          console.warn('Mensagem enviada, mas não foi possível enviar o log ao responsável:', logError);
-        }
-
-        await loadGuests();
-        showMessage(`Mensagem enviada via Z-API para ${guest.guest_name}.`, 'success');
-      } catch (error) {
-        await saveSendError(guest.id, error.message);
-
-        try {
-          await sendLogToResponsible(buildIndividualSendLog(guest, 'Erro via Z-API', error.message));
-        } catch (logError) {
-          console.warn('Erro no envio e também no log ao responsável:', logError);
-        }
-
-        await loadGuests();
-        showMessage('Erro ao enviar via Z-API: ' + error.message, 'error');
-      }
-    }
-
-    async function startZAPIBatchSend() {
-      if (batchSending) return;
-      if (!ensureMessageTemplateFilled()) return;
-      if (!validateZAPIConfig(true)) return;
-
-      const pending = getPendingToSend();
-
-      if (pending.length === 0) {
-        showMessage('Nenhum convidado pendente com WhatsApp disponível para envio.', 'info');
-        return;
-      }
-
-      const batchLimit = Number(document.getElementById('batchLimit').value);
-      const pauseMinutes = Number(document.getElementById('pauseMinutes').value);
-      const selected = pending.slice(0, batchLimit);
-
-      const ok = confirm(`Envio em massa via Z-API\n\nSerão processadas ${selected.length} mensagens neste lote.\n\nDeseja iniciar?`);
-      if (!ok) return;
-
-      batchSending = true;
-      stopRequested = false;
-      document.getElementById('safeSendButton').disabled = true;
-      document.getElementById('stopSendButton').disabled = false;
-
-      showSendProgress(true, 'Iniciando envio via Z-API...', 'Preparando contatos...', 0);
-
-      const summary = {
-        sent: 0,
-        errors: 0,
-        skipped: 0,
-        total: selected.length,
-        items: []
-      };
-
-      for (let i = 0; i < selected.length; i++) {
-        if (stopRequested) {
-          summary.skipped = selected.length - i;
-          break;
-        }
-
-        const guest = selected[i];
-
-        try {
-          await sendGuestZAPI(guest);
-
-          summary.sent++;
-          summary.items.push({
-            name: guest.guest_name || '-',
-            whatsapp: formatPhoneBR(guest.whatsapp) || '-',
-            status: 'Enviada via Z-API'
-          });
-        } catch (error) {
-          summary.errors++;
-          const errorMessage = error.message || 'Erro desconhecido';
-
-          summary.items.push({
-            name: guest.guest_name || '-',
-            whatsapp: formatPhoneBR(guest.whatsapp) || '-',
-            status: 'Erro Z-API: ' + errorMessage
-          });
-
-          await saveSendError(guest.id, errorMessage);
-        }
-
-        const percent = Math.round(((i + 1) / selected.length) * 100);
-        showSendProgress(
-          true,
-          `Processando ${i + 1} de ${selected.length}`,
-          `Enviadas: ${summary.sent} | Erros: ${summary.errors} | Atual: ${guest.guest_name}`,
-          percent
-        );
-
-        if (i < selected.length - 1) {
-          await sleep(randomDelayMs(10000, 25000));
-        }
-      }
-
-      await loadGuests();
-
-      try {
-        await sendLogToResponsible(buildBatchSendLog(summary));
-      } catch (logError) {
-        console.warn('Envio em massa finalizado, mas não foi possível enviar o resumo ao responsável:', logError);
-      }
-
-      if (stopRequested) {
-        showMessage('Envio interrompido pelo usuário.', 'warning');
-      } else {
-        showMessage(`Lote via Z-API finalizado. Enviadas: ${summary.sent}. Erros: ${summary.errors}. Pausa recomendada: ${pauseMinutes} minuto(s).`, summary.errors ? 'warning' : 'success');
-      }
-
-      showSendProgress(true, 'Lote finalizado', `Enviadas: ${summary.sent}. Erros: ${summary.errors}.`, 100);
-
-      batchSending = false;
-      document.getElementById('safeSendButton').disabled = false;
-      document.getElementById('stopSendButton').disabled = true;
     }
 
     async function sendSingleGuestBotWhatsapp(guestId) {
