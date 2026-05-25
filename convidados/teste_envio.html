@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Convidou - Teste Z-API Externo</title>
+
+  <style>
+    :root {
+      --bg:#060816;
+      --card:#0d1326;
+      --card2:#111936;
+      --border:rgba(255,255,255,.08);
+      --gold:#d4a84f;
+      --text:#f4f4f5;
+      --muted:#9ca3af;
+      --success:#10b981;
+      --danger:#ef4444;
+      --warning:#f59e0b;
+      --blue:#60a5fa;
+    }
+
+    * { margin:0; padding:0; box-sizing:border-box; font-family:Inter, Arial, sans-serif; }
+
+    body {
+      background:
+        radial-gradient(circle at 80% 0%, rgba(212,168,79,.16), transparent 32%),
+        radial-gradient(circle at 10% 35%, rgba(96,165,250,.12), transparent 26%),
+        linear-gradient(135deg, #060816, #10162b 55%, #060816);
+      color:var(--text);
+      min-height:100vh;
+      padding:30px;
+    }
+
+    .container { max-width:1480px; margin:0 auto; }
+
+    .nav {
+      background:rgba(10,15,30,.92);
+      border:1px solid var(--border);
+      border-radius:22px;
+      padding:18px 24px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:16px;
+      margin-bottom:28px;
+      backdrop-filter:blur(18px);
+      box-shadow:0 24px 70px rgba(0,0,0,.28);
+    }
+
+    .brand { display:flex; align-items:center; gap:12px; font-weight:900; letter-spacing:.08em; }
+    .brand-mark {
+      width:42px; height:42px; border-radius:14px;
+      border:1px solid rgba(212,168,79,.35);
+      background:rgba(212,168,79,.12);
+      display:flex; align-items:center; justify-content:center; color:var(--gold);
+    }
+
+    .card {
+      background:rgba(12,18,35,.92);
+      border:1px solid var(--border);
+      border-radius:26px;
+      padding:28px;
+      margin-bottom:24px;
+      box-shadow:0 24px 70px rgba(0,0,0,.28);
+      overflow:hidden;
+    }
+
+    .hero {
+      position:relative;
+      background:
+        linear-gradient(135deg, rgba(39,37,34,.88), rgba(16,20,31,.94)),
+        radial-gradient(circle at top right, rgba(212,168,79,.20), transparent 36%);
+      border-color:rgba(212,168,79,.18);
+    }
+
+    .badge {
+      display:inline-flex;
+      padding:8px 14px;
+      border-radius:999px;
+      background:rgba(212,168,79,.12);
+      border:1px solid rgba(212,168,79,.2);
+      color:var(--gold);
+      font-size:12px;
+      font-weight:900;
+      margin-bottom:18px;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+    }
+
+    h1 { font-size:clamp(38px,5vw,64px); line-height:.96; margin-bottom:14px; letter-spacing:-1.8px; }
+    h2, h3 { margin-bottom:14px; }
+    p { color:var(--muted); line-height:1.6; }
+
+    .grid {
+      display:grid;
+      grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+      gap:18px;
+      margin-top:20px;
+    }
+
+    .field { display:flex; flex-direction:column; gap:8px; }
+    label { font-weight:900; font-size:13px; color:#dbe4ef; }
+    .input {
+      width:100%;
+      background:#161d31;
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:16px;
+      padding:16px;
+      color:white;
+      outline:none;
+      font-size:15px;
+      font-weight:800;
+    }
+
+    .input:focus {
+      border-color:rgba(212,168,79,.45);
+      box-shadow:0 0 0 4px rgba(212,168,79,.10);
+    }
+
+    textarea.input { min-height:180px; resize:vertical; line-height:1.45; }
+
+    .btn {
+      border:none;
+      border-radius:16px;
+      padding:15px 22px;
+      cursor:pointer;
+      font-weight:900;
+      transition:.2s;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:8px;
+      min-height:50px;
+    }
+
+    .btn:hover { transform:translateY(-2px); filter:brightness(1.03); }
+    .btn:disabled { opacity:.55; cursor:not-allowed; transform:none; }
+
+    .btn-gold { background:linear-gradient(135deg,#f2c46d,var(--gold)); color:#111827; }
+    .btn-dark { background:#1a2237; color:white; border:1px solid var(--border); }
+    .btn-green { background:linear-gradient(135deg,#a7f3d0,#10b981); color:#07110b; }
+    .btn-red { background:rgba(239,68,68,.14); color:#fca5a5; border:1px solid rgba(239,68,68,.25); }
+
+    .row { display:flex; gap:14px; flex-wrap:wrap; margin-top:18px; }
+
+    .status {
+      margin-top:18px;
+      padding:18px;
+      border-radius:18px;
+      font-size:14px;
+      line-height:1.55;
+      white-space:normal;
+      word-break:break-word;
+    }
+
+    .success { background:rgba(16,185,129,.12); border:1px solid rgba(16,185,129,.3); color:#86efac; }
+    .error { background:rgba(239,68,68,.12); border:1px solid rgba(239,68,68,.3); color:#fca5a5; }
+    .warning { background:rgba(245,158,11,.12); border:1px solid rgba(245,158,11,.3); color:#fcd34d; }
+    .info { background:rgba(96,165,250,.12); border:1px solid rgba(96,165,250,.3); color:#bfdbfe; }
+
+    .small { font-size:13px; color:var(--muted); line-height:1.45; }
+    .checkline { display:flex; gap:10px; align-items:flex-start; margin-top:12px; color:var(--muted); font-size:13px; line-height:1.45; }
+    .checkline input { margin-top:3px; }
+
+    .kv {
+      display:grid;
+      grid-template-columns:180px 1fr;
+      gap:8px 12px;
+      font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size:13px;
+    }
+
+    .kv b { color:#e5e7eb; }
+    .kv span { color:#93c5fd; }
+
+    @media(max-width:768px) {
+      body { padding:16px; }
+      .nav { padding:16px; }
+      .row .btn { width:100%; }
+      .kv { grid-template-columns:1fr; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="nav">
+      <div class="brand">
+        <div class="brand-mark">◇</div>
+        <span>CONVIDOU</span>
+      </div>
+
+      <div class="row" style="margin:0;">
+        <button class="btn btn-dark" onclick="clearStatus()">🧹 Limpar</button>
+      </div>
+    </div>
+
+    <div class="card hero">
+      <span class="badge">Diagnóstico Z-API</span>
+      <h1>Envio para número externo</h1>
+      <p>
+        Esta versão valida o número antes do envio, normaliza para DDI 55, adiciona delayMessage
+        e deixa claro quando a Z-API apenas aceitou a mensagem na fila.
+      </p>
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <h3>Configuração Z-API</h3>
+
+        <div class="grid">
+          <div class="field">
+            <label for="instanceId">Instance ID</label>
+            <input id="instanceId" class="input" value="3F32B148C8CA1249DCAE3222B0EDC9B1" />
+          </div>
+
+          <div class="field">
+            <label for="instanceToken">Instance Token</label>
+            <input id="instanceToken" class="input" value="234C8842D08C0B205C20CC98" />
+          </div>
+
+          <div class="field">
+            <label for="clientToken">Client Token</label>
+            <input id="clientToken" class="input" value="F1348d160382741d398e5d37761e89b6cS" />
+          </div>
+
+          <div class="field">
+            <label for="ownPhone">Número conectado na instância</label>
+            <input id="ownPhone" class="input" value="81982464424" placeholder="Ex: 81982464424" />
+          </div>
+        </div>
+
+        <label class="checkline">
+          <input type="checkbox" id="validateBeforeSend" checked />
+          <span>Validar se o número existe no WhatsApp antes de enviar.</span>
+        </label>
+
+        <label class="checkline">
+          <input type="checkbox" id="blockSelfTestWarning" checked />
+          <span>Avisar quando o teste estiver sendo enviado para o próprio número conectado.</span>
+        </label>
+
+        <p class="small" style="margin-top:14px;">
+          Observação: quando a Z-API retorna messageId/zaapId, isso confirma que a requisição foi aceita.
+          Para confirmar entrega real, use webhook de envio/entrega.
+        </p>
+      </div>
+
+      <div class="card">
+        <h3>Teste de envio</h3>
+
+        <div class="field">
+          <label for="phone">WhatsApp destino</label>
+          <input id="phone" class="input" placeholder="Ex: 81988697877" value="81988697877" />
+        </div>
+
+        <div class="field" style="margin-top:16px;">
+          <label for="message">Mensagem</label>
+          <textarea id="message" class="input">✅ Teste de envio Convidou
+
+Mensagem enviada para validar número externo via Z-API.</textarea>
+        </div>
+
+        <div class="row">
+          <button id="validateButton" class="btn btn-dark" onclick="validateCurrentNumber()">🔎 Validar número</button>
+          <button id="sendButton" class="btn btn-gold" onclick="sendExample()">📨 Enviar mensagem</button>
+        </div>
+
+        <div id="status"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Resultado técnico</h3>
+      <div id="debugBox" class="status info">
+        Aguardando teste...
+      </div>
+    </div>
+  </div>
+
+<script>
+  function setLoading(isLoading) {
+    document.getElementById('sendButton').disabled = isLoading;
+    document.getElementById('validateButton').disabled = isLoading;
+  }
+
+  function showStatus(message, type = 'success') {
+    document.getElementById('status').innerHTML = `<div class="status ${type}">${message}</div>`;
+  }
+
+  function showDebug(data) {
+    const safeData = data || {};
+    document.getElementById('debugBox').innerHTML = `
+      <div class="kv">
+        <b>Número original</b><span>${safeData.originalPhone || '-'}</span>
+        <b>Número normalizado</b><span>${safeData.normalizedPhone || '-'}</span>
+        <b>É o próprio número?</b><span>${safeData.isSelfNumber ? 'Sim' : 'Não'}</span>
+        <b>Existe no WhatsApp?</b><span>${safeData.exists === undefined ? '-' : safeData.exists ? 'Sim' : 'Não'}</span>
+        <b>Output Phone</b><span>${safeData.outputPhone || '-'}</span>
+        <b>messageId</b><span>${safeData.messageId || '-'}</span>
+        <b>zaapId</b><span>${safeData.zaapId || '-'}</span>
+      </div>
+      <pre style="margin-top:14px;white-space:pre-wrap;color:#cbd5e1;">${escapeHTML(JSON.stringify(safeData.raw || {}, null, 2))}</pre>
+    `;
+  }
+
+  function clearStatus() {
+    document.getElementById('status').innerHTML = '';
+    document.getElementById('debugBox').innerHTML = 'Aguardando teste...';
+  }
+
+  function escapeHTML(value) {
+    return String(value || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function normalizePhoneWithDDI(phone) {
+    let digits = String(phone || '').replace(/\D/g, '').trim();
+
+    if (!digits) return '';
+
+    while (digits.startsWith('00')) {
+      digits = digits.substring(2);
+    }
+
+    if (digits.length === 12 && digits.startsWith('0')) {
+      digits = digits.substring(1);
+    }
+
+    if (digits.startsWith('55')) {
+      return digits;
+    }
+
+    if (digits.length === 10 || digits.length === 11) {
+      return '55' + digits;
+    }
+
+    return digits;
+  }
+
+  function validateZAPIConfig() {
+    const instanceId = document.getElementById('instanceId').value.trim();
+    const token = document.getElementById('instanceToken').value.trim();
+    const clientToken = document.getElementById('clientToken').value.trim();
+
+    if (!instanceId || !token || !clientToken) {
+      throw new Error('Preencha Instance ID, Instance Token e Client Token.');
+    }
+
+    return { instanceId, token, clientToken };
+  }
+
+  function getZAPIUrl(path) {
+    const config = validateZAPIConfig();
+
+    return {
+      url: `https://api.z-api.io/instances/${encodeURIComponent(config.instanceId)}/token/${encodeURIComponent(config.token)}/${path}`,
+      clientToken: config.clientToken
+    };
+  }
+
+  async function zapiFetch(path, payload, timeoutMs = 45000) {
+    const { url, clientToken } = getZAPIUrl(path);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Client-Token': clientToken
+        },
+        body: JSON.stringify(payload),
+        signal: controller.signal
+      });
+
+      const result = await response.json().catch(() => ({}));
+
+      return { response, result };
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        throw new Error('Timeout na Z-API.');
+      }
+
+      throw error;
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  async function checkPhoneExists(phone) {
+    const normalizedPhone = normalizePhoneWithDDI(phone);
+
+    if (!normalizedPhone || normalizedPhone.length < 12) {
+      throw new Error('Telefone inválido após normalização.');
+    }
+
+    const { response, result } = await zapiFetch('phone-exists-batch', {
+      phones: [normalizedPhone]
+    }, 45000);
+
+    if (!response.ok) {
+      throw new Error(
+        result.message ||
+        result.error ||
+        result.errorMessage ||
+        `Erro HTTP ${response.status} ao validar número.`
+      );
+    }
+
+    const item = Array.isArray(result) ? result[0] : result;
+
+    return {
+      exists: Boolean(item?.exists),
+      inputPhone: item?.inputPhone || normalizedPhone,
+      outputPhone: item?.outputPhone || '',
+      lid: item?.lid || null,
+      raw: result
+    };
+  }
+
+  async function validateCurrentNumber() {
+    const originalPhone = document.getElementById('phone').value;
+    const normalizedPhone = normalizePhoneWithDDI(originalPhone);
+    const ownPhone = normalizePhoneWithDDI(document.getElementById('ownPhone').value);
+
+    try {
+      setLoading(true);
+      showStatus('Validando número no WhatsApp...', 'warning');
+
+      const validation = await checkPhoneExists(originalPhone);
+
+      const debug = {
+        originalPhone,
+        normalizedPhone,
+        isSelfNumber: normalizedPhone === ownPhone,
+        exists: validation.exists,
+        outputPhone: validation.outputPhone,
+        raw: validation.raw
+      };
+
+      showDebug(debug);
+
+      if (!validation.exists) {
+        showStatus(`❌ O número ${normalizedPhone} não foi encontrado como WhatsApp pela Z-API.`, 'error');
+        return false;
+      }
+
+      if (normalizedPhone === ownPhone) {
+        showStatus('⚠️ Este é o próprio número conectado na instância. Testar nele não prova envio para número externo.', 'warning');
+        return true;
+      }
+
+      showStatus(`✅ Número externo validado: ${validation.outputPhone || normalizedPhone}`, 'success');
+      return true;
+    } catch (error) {
+      console.error(error);
+      showStatus('❌ ' + error.message, 'error');
+      showDebug({ originalPhone, normalizedPhone, isSelfNumber: normalizedPhone === ownPhone, raw: { error: error.message } });
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function sendTextZAPI(phone, message) {
+    const originalPhone = phone;
+    const normalizedPhone = normalizePhoneWithDDI(phone);
+    const ownPhone = normalizePhoneWithDDI(document.getElementById('ownPhone').value);
+
+    if (!normalizedPhone || normalizedPhone.length < 12) {
+      throw new Error('Telefone inválido após normalização.');
+    }
+
+    if (document.getElementById('blockSelfTestWarning').checked && normalizedPhone === ownPhone) {
+      console.warn('Atenção: você está enviando para o próprio número da instância.');
+    }
+
+    if (document.getElementById('validateBeforeSend').checked) {
+      const validation = await checkPhoneExists(normalizedPhone);
+
+      if (!validation.exists) {
+        showDebug({
+          originalPhone,
+          normalizedPhone,
+          isSelfNumber: normalizedPhone === ownPhone,
+          exists: false,
+          raw: validation.raw
+        });
+
+        throw new Error(`O número ${normalizedPhone} não foi validado como WhatsApp.`);
+      }
+    }
+
+    const { response, result } = await zapiFetch('send-text', {
+      phone: normalizedPhone,
+      message,
+      delayMessage: 5
+    }, 45000);
+
+    console.log('Z-API send-text response:', response.status, result);
+
+    if (!response.ok) {
+      throw new Error(
+        result.message ||
+        result.error ||
+        result.errorMessage ||
+        `Erro HTTP ${response.status}`
+      );
+    }
+
+    if (result.error || result.errorMessage) {
+      throw new Error(result.message || result.error || result.errorMessage || 'Erro retornado pela Z-API.');
+    }
+
+    if (!result.messageId && !result.id && !result.zaapId) {
+      throw new Error('A Z-API não retornou ID da mensagem.');
+    }
+
+    const debug = {
+      originalPhone,
+      normalizedPhone,
+      isSelfNumber: normalizedPhone === ownPhone,
+      messageId: result.messageId || result.id || null,
+      zaapId: result.zaapId || null,
+      raw: result
+    };
+
+    showDebug(debug);
+    return debug;
+  }
+
+  async function sendExample() {
+    try {
+      setLoading(true);
+      showStatus('Enviando mensagem...', 'warning');
+
+      const phone = document.getElementById('phone').value;
+      const message = document.getElementById('message').value;
+
+      const result = await sendTextZAPI(phone, message);
+
+      if (result.isSelfNumber) {
+        showStatus(`
+          ⚠️ Mensagem aceita pela Z-API, mas foi enviada para o próprio número conectado.<br><br>
+          Isso não confirma que a instância consegue iniciar conversa com número externo.<br><br>
+          messageId: ${result.messageId || '-'}<br>
+          zaapId: ${result.zaapId || '-'}
+        `, 'warning');
+        return;
+      }
+
+      showStatus(`
+        ✅ Mensagem aceita pela Z-API para número externo.<br><br>
+        messageId: ${result.messageId || '-'}<br>
+        zaapId: ${result.zaapId || '-'}<br><br>
+        Se não aparecer no WhatsApp, configure o webhook de envio/entrega para capturar o erro real.
+      `, 'success');
+
+    } catch (error) {
+      console.error(error);
+      showStatus('❌ ' + error.message, 'error');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function testZAPINumber() {
+    document.getElementById('phone').value = document.getElementById('ownPhone').value || '81982464424';
+    await sendExample();
+  }
+</script>
+</body>
+</html>

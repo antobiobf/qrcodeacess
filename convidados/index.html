@@ -2935,7 +2935,6 @@ ${new Date().toLocaleString('pt-BR')}`;
       const forceTextOnly = document.getElementById('zapiTextOnly')?.checked !== false;
       let result;
 
-      debugger
       if (inviteImageUrl ) {
         result = await sendImageZAPI(phone, inviteImageUrl, message);
       } else {
@@ -2981,11 +2980,11 @@ ${new Date().toLocaleString('pt-BR')}`;
       try {
         await sendGuestZAPI(guest);
 
-        try {
-          await sendLogToResponsible(buildIndividualSendLog(guest, 'Enviado via Z-API'), 'zapi');
-        } catch (logError) {
-          console.warn('Mensagem enviada, mas não foi possível enviar o log ao responsável:', logError);
-        }
+        // try {
+        //   await sendLogToResponsible(buildIndividualSendLog(guest, 'Enviado via Z-API'), 'zapi');
+        // } catch (logError) {
+        //   console.warn('Mensagem enviada, mas não foi possível enviar o log ao responsável:', logError);
+        // }
 
         await loadGuests();
         showMessage(`Mensagem enfileirada na Z-API para ${guest.guest_name}. Confira no WhatsApp antes de novos lotes.`, 'success');
