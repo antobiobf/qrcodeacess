@@ -8,13 +8,6 @@
   <title>Gestão de Convidados - Bot WhatsApp</title>
 
   <!--
-    Para controlar corretamente envio/enfileiramento na Z-API, execute também:
-
-    alter table public.event_guests
-    add column if not exists message_status text,
-    add column if not exists zapi_message_id text,
-    add column if not exists zapi_zaap_id text;
-
     Para salvar o meio de envio por evento, execute no Supabase:
 
     alter table public.events
@@ -1279,13 +1272,6 @@
           </div>
         </div>
         <p class="small-text">A escolha do meio de envio será salva na tabela <strong>events</strong> deste evento.</p>
-        <label style="display:flex;gap:10px;align-items:flex-start;margin-top:14px;color:var(--muted);font-size:13px;line-height:1.45;">
-          <input id="zapiTextOnly" type="checkbox" checked style="width:auto;margin-top:3px;" />
-          <span>
-            <strong style="color:var(--gold-2);">Modo seguro:</strong>
-            enviar somente texto pela Z-API, mesmo que exista imagem do convite cadastrada.
-          </span>
-        </label>
       </div>
 
       <div style="margin-top:16px; display:flex; gap:12px; flex-wrap:wrap;">
@@ -1504,9 +1490,9 @@
           <div class="form-group">
             <label for="batchLimit">Mensagens por lote</label>
             <select id="batchLimit">
-              <option value="5" selected>5 - teste</option>
+              <option value="5">5 - teste</option>
               <option value="10">10 - muito seguro</option>
-              <option value="20">20 - seguro</option>
+              <option value="20" selected>20 - seguro</option>
               <option value="30">30 - moderado</option>
               <option value="50">50 - maior risco</option>
             </select>
@@ -2342,11 +2328,9 @@
             </td>
 
             <td>
-              ${guest.message_status === 'queued'
-          ? '<span class="badge badge-yellow">Na fila</span>'
-          : guest.message_sent
-            ? '<span class="badge badge-gray">Enviada</span>'
-            : '<span class="badge badge-yellow">Não enviada</span>'}
+              ${guest.message_sent
+          ? '<span class="badge badge-gray">Enviada</span>'
+          : '<span class="badge badge-yellow">Não enviada</span>'}
             </td>
 
             <td>${escapeHTML(guest.guest_name)}</td>
@@ -2779,73 +2763,24 @@ ${new Date().toLocaleString('pt-BR')}`;
       const config = validateZAPIConfig(true);
       if (!config) throw new Error('Z-API não configurada.');
 
-      const cleanPhone = String(phone || '').replace(/\D/g, '').trim();
+      const url = `https://api.z-api.io/instances/${encodeURIComponent(config.instanceId)}/token/${encodeURIComponent(config.token)}/send-text`;
 
-      if (!cleanPhone || cleanPhone.length < 12) {
-        throw new Error('Telefone inválido para envio via Z-API.');
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Client-Token': config.clientToken
+        },
+        body: JSON.stringify({ phone, message })
+      });
+
+      const result = await response.json().catch(() => ({}));
+
+      if (!response.ok || result.error || result.errorMessage) {
+        throw new Error(result.message || result.error || result.errorMessage || `Erro Z-API HTTP ${response.status}`);
       }
 
-      const url =
-        `https://api.z-api.io/instances/${encodeURIComponent(config.instanceId)}` +
-        `/token/${encodeURIComponent(config.token)}/send-text`;
-
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 45000);
-
-      let response;
-      let result = {};
-
-      try {
-        response = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Client-Token': config.clientToken
-          },
-          body: JSON.stringify({
-            phone: cleanPhone,
-            message
-          }),
-          signal: controller.signal
-        });
-
-        result = await response.json().catch(() => ({}));
-      } catch (error) {
-        if (error.name === 'AbortError') {
-          throw new Error('Timeout na Z-API. A mensagem pode ter ficado presa na fila.');
-        }
-
-        throw new Error('Falha de conexão com a Z-API: ' + (error.message || 'erro desconhecido'));
-      } finally {
-        clearTimeout(timeout);
-      }
-
-      console.log('Z-API send-text status:', response.status);
-      console.log('Z-API send-text result:', result);
-
-      if (!response.ok) {
-        throw new Error(
-          result.message ||
-          result.error ||
-          result.errorMessage ||
-          `Erro Z-API HTTP ${response.status}`
-        );
-      }
-
-      if (result.error || result.errorMessage) {
-        throw new Error(result.message || result.error || result.errorMessage || 'Erro retornado pela Z-API.');
-      }
-
-      if (!result.messageId && !result.zaapId && !result.id) {
-        throw new Error('A Z-API respondeu, mas não retornou ID/messageId/zaapId.');
-      }
-
-      return {
-        queued: true,
-        messageId: result.messageId || result.id || null,
-        zaapId: result.zaapId || null,
-        raw: result
-      };
+      return result;
     }
 
     async function sendImageZAPI(phone, imageUrl, caption) {
@@ -2855,75 +2790,30 @@ ${new Date().toLocaleString('pt-BR')}`;
 
       const config = validateZAPIConfig(true);
       if (!config) throw new Error('Z-API não configurada.');
+debugger
+      const url = `https://api.z-api.io/instances/${encodeURIComponent(config.instanceId)}/token/${encodeURIComponent(config.token)}/send-image`;
 
-      const cleanPhone = String(phone || '').replace(/\D/g, '').trim();
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Client-Token': config.clientToken
+        },
+        body: JSON.stringify({
+          phone,
+          image: imageUrl,
+          caption: caption || ''
+        })
+      });
+      debugger
 
-      if (!cleanPhone || cleanPhone.length < 12) {
-        throw new Error('Telefone inválido para envio via Z-API.');
+      const result = await response.json().catch(() => ({}));
+      debugger
+      if (!response.ok || result.error || result.errorMessage) {
+        throw new Error(result.message || result.error || result.errorMessage || `Erro Z-API HTTP ${response.status}`);
       }
 
-      const url =
-        `https://api.z-api.io/instances/${encodeURIComponent(config.instanceId)}` +
-        `/token/${encodeURIComponent(config.token)}/send-image`;
-
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 60000);
-
-      let response;
-      let result = {};
-
-      try {
-        response = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Client-Token': config.clientToken
-          },
-          body: JSON.stringify({
-            phone: cleanPhone,
-            image: imageUrl,
-            caption: caption || ''
-          }),
-          signal: controller.signal
-        });
-
-        result = await response.json().catch(() => ({}));
-      } catch (error) {
-        if (error.name === 'AbortError') {
-          throw new Error('Timeout na Z-API ao enviar imagem.');
-        }
-
-        throw new Error('Falha de conexão com a Z-API: ' + (error.message || 'erro desconhecido'));
-      } finally {
-        clearTimeout(timeout);
-      }
-
-      console.log('Z-API send-image status:', response.status);
-      console.log('Z-API send-image result:', result);
-
-      if (!response.ok) {
-        throw new Error(
-          result.message ||
-          result.error ||
-          result.errorMessage ||
-          `Erro Z-API HTTP ${response.status}`
-        );
-      }
-
-      if (result.error || result.errorMessage) {
-        throw new Error(result.message || result.error || result.errorMessage || 'Erro retornado pela Z-API.');
-      }
-
-      if (!result.messageId && !result.zaapId && !result.id) {
-        throw new Error('A Z-API respondeu, mas não retornou ID/messageId/zaapId.');
-      }
-
-      return {
-        queued: true,
-        messageId: result.messageId || result.id || null,
-        zaapId: result.zaapId || null,
-        raw: result
-      };
+      return result;
     }
 
     async function sendGuestZAPI(guest) {
@@ -2932,44 +2822,22 @@ ${new Date().toLocaleString('pt-BR')}`;
 
       const message = await buildGuestMessage(guest);
       const inviteImageUrl = currentEventData?.invitation_image_url || '';
-      const forceTextOnly = document.getElementById('zapiTextOnly')?.checked !== false;
-      let result;
 
       debugger
-      if (inviteImageUrl ) {
-        result = await sendImageZAPI(phone, inviteImageUrl, message);
+      if (inviteImageUrl) {
+        await sendImageZAPI(phone, inviteImageUrl, message);
       } else {
-        result = await sendTextZAPI(phone, message);
+        await sendTextZAPI(phone, message);
       }
-
-      const updatePayload = {
-        message_sent: false,
-        message_status: 'queued',
-        message_sent_at: null,
-        last_send_error: null
-      };
-
-      if (result?.messageId !== undefined) updatePayload.zapi_message_id = result.messageId;
-      if (result?.zaapId !== undefined) updatePayload.zapi_zaap_id = result.zaapId;
-
-      const { error } = await supabaseClient
+      debugger
+      await supabaseClient
         .from('event_guests')
-        .update(updatePayload)
+        .update({
+          message_sent: true,
+          message_sent_at: new Date().toISOString(),
+          last_send_error: null
+        })
         .eq('id', guest.id);
-
-      if (error) {
-        console.warn('Não foi possível salvar status queued completo. Tentando update básico.', error);
-
-        await supabaseClient
-          .from('event_guests')
-          .update({
-            message_sent: false,
-            last_send_error: null
-          })
-          .eq('id', guest.id);
-      }
-
-      return result;
     }
 
     async function sendSingleGuestZAPI(guestId) {
@@ -2979,16 +2847,17 @@ ${new Date().toLocaleString('pt-BR')}`;
       if (!ensureMessageTemplateFilled()) return;
 
       try {
+        debugger
         await sendGuestZAPI(guest);
 
-        try {
-          await sendLogToResponsible(buildIndividualSendLog(guest, 'Enviado via Z-API'), 'zapi');
-        } catch (logError) {
-          console.warn('Mensagem enviada, mas não foi possível enviar o log ao responsável:', logError);
-        }
+        // try {
+        //   await sendLogToResponsible(buildIndividualSendLog(guest, 'Enviado via Z-API'), 'zapi');
+        // } catch (logError) {
+        //   console.warn('Mensagem enviada, mas não foi possível enviar o log ao responsável:', logError);
+        // }
 
         await loadGuests();
-        showMessage(`Mensagem enfileirada na Z-API para ${guest.guest_name}. Confira no WhatsApp antes de novos lotes.`, 'success');
+        showMessage(`Mensagem enviada via Z-API para ${guest.guest_name}.`, 'success');
       } catch (error) {
         await saveSendError(guest.id, error.message);
 
@@ -3052,7 +2921,7 @@ ${new Date().toLocaleString('pt-BR')}`;
           summary.items.push({
             name: guest.guest_name || '-',
             whatsapp: formatPhoneBR(guest.whatsapp) || '-',
-            status: 'Enfileirada via Z-API'
+            status: 'Enviada via Z-API'
           });
         } catch (error) {
           summary.errors++;
@@ -3071,12 +2940,12 @@ ${new Date().toLocaleString('pt-BR')}`;
         showSendProgress(
           true,
           `Processando ${i + 1} de ${selected.length}`,
-          `Enfileiradas: ${summary.sent} | Erros: ${summary.errors} | Atual: ${guest.guest_name}`,
+          `Enviadas: ${summary.sent} | Erros: ${summary.errors} | Atual: ${guest.guest_name}`,
           percent
         );
 
         if (i < selected.length - 1) {
-          await sleep(randomDelayMs(25000, 60000));
+          await sleep(randomDelayMs(10000, 25000));
         }
       }
 
@@ -3091,10 +2960,10 @@ ${new Date().toLocaleString('pt-BR')}`;
       if (stopRequested) {
         showMessage('Envio interrompido pelo usuário.', 'warning');
       } else {
-        showMessage(`Lote via Z-API finalizado. Enfileiradas: ${summary.sent}. Erros: ${summary.errors}. Pausa recomendada: ${pauseMinutes} minuto(s).`, summary.errors ? 'warning' : 'success');
+        showMessage(`Lote via Z-API finalizado. Enviadas: ${summary.sent}. Erros: ${summary.errors}. Pausa recomendada: ${pauseMinutes} minuto(s).`, summary.errors ? 'warning' : 'success');
       }
 
-      showSendProgress(true, 'Lote finalizado', `Enfileiradas: ${summary.sent}. Erros: ${summary.errors}.`, 100);
+      showSendProgress(true, 'Lote finalizado', `Enviadas: ${summary.sent}. Erros: ${summary.errors}.`, 100);
 
       batchSending = false;
       document.getElementById('safeSendButton').disabled = false;
@@ -3261,7 +3130,7 @@ ${BOT_WHATSAPP_BASE_URL}
         showSendProgress(
           true,
           `Processando ${i + 1} de ${selected.length}`,
-          `Enfileiradas: ${summary.sent} | Erros: ${summary.errors} | Atual: ${guest.guest_name}`,
+          `Enviadas: ${summary.sent} | Erros: ${summary.errors} | Atual: ${guest.guest_name}`,
           percent
         );
 
@@ -3282,10 +3151,10 @@ ${BOT_WHATSAPP_BASE_URL}
 
       if (stopRequested) {
         showMessage('Envio interrompido pelo usuário.', 'warning');
-        showSendProgress(true, 'Envio interrompido', `Enfileiradas: ${summary.sent} | Erros: ${summary.errors} | Não processadas: ${summary.skipped}`, 100);
+        showSendProgress(true, 'Envio interrompido', `Enviadas: ${summary.sent} | Erros: ${summary.errors} | Não processadas: ${summary.skipped}`, 100);
       } else {
-        showMessage(`Lote finalizado. Enfileiradas: ${summary.sent}. Erros: ${summary.errors}. Pausa recomendada: ${pauseMinutes} minuto(s).`, 'success');
-        showSendProgress(true, 'Lote finalizado', `Enfileiradas: ${summary.sent}. Erros: ${summary.errors}.`, 100);
+        showMessage(`Lote finalizado. Enviadas: ${summary.sent}. Erros: ${summary.errors}. Pausa recomendada: ${pauseMinutes} minuto(s).`, 'success');
+        showSendProgress(true, 'Lote finalizado', `Enviadas: ${summary.sent}. Erros: ${summary.errors}.`, 100);
       }
 
       batchSending = false;
