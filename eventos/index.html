@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -11,8 +12,8 @@
     :root {
       --bg: #07080c;
       --panel: rgba(18, 22, 31, .88);
-      --panel-soft: rgba(255,255,255,.055);
-      --border: rgba(255,255,255,.09);
+      --panel-soft: rgba(255, 255, 255, .055);
+      --border: rgba(255, 255, 255, .09);
       --text: #f8fafc;
       --muted: #94a3b8;
       --muted-2: #64748b;
@@ -22,7 +23,7 @@
       --blue: #7aa8ff;
       --red: #ef7777;
       --purple: #b58cff;
-      --shadow: 0 30px 90px rgba(0,0,0,.36);
+      --shadow: 0 30px 90px rgba(0, 0, 0, .36);
     }
 
     * {
@@ -36,9 +37,9 @@
       min-height: 100vh;
       color: var(--text);
       background:
-        radial-gradient(circle at top right, rgba(216,168,79,.18), transparent 34%),
-        radial-gradient(circle at 5% 35%, rgba(122,168,255,.11), transparent 30%),
-        radial-gradient(circle at bottom left, rgba(129,217,155,.09), transparent 31%),
+        radial-gradient(circle at top right, rgba(216, 168, 79, .18), transparent 34%),
+        radial-gradient(circle at 5% 35%, rgba(122, 168, 255, .11), transparent 30%),
+        radial-gradient(circle at bottom left, rgba(129, 217, 155, .09), transparent 31%),
         linear-gradient(135deg, #07080c, #10131c 46%, #090b10);
       overflow-x: hidden;
     }
@@ -49,8 +50,8 @@
       inset: 0;
       pointer-events: none;
       background:
-        linear-gradient(90deg, rgba(255,255,255,.025) 1px, transparent 1px),
-        linear-gradient(rgba(255,255,255,.018) 1px, transparent 1px);
+        linear-gradient(90deg, rgba(255, 255, 255, .025) 1px, transparent 1px),
+        linear-gradient(rgba(255, 255, 255, .018) 1px, transparent 1px);
       background-size: 64px 64px;
       mask-image: radial-gradient(circle at 50% 28%, black, transparent 76%);
       z-index: 0;
@@ -99,8 +100,8 @@
       display: grid;
       place-items: center;
       background: linear-gradient(135deg, #111827, #1e293b);
-      border: 1px solid rgba(216,168,79,.35);
-      box-shadow: 0 12px 30px rgba(216,168,79,.10);
+      border: 1px solid rgba(216, 168, 79, .35);
+      box-shadow: 0 12px 30px rgba(216, 168, 79, .10);
       color: var(--gold-2);
       font-size: 20px;
     }
@@ -124,7 +125,7 @@
       gap: 10px;
       padding: 10px 13px;
       border-radius: 999px;
-      background: rgba(255,255,255,.065);
+      background: rgba(255, 255, 255, .065);
       border: 1px solid var(--border);
       color: #dbe4ef;
       font-size: 13px;
@@ -151,7 +152,7 @@
       font-weight: 950;
       cursor: pointer;
       text-decoration: none;
-      background: rgba(255,255,255,.075);
+      background: rgba(255, 255, 255, .075);
       border: 1px solid var(--border);
       backdrop-filter: blur(12px);
       transition: .2s;
@@ -166,20 +167,20 @@
     button:hover,
     .btn:hover {
       transform: translateY(-1px);
-      background: rgba(255,255,255,.11);
+      background: rgba(255, 255, 255, .11);
     }
 
     .btn-gold {
       color: #111827;
       background: linear-gradient(135deg, var(--gold-2), var(--gold));
-      border-color: rgba(216,168,79,.5);
-      box-shadow: 0 16px 38px rgba(216,168,79,.16);
+      border-color: rgba(216, 168, 79, .5);
+      box-shadow: 0 16px 38px rgba(216, 168, 79, .16);
     }
 
     .btn-danger {
-      background: rgba(239,119,119,.12);
+      background: rgba(239, 119, 119, .12);
       color: var(--red);
-      border-color: rgba(239,119,119,.20);
+      border-color: rgba(239, 119, 119, .20);
     }
 
     .btn-admin {
@@ -196,9 +197,9 @@
       padding: 34px;
       border-radius: 32px;
       background:
-        linear-gradient(135deg, rgba(216,168,79,.14), rgba(122,168,255,.08)),
+        linear-gradient(135deg, rgba(216, 168, 79, .14), rgba(122, 168, 255, .08)),
         var(--panel);
-      border: 1px solid rgba(216,168,79,.16);
+      border: 1px solid rgba(216, 168, 79, .16);
       box-shadow: var(--shadow);
     }
 
@@ -210,7 +211,7 @@
       border-radius: 999px;
       right: -140px;
       top: -150px;
-      background: rgba(216,168,79,.08);
+      background: rgba(216, 168, 79, .08);
     }
 
     .hero-content {
@@ -227,8 +228,8 @@
       align-items: center;
       gap: 9px;
       color: var(--gold-2);
-      background: rgba(216,168,79,.10);
-      border: 1px solid rgba(216,168,79,.16);
+      background: rgba(216, 168, 79, .10);
+      border: 1px solid rgba(216, 168, 79, .16);
       border-radius: 999px;
       padding: 10px 14px;
       font-weight: 950;
@@ -268,10 +269,27 @@
       border: 1px solid transparent;
     }
 
-    .message.active { display: block; }
-    .message.info { background: rgba(122,168,255,.12); color: var(--blue); border-color: rgba(122,168,255,.18); }
-    .message.error { background: rgba(239,119,119,.12); color: var(--red); border-color: rgba(239,119,119,.18); }
-    .message.success { background: rgba(129,217,155,.12); color: var(--green); border-color: rgba(129,217,155,.18); }
+    .message.active {
+      display: block;
+    }
+
+    .message.info {
+      background: rgba(122, 168, 255, .12);
+      color: var(--blue);
+      border-color: rgba(122, 168, 255, .18);
+    }
+
+    .message.error {
+      background: rgba(239, 119, 119, .12);
+      color: var(--red);
+      border-color: rgba(239, 119, 119, .18);
+    }
+
+    .message.success {
+      background: rgba(129, 217, 155, .12);
+      color: var(--green);
+      border-color: rgba(129, 217, 155, .18);
+    }
 
     .filters {
       display: grid;
@@ -286,7 +304,7 @@
       padding: 15px 16px;
       border-radius: 16px;
       border: 1px solid var(--border);
-      background: rgba(255,255,255,.055);
+      background: rgba(255, 255, 255, .055);
       color: var(--text);
       outline: none;
       font-weight: 800;
@@ -310,7 +328,7 @@
       border-radius: 24px;
       background: var(--panel);
       border: 1px solid var(--border);
-      box-shadow: 0 22px 65px rgba(0,0,0,.22);
+      box-shadow: 0 22px 65px rgba(0, 0, 0, .22);
     }
 
     .summary-card::after {
@@ -321,7 +339,7 @@
       border-radius: 999px;
       right: -70px;
       top: -70px;
-      background: rgba(216,168,79,.055);
+      background: rgba(216, 168, 79, .055);
     }
 
     .summary-card span {
@@ -352,7 +370,7 @@
       border-radius: 30px;
       padding: 26px;
       background:
-        linear-gradient(180deg, rgba(255,255,255,.065), rgba(255,255,255,.035)),
+        linear-gradient(180deg, rgba(255, 255, 255, .065), rgba(255, 255, 255, .035)),
         var(--panel);
       border: 1px solid var(--border);
       box-shadow: var(--shadow);
@@ -362,7 +380,7 @@
 
     .event-card:hover {
       transform: translateY(-4px);
-      border-color: rgba(216,168,79,.25);
+      border-color: rgba(216, 168, 79, .25);
     }
 
     .event-card::before {
@@ -381,7 +399,7 @@
       border-radius: 999px;
       right: -120px;
       top: -120px;
-      background: rgba(216,168,79,.065);
+      background: rgba(216, 168, 79, .065);
       pointer-events: none;
     }
 
@@ -414,13 +432,13 @@
 
     .status.upcoming {
       color: var(--green);
-      background: rgba(129,217,155,.11);
-      border: 1px solid rgba(129,217,155,.18);
+      background: rgba(129, 217, 155, .11);
+      border: 1px solid rgba(129, 217, 155, .18);
     }
 
     .status.past {
       color: var(--muted);
-      background: rgba(255,255,255,.07);
+      background: rgba(255, 255, 255, .07);
       border: 1px solid var(--border);
     }
 
@@ -438,7 +456,7 @@
       height: 11px;
       border-radius: 999px;
       background: linear-gradient(135deg, var(--green), var(--blue));
-      box-shadow: 0 0 18px rgba(129,217,155,.45);
+      box-shadow: 0 0 18px rgba(129, 217, 155, .45);
       flex-shrink: 0;
     }
 
@@ -456,8 +474,8 @@
       gap: 13px;
       padding: 12px;
       border-radius: 18px;
-      background: rgba(255,255,255,.045);
-      border: 1px solid rgba(255,255,255,.055);
+      background: rgba(255, 255, 255, .045);
+      border: 1px solid rgba(255, 255, 255, .055);
     }
 
     .meta-icon {
@@ -466,7 +484,7 @@
       border-radius: 15px;
       display: grid;
       place-items: center;
-      background: rgba(255,255,255,.065);
+      background: rgba(255, 255, 255, .065);
       border: 1px solid var(--border);
       font-size: 20px;
       flex-shrink: 0;
@@ -492,8 +510,8 @@
       z-index: 2;
       padding: 13px 15px;
       border-radius: 18px;
-      background: rgba(0,0,0,.18);
-      border: 1px solid rgba(255,255,255,.07);
+      background: rgba(0, 0, 0, .18);
+      border: 1px solid rgba(255, 255, 255, .07);
       color: var(--muted);
       font-size: 12px;
       font-weight: 850;
@@ -519,7 +537,7 @@
       flex-direction: column;
       justify-content: space-between;
       transition: .2s;
-      border: 1px solid rgba(255,255,255,.10);
+      border: 1px solid rgba(255, 255, 255, .10);
       overflow: hidden;
       position: relative;
     }
@@ -532,7 +550,7 @@
       border-radius: 999px;
       right: -45px;
       top: -45px;
-      background: rgba(255,255,255,.10);
+      background: rgba(255, 255, 255, .10);
     }
 
     .action-card:hover {
@@ -548,16 +566,27 @@
 
     .action-card span {
       font-size: 13px;
-      color: rgba(255,255,255,.78);
+      color: rgba(255, 255, 255, .78);
       font-weight: 800;
       position: relative;
       z-index: 2;
     }
 
-    .action-green { background: linear-gradient(135deg, #16a34a, #65d67f); }
-    .action-blue { background: linear-gradient(135deg, #2563eb, #7aa8ff); }
-    .action-dark { background: linear-gradient(135deg, #111827, #263247); }
-    .action-purple { background: linear-gradient(135deg, #6d3df2, #b58cff); }
+    .action-green {
+      background: linear-gradient(135deg, #16a34a, #65d67f);
+    }
+
+    .action-blue {
+      background: linear-gradient(135deg, #2563eb, #7aa8ff);
+    }
+
+    .action-dark {
+      background: linear-gradient(135deg, #111827, #263247);
+    }
+
+    .action-purple {
+      background: linear-gradient(135deg, #6d3df2, #b58cff);
+    }
 
     .empty-state {
       grid-column: 1 / -1;
@@ -585,7 +614,7 @@
       margin: 0 0 22px;
       padding: 24px;
       border-radius: 24px;
-      background: rgba(18,22,31,.94);
+      background: rgba(18, 22, 31, .94);
       border: 1px solid var(--border);
       box-shadow: var(--shadow);
     }
@@ -605,6 +634,7 @@
     }
 
     @media(max-width: 1000px) {
+
       .hero-content,
       .events-grid {
         grid-template-columns: 1fr;
@@ -660,6 +690,21 @@
       .event-head {
         flex-direction: column;
       }
+    }
+
+    .action-gold {
+      background: linear-gradient(135deg, rgba(216, 168, 79, .22), rgba(216, 168, 79, .08));
+      border: 1px solid rgba(216, 168, 79, .28);
+    }
+
+    .action-gold strong {
+      color: #f2c46d;
+    }
+
+    .action-gold:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 18px 40px rgba(216, 168, 79, .18);
+      border-color: rgba(242, 196, 109, .45);
     }
   </style>
 </head>
@@ -830,7 +875,7 @@
 
           const parsed = JSON.parse(value);
           if (parsed && parsed.id) return parsed;
-        } catch {}
+        } catch { }
       }
 
       return null;
@@ -1030,27 +1075,37 @@
               ID: ${escapeHTML(event.id)}
             </div>
 
-            <div class="action-grid">
-              <a class="action-card action-green" href="/acesso/?event_id=${eventId}">
-                <strong>🟢 Bipagem</strong>
-                <span>Validar entrada</span>
-              </a>
+           <div class="action-grid">
+  <a class="action-card action-green" href="/acesso/?event_id=${eventId}">
+    <strong>🟢 Bipagem</strong>
+    <span>Validar entrada</span>
+  </a>
 
-              <a class="action-card action-blue" href="/controle-qrcode/?event_id=${eventId}">
-                <strong>🎟️ QR Codes</strong>
-                <span>Gestão e geração</span>
-              </a>
+  <a class="action-card action-blue" href="/controle-qrcode/?event_id=${eventId}">
+    <strong>🎟️ QR Codes</strong>
+    <span>Gestão e geração</span>
+  </a>
 
-              <a class="action-card action-purple" href="/convidados/?event_id=${eventId}">
-                <strong>👥 Convidados</strong>
-                <span>Lista e disparos</span>
-              </a>
+  <a class="action-card action-gold" href="/download-qrcode/?event_id=${eventId}">
+    <strong>📦 Download QR</strong>
+    <span>Baixar PDFs em lote</span>
+  </a>
 
-              <a class="action-card action-dark" href="/dashboard/?event_id=${eventId}">
-                <strong>📊 Dashboard</strong>
-                <span>Tempo real</span>
-              </a>
-            </div>
+  <a class="action-card action-purple" href="/convidados/?event_id=${eventId}">
+    <strong>👥 Convidados</strong>
+    <span>Lista e disparos</span>
+  </a>
+
+  <a class="action-card action-dark" href="/dashboard/?event_id=${eventId}">
+    <strong>📊 Dashboard</strong>
+    <span>Tempo real</span>
+  </a>
+
+  <a class="action-card action-gold" href="/portaria/?event_id=${eventId}">
+    <strong>🚪 Portaria</strong>
+    <span>Controle de acesso</span>
+  </a>
+</div>
           </article>
         `;
       }).join('');
@@ -1170,4 +1225,5 @@
     }
   </script>
 </body>
+
 </html>

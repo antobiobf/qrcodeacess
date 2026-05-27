@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link href="../image/favicon.ico" rel="icon" type="image/x-icon" />
+  <title>Convidou - Portaria</title>
+
+  <!--
+    MÓDULO PORTARIA
+
+    SQL recomendado:
+
+    alter table public.event_guests
+    add column if not exists access boolean default false,
+    add column if not exists accessed_at timestamptz,
+    add column if not exists access_code_id uuid;
+
+    notify pgrst, 'reload schema';
+  -->
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    :root {
+      --bg: #07080c;
+      --panel: rgba(18, 22, 31, .92);
+      --border: rgba(255,255,255,.09);
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --gold: #d8a84f;
+      --gold-2: #f2c46d;
+      --green: #81d99b;
+      --blue: #7aa8ff;
+      --red: #ef7777;
+      --shadow: 0 28px 80px rgba(0,0,0,.35);
+    }
+
+    * { margin:0; padding:0; box-sizing:border-box; font-family:Inter, Arial, sans-serif; }
+
+    body {
+      min-height:100vh;
+      color:var(--text);
+      background:
+        radial-gradient(circle at 78% 8%, rgba(216,168,79,.18), transparent 32%),
+        radial-gradient(circle at 8% 38%, rgba(122,168,255,.10), transparent 28%),
+        linear-gradient(135deg, #07080c, #10131c 45%, #090b10);
+      padding:20px;
+      overflow-x:hidden;
+    }
+
+    body::before {
+      content:"";
+      position:fixed;
+      inset:0;
+      pointer-events:none;
+      background:
+        linear-gradient(90deg, rgba(255,255,255,.024) 1px, transparent 1px),
+        linear-gradient(rgba(255,255,255,.017) 1px, transparent 1px);
+      background-size:64px 64px;
+      mask-image:radial-gradient(circle at 50% 30%, black, transparent 75%);
+      z-index:0;
+    }
+
+    .container { position:relative; z-index:1; max-width:1480px; margin:0 auto; }
+
+    .top-nav {
+      position:sticky; top:14px; z-index:1000; margin-bottom:24px;
+      background:rgba(7,8,12,.76); border:1px solid rgba(255,255,255,.08);
+      border-radius:26px; box-shadow:0 24px 60px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.04);
+      backdrop-filter:blur(22px);
+    }
+
+    .nav-inner { min-height:76px; display:flex; align-items:center; justify-content:space-between; gap:18px; padding:14px 18px; }
+    .brand { display:inline-flex; align-items:center; gap:12px; color:var(--text); text-decoration:none; font-weight:950; letter-spacing:.08em; }
+    .brand-mark { width:42px; height:42px; border-radius:15px; display:grid; place-items:center; color:var(--gold-2); background:linear-gradient(135deg,#111827,#1e293b); border:1px solid rgba(216,168,79,.35); box-shadow:0 12px 30px rgba(216,168,79,.12); }
+    .nav-actions { display:flex; align-items:center; gap:10px; }
+    .user-chip { display:inline-flex; align-items:center; gap:10px; padding:8px 13px 8px 8px; border-radius:999px; background:rgba(255,255,255,.065); border:1px solid rgba(255,255,255,.09); color:#dbe4ef; font-weight:900; font-size:13px; white-space:nowrap; }
+    .avatar { width:34px; height:34px; border-radius:999px; display:grid; place-items:center; color:#111827; background:linear-gradient(135deg,var(--gold-2),var(--gold)); font-weight:950; }
+
+    button, .nav-btn { border:none; border-radius:14px; padding:13px 16px; font-weight:950; cursor:pointer; font-size:14px; display:inline-flex; align-items:center; justify-content:center; transition:.2s; white-space:nowrap; gap:8px; }
+    button:hover, .nav-btn:hover { transform:translateY(-1px); filter:brightness(1.03); }
+    button:disabled { opacity:.6; cursor:not-allowed; transform:none; }
+    .nav-btn { min-height:46px; color:var(--text); background:rgba(255,255,255,.075); border:1px solid var(--border); }
+    .nav-gold { color:#111827; background:linear-gradient(135deg,var(--gold-2),var(--gold)); border:1px solid rgba(216,168,79,.45); }
+    .nav-danger { color:#ffb4b4; background:rgba(239,119,119,.12); border:1px solid rgba(239,119,119,.20); }
+
+    .header { position:relative; overflow:hidden; background:linear-gradient(135deg,rgba(39,37,34,.88),rgba(16,20,31,.92)), radial-gradient(circle at top right,rgba(216,168,79,.22),transparent 36%); color:white; border-radius:34px; padding:38px 34px; margin-bottom:18px; border:1px solid rgba(216,168,79,.16); box-shadow:var(--shadow); backdrop-filter:blur(20px); }
+    .header::before { content:''; position:absolute; width:340px; height:340px; top:-140px; right:-90px; border-radius:999px; background:rgba(255,255,255,.055); }
+    .header-content { position:relative; z-index:2; display:grid; grid-template-columns:1fr auto; gap:24px; align-items:center; }
+    .header-badge { display:inline-flex; align-items:center; gap:8px; background:rgba(216,168,79,.10); border:1px solid rgba(216,168,79,.18); border-radius:999px; padding:9px 14px; color:var(--gold-2); font-size:13px; font-weight:950; margin-bottom:18px; letter-spacing:.08em; text-transform:uppercase; }
+    .header h1 { font-size:clamp(34px,5vw,60px); line-height:.96; letter-spacing:-2px; margin-bottom:14px; max-width:850px; }
+    .header p { color:rgba(226,232,240,.82); font-size:17px; line-height:1.6; max-width:760px; }
+    .hero-actions { display:flex; gap:12px; flex-wrap:wrap; justify-content:flex-end; }
+
+    .card, .panel, .info-box { position:relative; overflow:hidden; background:var(--panel); border-radius:26px; padding:24px; margin-bottom:20px; box-shadow:var(--shadow); border:1px solid var(--border); backdrop-filter:blur(18px); }
+    .card::after, .panel::after, .info-box::after { content:''; position:absolute; width:150px; height:150px; border-radius:999px; right:-78px; top:-78px; background:rgba(216,168,79,.055); pointer-events:none; }
+    .card>*, .panel>*, .info-box>* { position:relative; z-index:2; }
+    .grid-4 { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:20px; }
+    .grid-3 { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+    .grid-2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+    .info-box { margin-bottom:0; padding:20px; min-height:118px; }
+    .info-box span { display:block; color:var(--muted); font-size:12px; margin-bottom:8px; font-weight:950; text-transform:uppercase; letter-spacing:.08em; }
+    .info-box strong { font-size:32px; color:var(--gold-2); letter-spacing:-.6px; }
+    h2,h3 { color:var(--text); letter-spacing:-.5px; }
+    .form-group { display:flex; flex-direction:column; gap:8px; }
+    label { font-weight:950; font-size:14px; color:#e5edf7; }
+    input, select { width:100%; padding:16px; border:1px solid var(--border); border-radius:16px; font-size:16px; outline:none; background:rgba(255,255,255,.055); color:var(--text); transition:.2s; font-weight:850; }
+    select option { color:#111827; background:#f8fafc; }
+    input::placeholder { color:#64748b; }
+    input:focus, select:focus { border-color:rgba(216,168,79,.55); box-shadow:0 0 0 4px rgba(216,168,79,.12); }
+    .search-input { font-size:22px; min-height:70px; letter-spacing:.01em; }
+
+    .btn-primary { color:#111827; background:linear-gradient(135deg,var(--gold-2),var(--gold)); box-shadow:0 16px 38px rgba(216,168,79,.16); border:1px solid rgba(216,168,79,.45); }
+    .btn-success { color:#07110b; background:linear-gradient(135deg,#a7f3d0,var(--green)); box-shadow:0 16px 38px rgba(129,217,155,.14); border:1px solid rgba(129,217,155,.45); }
+    .btn-warning { background:rgba(216,168,79,.14); color:var(--gold-2); border:1px solid rgba(216,168,79,.22); }
+    .btn-danger { background:rgba(239,119,119,.12); color:var(--red); border:1px solid rgba(239,119,119,.20); }
+    .btn-secondary { background:rgba(255,255,255,.075); color:var(--text); border:1px solid var(--border); }
+
+    .message { display:none; padding:14px 16px; border-radius:16px; margin-bottom:18px; font-size:14px; font-weight:900; border:1px solid transparent; }
+    .message.success { display:block; background:rgba(129,217,155,.12); color:var(--green); border-color:rgba(129,217,155,.18); }
+    .message.error { display:block; background:rgba(239,119,119,.12); color:var(--red); border-color:rgba(239,119,119,.18); }
+    .message.info { display:block; background:rgba(122,168,255,.12); color:var(--blue); border-color:rgba(122,168,255,.18); }
+    .message.warning { display:block; background:rgba(216,168,79,.12); color:var(--gold-2); border-color:rgba(216,168,79,.18); }
+    .config-box { display:none; }
+    .config-box.active { display:block; }
+    .result-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:16px; margin-top:18px; }
+    .result-card { background:rgba(255,255,255,.045); border:1px solid rgba(255,255,255,.07); border-radius:22px; padding:20px; }
+    .result-card.used { border-color:rgba(239,119,119,.30); background:rgba(239,119,119,.08); }
+    .result-card.pending { border-color:rgba(216,168,79,.20); }
+    .result-card h3 { font-size:24px; margin-bottom:10px; }
+    .result-meta { display:grid; gap:8px; color:#cbd5e1; font-size:14px; margin-top:14px; line-height:1.45; }
+    .result-meta strong { color:var(--text); }
+    .badge { padding:7px 10px; border-radius:999px; font-size:12px; font-weight:950; white-space:nowrap; display:inline-flex; align-items:center; justify-content:center; }
+    .badge-green { background:rgba(129,217,155,.12); color:var(--green); border:1px solid rgba(129,217,155,.18); }
+    .badge-yellow { background:rgba(216,168,79,.12); color:var(--gold-2); border:1px solid rgba(216,168,79,.18); }
+    .badge-red { background:rgba(239,119,119,.12); color:var(--red); border:1px solid rgba(239,119,119,.18); }
+    table { width:100%; border-collapse:collapse; font-size:14px; min-width:850px; }
+    .table-wrap { overflow-x:auto; border-radius:18px; border:1px solid var(--border); background:rgba(255,255,255,.035); margin-top:16px; }
+    th,td { padding:12px; text-align:left; border-bottom:1px solid rgba(255,255,255,.07); vertical-align:top; color:#cbd5e1; }
+    th { color:var(--muted); font-size:12px; text-transform:uppercase; letter-spacing:.05em; background:rgba(255,255,255,.045); }
+    tr:hover td { background:rgba(255,255,255,.045); }
+    .small-text { color:var(--muted); font-size:13px; line-height:1.45; margin-top:8px; }
+    .empty-state { text-align:center; padding:40px 20px; color:var(--muted); background:rgba(255,255,255,.035); border:1px dashed var(--border); border-radius:18px; }
+
+    @media(max-width:980px) {
+      body { padding:12px; }
+      .desktop-nav { display:none; }
+      .header { padding:28px; border-radius:26px; }
+      .header-content,.grid-4,.grid-3,.grid-2 { grid-template-columns:1fr; }
+      .hero-actions { justify-content:flex-start; }
+      button { width:100%; }
+      .search-input { font-size:18px; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <nav class="top-nav">
+      <div class="nav-inner">
+        <a class="brand" href="/eventos/">
+          <div class="brand-mark">◇</div>
+          <strong>CONVIDOU</strong>
+        </a>
+        <div class="nav-actions desktop-nav">
+          <div class="user-chip"><div class="avatar">P</div><span>Portaria</span></div>
+          <button class="nav-btn nav-gold" onclick="goEvents()">← Eventos</button>
+          <button class="nav-btn" onclick="toggleConfig()">⚙️ Configurações</button>
+          <button class="nav-btn nav-danger" onclick="logoutUser()">🚪 Sair</button>
+        </div>
+      </div>
+    </nav>
+
+    <div class="header">
+      <div class="header-content">
+        <div>
+          <div class="header-badge">Controle de entrada</div>
+          <h1>Portaria</h1>
+          <p>Busque pelo nome do convidado ou pelo código do QR Code. Ao confirmar, o sistema marca o QR Code como acessado e registra o acesso do convidado.</p>
+        </div>
+        <!-- <div class="hero-actions">
+          <button class="btn-secondary" onclick="loadRecentAccesses()">Atualizar acessos</button>
+          <button class="btn-primary" onclick="focusSearch()">Buscar entrada</button>
+        </div> -->
+      </div>
+    </div>
+
+    <div id="message" class="message"></div>
+
+    <div class="card config-box" id="configBox">
+      <h2 style="margin-bottom:18px;">Configurações</h2>
+      <div class="grid-2">
+        <div class="form-group"><label for="supabaseUrl">Supabase URL</label><input id="supabaseUrl" type="text" placeholder="https://xxxx.supabase.co" /></div>
+        <div class="form-group"><label for="supabaseKey">Supabase Anon Key</label><input id="supabaseKey" type="password" placeholder="Cole sua anon/public key" /></div>
+      </div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:16px;">
+        <button class="btn-primary" onclick="saveConfig()">Salvar configurações</button>
+        <button class="btn-secondary" onclick="initializePage()">Recarregar</button>
+      </div>
+      <p class="small-text">A tabela de QR Codes precisa se chamar <strong>access_codes</strong>.</p>
+    </div>
+
+    <div class="grid-4">
+      <div class="info-box"><span>Evento</span><strong id="eventName">-</strong></div>
+      <div class="info-box"><span>Total QR Codes</span><strong id="totalCodes">0</strong></div>
+      <div class="info-box"><span>Acessos</span><strong id="totalAccessed">0</strong></div>
+      <div class="info-box"><span>Pendentes</span><strong id="totalPending">0</strong></div>
+    </div>
+
+    <div class="card">
+      <h2>Buscar convidado ou QR Code</h2>
+      <p class="small-text">Digite parte do nome, WhatsApp ou cole o código do QR Code.</p>
+      <div class="grid-3" style="margin-top:18px;">
+        <div class="form-group" style="grid-column:span 2;"><label for="searchInput">Busca</label><input id="searchInput" class="search-input" type="text" placeholder="Ex: Maria Silva ou CONVIDOU-M01-L01..." onkeydown="handleSearchKey(event)" /></div>
+        <div class="form-group"><label for="searchMode">Tipo</label><select id="searchMode"><option value="auto">Automático</option><option value="name">Nome / telefone</option><option value="qr">Código QR</option></select></div>
+      </div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:16px;">
+        <button id="searchButton" class="btn-primary" onclick="searchPortaria()">Pesquisar</button>
+        <button class="btn-secondary" onclick="clearSearch()">Limpar</button>
+      </div>
+      <div id="resultContainer" class="result-grid"></div>
+    </div>
+
+    <div class="panel">
+      <h2>Últimos acessos</h2>
+      <p class="small-text">Lista dos últimos QR Codes baixados na portaria.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Status</th><th>Nome</th><th>QR Code</th><th>Entrada</th><th>Mesa/Lugar</th><th>Contato</th></tr></thead>
+          <tbody id="recentAccessesBody"><tr><td colspan="6">Carregando...</td></tr></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let supabaseClient = null;
+    let currentEventId = null;
+    let currentEventData = null;
+    let currentResults = [];
+
+    const DEFAULT_SUPABASE_URL = 'https://pfyctxoikdrephjogdtm.supabase.co';
+    const DEFAULT_SUPABASE_KEY = 'sb_publishable_h_5hK_HTT-XJ4WUoOGzkGg_tqkBDLjv';
+    const savedUrl = localStorage.getItem('supabase_url') || DEFAULT_SUPABASE_URL;
+    const savedKey = localStorage.getItem('supabase_key') || DEFAULT_SUPABASE_KEY;
+    document.getElementById('supabaseUrl').value = savedUrl;
+    document.getElementById('supabaseKey').value = savedKey;
+
+    initializePage();
+
+    async function initializePage() {
+      const params = new URLSearchParams(window.location.search);
+      currentEventId = params.get('event_id') || localStorage.getItem('event_id');
+      if (!currentEventId) { showMessage('Informe o event_id na URL. Ex: /portaria/?event_id=UUID', 'error'); toggleConfig(true); return; }
+      if (!savedUrl || !savedKey) { toggleConfig(true); showMessage('Configure o Supabase para usar a portaria.', 'info'); return; }
+      connectSupabase(savedUrl, savedKey);
+      await loadEvent();
+      await loadSummary();
+      await loadRecentAccesses();
+      focusSearch();
+    }
+
+    function connectSupabase(url, key) { const { createClient } = supabase; supabaseClient = createClient(url, key); }
+    function saveConfig() { const url = document.getElementById('supabaseUrl').value.trim().replace('/rest/v1/', '').replace('/rest/v1', ''); const key = document.getElementById('supabaseKey').value.trim(); if (!url || !key) { showMessage('Informe URL e chave do Supabase.', 'error'); return; } localStorage.setItem('supabase_url', url); localStorage.setItem('supabase_key', key); showMessage('Configurações salvas.', 'success'); setTimeout(() => window.location.reload(), 600); }
+    function toggleConfig(forceOpen = false) { const box = document.getElementById('configBox'); if (forceOpen) { box.classList.add('active'); return; } box.classList.toggle('active'); }
+    function goEvents() { window.location.href = '/eventos/'; }
+    function logoutUser() { localStorage.removeItem('convidou_user_session'); localStorage.removeItem('loggedUser'); localStorage.removeItem('user_session'); localStorage.removeItem('currentUser'); window.location.href = '/login/'; }
+
+    async function loadEvent() {
+      const { data, error } = await supabaseClient.from('events').select('id, name, event_date, event_time, location').eq('id', currentEventId).maybeSingle();
+      if (error) { showMessage('Erro ao carregar evento: ' + error.message, 'error'); return; }
+      if (!data) { showMessage('Evento não encontrado.', 'error'); return; }
+      currentEventData = data;
+      document.getElementById('eventName').textContent = data.name || '-';
+      localStorage.setItem('event_id', data.id);
+    }
+
+    async function loadSummary() {
+      const { data, error } = await supabaseClient.from('access_codes').select('id, accessed').eq('event_id', currentEventId);
+      if (error) { showMessage('Erro ao carregar resumo: ' + error.message, 'error'); return; }
+      const codes = data || [];
+      const accessed = codes.filter(item => item.accessed === true).length;
+      document.getElementById('totalCodes').textContent = codes.length;
+      document.getElementById('totalAccessed').textContent = accessed;
+      document.getElementById('totalPending').textContent = codes.length - accessed;
+    }
+
+    function handleSearchKey(event) { if (event.key === 'Enter') searchPortaria(); }
+    function focusSearch() { setTimeout(() => document.getElementById('searchInput')?.focus(), 100); }
+    function clearSearch() { document.getElementById('searchInput').value = ''; document.getElementById('resultContainer').innerHTML = ''; currentResults = []; focusSearch(); }
+
+    async function searchPortaria() {
+      const term = document.getElementById('searchInput').value.trim();
+      const mode = document.getElementById('searchMode').value;
+      const button = document.getElementById('searchButton');
+      if (!term) { showMessage('Digite o nome, telefone ou código do QR Code.', 'error'); return; }
+      button.disabled = true; button.textContent = 'Pesquisando...';
+      try {
+        let results = [];
+        if (mode === 'qr') results = await searchByQRCode(term);
+        else if (mode === 'name') results = await searchByNameOrPhone(term);
+        else results = mergeResults(await searchByQRCode(term), await searchByNameOrPhone(term));
+        currentResults = results;
+        renderResults(results);
+        showMessage(results.length ? `${results.length} resultado(s) encontrado(s).` : 'Nenhum convidado ou QR Code encontrado.', results.length ? 'success' : 'warning');
+      } catch (error) { console.error(error); showMessage('Erro na busca: ' + error.message, 'error'); }
+      finally { button.disabled = false; button.textContent = 'Pesquisar'; }
+    }
+
+    async function searchByQRCode(code) {
+      const cleanCode = code.trim();
+      const { data, error } = await supabaseClient.from('access_codes').select('*').eq('event_id', currentEventId).eq('qr_code', cleanCode);
+      if (error) throw error;
+      return (data || []).map(codeItem => ({ type: 'access_code', accessCode: codeItem, guest: null }));
+    }
+
+    async function searchByNameOrPhone(term) {
+      const safeTerm = sanitizeOrFilter(term);
+      const { data: codeData, error: codeError } = await supabaseClient.from('access_codes').select('*').eq('event_id', currentEventId).or(`customer_name.ilike.%${safeTerm}%,customer_whatsapp.ilike.%${safeTerm}%,qr_code.ilike.%${safeTerm}%`).limit(20);
+      if (codeError) throw codeError;
+      const { data: guestData, error: guestError } = await supabaseClient.from('event_guests').select('*').eq('event_id', currentEventId).or(`guest_name.ilike.%${safeTerm}%,whatsapp.ilike.%${safeTerm}%,group_name.ilike.%${safeTerm}%`).limit(20);
+      if (guestError) throw guestError;
+      const results = [];
+      for (const codeItem of (codeData || [])) results.push({ type: 'access_code', accessCode: codeItem, guest: null });
+      const guests = guestData || [];
+      const guestIds = guests.map(item => item.id).filter(Boolean);
+      let linkedCodes = [];
+      if (guestIds.length > 0) {
+        const { data: sourceCodes } = await supabaseClient.from('access_codes').select('*').eq('event_id', currentEventId).in('source_guest_id', guestIds);
+        if (sourceCodes) linkedCodes = linkedCodes.concat(sourceCodes);
+        const accessCodeIds = guests.map(item => item.access_code_id).filter(Boolean);
+        if (accessCodeIds.length > 0) {
+          const { data: accessCodes } = await supabaseClient.from('access_codes').select('*').eq('event_id', currentEventId).in('id', accessCodeIds);
+          if (accessCodes) linkedCodes = linkedCodes.concat(accessCodes);
+        }
+      }
+      for (const guest of guests) {
+        const code = linkedCodes.find(item => item.source_guest_id === guest.id || item.id === guest.access_code_id);
+        results.push({ type: code ? 'guest_with_code' : 'guest_only', accessCode: code || null, guest });
+      }
+      return mergeResults(results);
+    }
+
+    function mergeResults(...lists) {
+      const flat = lists.flat(); const seen = new Set(); const merged = [];
+      for (const item of flat) {
+        const key = item.accessCode?.id ? `code:${item.accessCode.id}` : item.guest?.id ? `guest:${item.guest.id}` : JSON.stringify(item);
+        if (seen.has(key)) continue; seen.add(key); merged.push(item);
+      }
+      return merged;
+    }
+
+    function renderResults(results) {
+      const container = document.getElementById('resultContainer');
+      if (!results.length) { container.innerHTML = '<div class="empty-state">Nenhum resultado encontrado.</div>'; return; }
+      container.innerHTML = results.map((item, index) => {
+        const code = item.accessCode; const guest = item.guest; const accessed = code?.accessed === true || guest?.access === true;
+        const name = getResultName(item); const place = getPlaceLabel(code); const qr = code?.qr_code || '-'; const contact = getContactLabel(item); const entryDate = formatDateTimeBR(code?.accessed_at || code?.used_at || guest?.accessed_at);
+        return `<div class="result-card ${accessed ? 'used' : 'pending'}"><div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;"><h3>${escapeHTML(name)}</h3>${accessed ? '<span class="badge badge-green">Já acessou</span>' : '<span class="badge badge-yellow">Pendente</span>'}</div><div class="result-meta"><div><strong>QR Code:</strong> ${escapeHTML(qr)}</div><div><strong>Local:</strong> ${escapeHTML(place)}</div><div><strong>Contato:</strong> ${escapeHTML(contact)}</div><div><strong>Entrada:</strong> ${entryDate || '-'}</div></div><div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;">${code ? `<button class="btn-success" ${accessed ? 'disabled' : ''} onclick="confirmAccessFromResult(${index})">✅ Confirmar acesso</button>` : `<button class="btn-warning" disabled>Sem QR Code vinculado</button>`}${code ? `<button class="btn-secondary" onclick="copyText('${escapeHTMLAttr(qr)}')">Copiar código</button>` : ''}</div></div>`;
+      }).join('');
+    }
+
+    async function confirmAccessFromResult(index) {
+      const item = currentResults[index];
+      if (!item?.accessCode) { showMessage('Este convidado não possui QR Code vinculado.', 'error'); return; }
+      const code = item.accessCode; const name = getResultName(item);
+      if (code.accessed === true) { showMessage('Este QR Code já foi utilizado.', 'warning'); return; }
+      const ok = confirm(`Confirmar acesso?\n\nNome: ${name}\nQR Code: ${code.qr_code}\nLocal: ${getPlaceLabel(code)}`);
+      if (!ok) { showMessage('Acesso não confirmado.', 'info'); return; }
+      await confirmAccessCode(code, item.guest || null);
+    }
+
+    async function confirmAccessCode(code, guest) {
+      const now = new Date().toISOString();
+      const { data, error } = await supabaseClient.from('access_codes').update({ accessed: true, accessed_at: now, used_at: now, status: 'used' }).eq('id', code.id).or('accessed.is.null,accessed.eq.false').select('*').maybeSingle();
+      if (error) { showMessage('Erro ao baixar QR Code: ' + error.message, 'error'); return; }
+      if (!data) { showMessage('Este QR Code já foi utilizado por outro operador.', 'warning'); await searchPortaria(); return; }
+      await updateGuestAccess(data, guest, now);
+      showMessage(`Entrada confirmada para ${getPersonLabel(data)} às ${formatDateTimeBR(now)}.`, 'success');
+      await loadSummary(); await loadRecentAccesses();
+      document.getElementById('searchInput').value = '';
+      document.getElementById('resultContainer').innerHTML = `<div class="result-card"><h3>✅ Entrada confirmada</h3><div class="result-meta"><div><strong>Nome:</strong> ${escapeHTML(getPersonLabel(data))}</div><div><strong>QR Code:</strong> ${escapeHTML(data.qr_code || '-')}</div><div><strong>Local:</strong> ${escapeHTML(getPlaceLabel(data))}</div><div><strong>Data/Hora:</strong> ${formatDateTimeBR(now)}</div></div></div>`;
+      focusSearch();
+    }
+
+    async function updateGuestAccess(accessCode, guest, now) {
+      const guestId = accessCode.source_guest_id || guest?.id || null;
+      if (!guestId) return;
+      const { error } = await supabaseClient.from('event_guests').update({ access: true, accessed_at: now, access_code_id: accessCode.id }).eq('id', guestId);
+      if (error) { console.warn('Não foi possível atualizar event_guests.access.', error); showMessage('QR Code baixado, mas não foi possível atualizar o acesso do convidado. Verifique as colunas event_guests.access/accessed_at/access_code_id.', 'warning'); }
+    }
+
+    async function loadRecentAccesses() {
+      const tbody = document.getElementById('recentAccessesBody');
+      const { data, error } = await supabaseClient.from('access_codes').select('*').eq('event_id', currentEventId).eq('accessed', true).order('accessed_at', { ascending: false }).limit(20);
+      if (error) { tbody.innerHTML = `<tr><td colspan="6">Erro ao carregar acessos: ${escapeHTML(error.message)}</td></tr>`; return; }
+      const rows = data || [];
+      if (!rows.length) { tbody.innerHTML = '<tr><td colspan="6">Nenhum acesso registrado.</td></tr>'; return; }
+      tbody.innerHTML = rows.map(item => `<tr><td><span class="badge badge-green">Acessou</span></td><td>${escapeHTML(getPersonLabel(item))}</td><td>${escapeHTML(item.qr_code || '-')}</td><td>${formatDateTimeBR(item.accessed_at || item.used_at) || '-'}</td><td>${escapeHTML(getPlaceLabel(item))}</td><td>${escapeHTML(getContactLabel({ accessCode: item }))}</td></tr>`).join('');
+    }
+
+    function getResultName(item) { if (item.guest?.guest_name) return item.guest.guest_name; if (item.accessCode) return getPersonLabel(item.accessCode); return 'Convidado'; }
+    function getPersonLabel(item) { if (!item) return 'Convidado'; return item.customer_name || ((item.ticket_type || 'mesa') === 'individual' ? 'Ingresso individual' : 'Sem nome'); }
+    function getPlaceLabel(item) { if (!item) return '-'; if ((item.ticket_type || 'mesa') === 'individual') return 'Ingresso individual'; return `Mesa ${item.table_number || '-'} • Lugar ${item.seat_number || '-'}`; }
+    function getContactLabel(item) { const code = item.accessCode || item; const guest = item.guest || null; const contact = []; if (guest?.whatsapp) contact.push(formatPhoneBR(guest.whatsapp)); if (code?.customer_whatsapp) contact.push(formatPhoneBR(code.customer_whatsapp)); if (code?.customer_email) contact.push(code.customer_email); return contact.filter(Boolean).length ? contact.filter(Boolean).join(' • ') : '-'; }
+    function sanitizeOrFilter(value) { return String(value || '').replace(/[%_*]/g, '').replace(/[(),]/g, ' ').trim(); }
+    function formatPhoneBR(value) { const digits = String(value || '').replace(/\D/g, ''); if (!digits) return ''; let local = digits; if (local.startsWith('55')) local = local.slice(2); if (local.length === 11) return `(${local.slice(0,2)}) ${local.slice(2,7)}-${local.slice(7)}`; if (local.length === 10) return `(${local.slice(0,2)}) ${local.slice(2,6)}-${local.slice(6)}`; return value; }
+    function formatDateTimeBR(dateString) { if (!dateString) return ''; const date = new Date(dateString); if (Number.isNaN(date.getTime())) return dateString; return date.toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }); }
+    function escapeHTML(value) { return String(value || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;'); }
+    function escapeHTMLAttr(value) { return escapeHTML(value).replace(/`/g, '&#096;'); }
+    function copyText(text) { navigator.clipboard.writeText(text).then(() => showMessage('Código copiado.', 'success')).catch(() => showMessage('Não foi possível copiar.', 'error')); }
+    function showMessage(text, type = 'info') { const message = document.getElementById('message'); message.textContent = text; message.className = `message ${type}`; setTimeout(() => { message.className = 'message'; message.textContent = ''; }, 5500); }
+  </script>
+</body>
+</html>

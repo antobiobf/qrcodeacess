@@ -11,6 +11,7 @@
     Para controlar corretamente envio/enfileiramento na Z-API, execute também:
 
     alter table public.event_guests
+    add column if not exists status text default 'pendente',
     add column if not exists message_status text,
     add column if not exists zapi_message_id text,
     add column if not exists zapi_zaap_id text;
@@ -711,7 +712,7 @@
 
     .tools {
       display: grid;
-      grid-template-columns: 2fr auto auto;
+      grid-template-columns: minmax(220px, 2fr) minmax(170px, 1fr) minmax(170px, 1fr) auto auto auto;
       gap: 14px;
       align-items: end;
     }
@@ -745,6 +746,25 @@
       text-transform: uppercase;
       letter-spacing: .05em;
       background: rgba(255,255,255,.045);
+    }
+
+    .th-filter {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-width: 160px;
+    }
+
+    .th-filter span {
+      display: block;
+    }
+
+    .th-filter select {
+      padding: 9px 10px;
+      border-radius: 11px;
+      font-size: 12px;
+      letter-spacing: 0;
+      text-transform: none;
     }
 
     tr:hover td {
@@ -1454,6 +1474,7 @@
             <label for="searchInput">Buscar convidado</label>
             <input id="searchInput" type="text" placeholder="Nome, grupo ou WhatsApp" oninput="renderGuests()" />
           </div>
+
           <button class="btn-secondary" onclick="loadGuests()">Atualizar lista</button>
           <button class="btn-warning" onclick="exportGuestsExcel()">📥 Exportar Excel</button>
           <button class="btn-warning" onclick="sendNextPending()">Enviar próximo pendente</button>
@@ -2266,28 +2287,105 @@
       return '';
     }
 
+    function getGuestStatusValue(guest) {
+      if (guest.status === 'nao_comparecera') return 'nao_comparecera';
+      if (guest.confirmed === true) return 'confirmado';
+      return 'pendente';
+    }
+
+    function getGuestStatusBadge(guest) {
+      const status = getGuestStatusValue(guest);
+
+      if (status === 'nao_comparecera') {
+        return '<span class="badge badge-red">Não comparecerá</span>';
+      }
+
+      if (status === 'confirmado') {
+        return '<span class="badge badge-green">Confirmado</span>';
+      }
+
+      return '<span class="badge badge-yellow">Pendente</span>';
+    }
+
+    function getGuestMessageValue(guest) {
+      if (guest.last_send_error) return 'erro';
+      if (guest.message_status === 'queued') return 'na_fila';
+      if (guest.message_sent) return 'enviada';
+      return 'nao_enviada';
+    }
+
+    function getGuestMessageBadge(guest) {
+      const status = getGuestMessageValue(guest);
+
+      if (status === 'erro') {
+        return `<span class="badge badge-red">Erro</span>`;
+      }
+
+      if (status === 'na_fila') {
+        return '<span class="badge badge-yellow">Na fila</span>';
+      }
+
+      if (status === 'enviada') {
+        return '<span class="badge badge-gray">Enviada</span>';
+      }
+
+      return '<span class="badge badge-yellow">Não enviada</span>';
+    }
+
     function renderGuests() {
       const container = document.getElementById('guestsTableContainer');
-      const search = document.getElementById('searchInput').value.trim().toLowerCase();
+      const search = document.getElementById('searchInput')?.value.trim().toLowerCase() || '';
+      const statusFilter = document.getElementById('statusFilter')?.value || '';
+      const messageFilter = document.getElementById('messageFilter')?.value || '';
 
       const filtered = guests.filter(guest => {
+        const statusValue = getGuestStatusValue(guest);
+        const messageValue = getGuestMessageValue(guest);
+
+        if (statusFilter && statusValue !== statusFilter) return false;
+        if (messageFilter && messageValue !== messageFilter) return false;
+
         if (!search) return true;
-        const values = [guest.guest_name, guest.group_name, guest.whatsapp];
+
+        const values = [
+          guest.guest_name,
+          guest.group_name,
+          guest.whatsapp,
+          statusValue === 'nao_comparecera' ? 'Não comparecerá' : statusValue,
+          messageValue === 'na_fila' ? 'Na fila' : messageValue
+        ];
+
         return values.filter(Boolean).some(value => String(value).toLowerCase().includes(search));
       });
-
-      if (filtered.length === 0) {
-        container.innerHTML = '<div class="empty-state">Nenhum convidado encontrado.</div>';
-        return;
-      }
 
       container.innerHTML = `
     <table>
       <thead>
         <tr>
           <th>Ações</th>
-          <th>Status</th>
-          <th>Mensagem</th>
+          <th>
+            <div class="th-filter">
+              <span>Status</span>
+              <select id="statusFilter" onchange="renderGuests()">
+                <option value="" ${statusFilter === '' ? 'selected' : ''}>Todos</option>
+                <option value="pendente" ${statusFilter === 'pendente' ? 'selected' : ''}>Pendente</option>
+                <option value="confirmado" ${statusFilter === 'confirmado' ? 'selected' : ''}>Confirmado</option>
+                <option value="nao_comparecera" ${statusFilter === 'nao_comparecera' ? 'selected' : ''}>Não comparecerá</option>
+              </select>
+            </div>
+          </th>
+          <th>
+            <div class="th-filter">
+              <span>Mensagem</span>
+              <select id="messageFilter" onchange="renderGuests()">
+                <option value="" ${messageFilter === '' ? 'selected' : ''}>Todas</option>
+                <option value="na_fila" ${messageFilter === 'na_fila' ? 'selected' : ''}>Na fila</option>
+                <option value="enviada" ${messageFilter === 'enviada' ? 'selected' : ''}>Enviada</option>
+                <option value="nao_enviada" ${messageFilter === 'nao_enviada' ? 'selected' : ''}>Não enviada</option>
+                <option value="erro" ${messageFilter === 'erro' ? 'selected' : ''}>Com erro</option>
+              </select>
+            </div>
+          </th>
           <th>Convidado</th>
           <th>Grupo</th>
           <th>WhatsApp</th>
@@ -2297,7 +2395,13 @@
       </thead>
 
       <tbody>
-        ${filtered.map(guest => `
+        ${filtered.length === 0 ? `
+          <tr>
+            <td colspan="8">
+              <div class="empty-state">Nenhum convidado encontrado.</div>
+            </td>
+          </tr>
+        ` : filtered.map(guest => `
           <tr>
             <td>
               <div class="table-actions">
@@ -2336,17 +2440,18 @@
             </td>
 
             <td>
-              ${guest.confirmed
-          ? '<span class="badge badge-green">Confirmado</span>'
-          : '<span class="badge badge-yellow">Pendente</span>'}
+              <select onchange="updateGuestStatus('${guest.id}', this.value)" style="min-width:170px;">
+                <option value="pendente" ${getGuestStatusValue(guest) === 'pendente' ? 'selected' : ''}>Pendente</option>
+                <option value="confirmado" ${getGuestStatusValue(guest) === 'confirmado' ? 'selected' : ''}>Confirmado</option>
+                <option value="nao_comparecera" ${getGuestStatusValue(guest) === 'nao_comparecera' ? 'selected' : ''}>Não comparecerá</option>
+              </select>
+              <div style="margin-top:8px;">
+                ${getGuestStatusBadge(guest)}
+              </div>
             </td>
 
             <td>
-              ${guest.message_status === 'queued'
-          ? '<span class="badge badge-yellow">Na fila</span>'
-          : guest.message_sent
-            ? '<span class="badge badge-gray">Enviada</span>'
-            : '<span class="badge badge-yellow">Não enviada</span>'}
+              ${getGuestMessageBadge(guest)}
             </td>
 
             <td>${escapeHTML(guest.guest_name)}</td>
@@ -2364,6 +2469,49 @@
       </tbody>
     </table>
   `;
+    }
+
+    async function updateGuestStatus(guestId, status) {
+      if (!supabaseClient) {
+        showMessage('Supabase não carregado.', 'error');
+        return;
+      }
+
+      const allowedStatuses = ['pendente', 'confirmado', 'nao_comparecera'];
+      if (!allowedStatuses.includes(status)) {
+        showMessage('Status inválido.', 'error');
+        return;
+      }
+
+      const payload = {
+        status,
+        confirmed: status === 'confirmado',
+        confirmed_at: status === 'confirmado' ? new Date().toISOString() : null
+      };
+
+      const { error } = await supabaseClient
+        .from('event_guests')
+        .update(payload)
+        .eq('id', guestId);
+
+      if (error) {
+        showMessage(
+          'Erro ao alterar status: ' + error.message +
+          ' Verifique se a coluna status existe na tabela event_guests.',
+          'error'
+        );
+        await loadGuests();
+        return;
+      }
+
+      await loadGuests();
+
+      showMessage(
+        status === 'nao_comparecera'
+          ? 'Status alterado para Não comparecerá.'
+          : 'Status do convidado atualizado.',
+        'success'
+      );
     }
 
     async function editGuest(guestId) {
