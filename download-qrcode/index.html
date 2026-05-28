@@ -1314,21 +1314,35 @@ async function downloadSelectedSinglePDF() {
 async function downloadItemsZip(items, label) {
   try {
     showMessage(`Gerando ${items.length} PDFs...`, 'info');
+
     const zip = new JSZip();
-    for (const item of items) {
+    const usedNames = new Map();
+
+    for (let index = 0; index < items.length; index++) {
+      const item = items[index];
       const blob = await createTicketPDFBlob(item);
-      zip.file(`${safeFileName(getTicketFileName(item))}.pdf`, blob)
+
+      const baseName = safeFileName(getTicketFileName(item)) || `ingresso-${index + 1}`;
+      const count = usedNames.get(baseName) || 0;
+      usedNames.set(baseName, count + 1);
+
+      const fileName = count === 0
+        ? `${baseName}.pdf`
+        : `${baseName}-${count + 1}.pdf`;
+
+      zip.file(fileName, blob);
     }
-    const zipBlob = await zip.generateAsync({
-      type: 'blob'
-    });
+
+    const zipBlob = await zip.generateAsync({ type: 'blob' });
     downloadBlob(zipBlob, `${safeFileName(getEventName())}-${safeFileName(label)}-qrcodes.zip`);
-    showMessage(`${items.length} PDFs gerados em ZIP.`, 'success')
+
+    showMessage(`${items.length} PDFs gerados em ZIP.`, 'success');
   } catch (error) {
     console.error(error);
-    showMessage('Erro ao gerar ZIP: ' + error.message, 'error')
+    showMessage('Erro ao gerar ZIP: ' + error.message, 'error');
   }
 }
+
 async function downloadItemsSinglePDF(items, label) {
   try {
     showMessage(`Gerando PDF único com ${items.length} ingressos...`, 'info');

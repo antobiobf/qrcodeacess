@@ -14,7 +14,11 @@
     alter table public.event_guests
     add column if not exists access boolean default false,
     add column if not exists accessed_at timestamptz,
-    add column if not exists access_code_id uuid;
+    add column if not exists access_code_id uuid,
+    add column if not exists access_confirmed_by text;
+
+    alter table public.access_codes
+    add column if not exists accessed_by text;
 
     notify pgrst, 'reload schema';
   -->
@@ -353,13 +357,229 @@
 
     function renderResults(results) {
       const container = document.getElementById('resultContainer');
-      if (!results.length) { container.innerHTML = '<div class="empty-state">Nenhum resultado encontrado.</div>'; return; }
+      if (!results.length) {
+        container.innerHTML = '<div class="empty-state">Nenhum resultado encontrado.</div>';
+        return;
+      }
+
       container.innerHTML = results.map((item, index) => {
-        const code = item.accessCode; const guest = item.guest; const accessed = code?.accessed === true || guest?.access === true;
-        const name = getResultName(item); const place = getPlaceLabel(code); const qr = code?.qr_code || '-'; const contact = getContactLabel(item); const entryDate = formatDateTimeBR(code?.accessed_at || code?.used_at || guest?.accessed_at);
-        return `<div class="result-card ${accessed ? 'used' : 'pending'}"><div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;"><h3>${escapeHTML(name)}</h3>${accessed ? '<span class="badge badge-green">Já acessou</span>' : '<span class="badge badge-yellow">Pendente</span>'}</div><div class="result-meta"><div><strong>QR Code:</strong> ${escapeHTML(qr)}</div><div><strong>Local:</strong> ${escapeHTML(place)}</div><div><strong>Contato:</strong> ${escapeHTML(contact)}</div><div><strong>Entrada:</strong> ${entryDate || '-'}</div></div><div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;">${code ? `<button class="btn-success" ${accessed ? 'disabled' : ''} onclick="confirmAccessFromResult(${index})">✅ Confirmar acesso</button>` : `<button class="btn-warning" disabled>Sem QR Code vinculado</button>`}${code ? `<button class="btn-secondary" onclick="copyText('${escapeHTMLAttr(qr)}')">Copiar código</button>` : ''}</div></div>`;
+        const code = item.accessCode;
+        const guest = item.guest;
+        const accessed = code?.accessed === true || guest?.access === true;
+        const name = getResultName(item);
+        const place = getPlaceLabel(code);
+        const qr = code?.qr_code || '-';
+        const contact = getContactLabel(item);
+        const entryDate = formatDateTimeBR(code?.accessed_at || code?.used_at || guest?.accessed_at);
+
+        let actionHTML = '';
+
+        if (code) {
+          actionHTML = `
+            <button class="btn-success" ${accessed ? 'disabled' : ''} onclick="confirmAccessFromResult(${index})">
+              ✅ Confirmar acesso
+            </button>
+            <button class="btn-secondary" onclick="copyText('${escapeHTMLAttr(qr)}')">
+              Copiar código
+            </button>
+          `;
+        } else if (guest && !accessed) {
+          actionHTML = `
+            <button class="btn-success" onclick="confirmGuestWithoutQRCode(${index})">
+              ✅ Confirmar acesso sem QR
+            </button>
+          `;
+        } else if (guest && accessed) {
+          actionHTML = '<span class="badge badge-green">Já acessou</span>';
+        } else {
+          actionHTML = '<span class="badge badge-yellow">Sem QR Code vinculado</span>';
+        }
+
+        return `
+          <div class="result-card ${accessed ? 'used' : 'pending'}">
+            <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;">
+              <h3>${escapeHTML(name)}</h3>
+              ${accessed ? '<span class="badge badge-green">Já acessou</span>' : '<span class="badge badge-yellow">Pendente</span>'}
+            </div>
+            <div class="result-meta">
+              <div><strong>QR Code:</strong> ${escapeHTML(qr)}</div>
+              <div><strong>Local:</strong> ${escapeHTML(place)}</div>
+              <div><strong>Contato:</strong> ${escapeHTML(contact)}</div>
+              <div><strong>Entrada:</strong> ${entryDate || '-'}</div>
+            </div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:18px;">
+              ${actionHTML}
+            </div>
+          </div>
+        `;
       }).join('');
     }
+
+
+    function generatePortariaQRCode(guest) {
+      const prefix = 'PORTARIA';
+      const base = String(guest?.id || Math.random().toString(36)).replace(/-/g, '');
+      const guestPart = base.slice(0, 8).toUpperCase();
+      const timePart = Date.now().toString(36).toUpperCase();
+      return `${prefix}-${guestPart}-${timePart}`;
+    }
+
+    function getCurrentOperatorName() {
+      const keys = ['convidou_user_session', 'loggedUser', 'user_session', 'currentUser'];
+
+      for (const key of keys) {
+        try {
+          const value = localStorage.getItem(key);
+          if (!value) continue;
+
+          const user = JSON.parse(value);
+          if (user?.name || user?.email) return user.name || user.email;
+        } catch (error) {}
+      }
+
+      return 'Portaria';
+    }
+
+    async function confirmGuestWithoutQRCode(index) {
+      const item = currentResults[index];
+
+      if (!item?.guest) {
+        showMessage('Convidado não encontrado.', 'error');
+        return;
+      }
+
+      if (item.guest.access === true) {
+        showMessage('Este convidado já possui acesso registrado.', 'warning');
+        return;
+      }
+
+      const ok = confirm(
+        `Este convidado não possui QR Code vinculado.\n\n` +
+        `Deseja criar um QR Code e confirmar o acesso agora?\n\n` +
+        `Nome: ${item.guest.guest_name || 'Convidado'}`
+      );
+
+      if (!ok) {
+        showMessage('Acesso não confirmado.', 'info');
+        return;
+      }
+
+      await createAccessCodeAndConfirmGuest(item.guest);
+    }
+
+    async function createAccessCodeAndConfirmGuest(guest) {
+      const now = new Date().toISOString();
+      const operatorName = getCurrentOperatorName();
+      const generatedQRCode = generatePortariaQRCode(guest);
+
+      const payload = {
+        event_id: currentEventId,
+        event_name: currentEventData?.name || null,
+        event_date: currentEventData?.event_date || null,
+        event_time: currentEventData?.event_time || null,
+        ticket_type: 'individual',
+        qr_code: generatedQRCode,
+        customer_name: guest.guest_name || null,
+        customer_whatsapp: guest.whatsapp || null,
+        source_guest_id: guest.id,
+        accessed: true,
+        accessed_at: now,
+        used_at: now,
+        status: 'used',
+        accessed_by: operatorName
+      };
+
+      try {
+        const createdCode = await insertAccessCodeWithFallback(payload);
+        await updateGuestAccessWithFallback(guest.id, createdCode, now, operatorName);
+
+        showMessage(`Acesso confirmado e QR Code criado para ${guest.guest_name || 'convidado'}.`, 'success');
+
+        await loadSummary();
+        await loadRecentAccesses();
+
+        document.getElementById('searchInput').value = '';
+        document.getElementById('resultContainer').innerHTML = `
+          <div class="result-card">
+            <h3>✅ Entrada confirmada</h3>
+            <div class="result-meta">
+              <div><strong>Nome:</strong> ${escapeHTML(guest.guest_name || 'Convidado')}</div>
+              <div><strong>QR Code criado:</strong> ${escapeHTML(createdCode.qr_code || generatedQRCode)}</div>
+              <div><strong>Data/Hora:</strong> ${formatDateTimeBR(now)}</div>
+              <div><strong>Operador:</strong> ${escapeHTML(operatorName)}</div>
+            </div>
+          </div>
+        `;
+
+        focusSearch();
+      } catch (error) {
+        console.error(error);
+        showMessage('Erro ao confirmar acesso sem QR: ' + error.message, 'error');
+      }
+    }
+
+    async function insertAccessCodeWithFallback(payload) {
+      let { data, error } = await supabaseClient
+        .from('access_codes')
+        .insert(payload)
+        .select('*')
+        .single();
+
+      if (!error) return data;
+
+      const msg = String(error.message || '');
+
+      if (msg.includes('accessed_by') || msg.includes('schema cache') || msg.includes('Could not find')) {
+        const fallbackPayload = { ...payload };
+        delete fallbackPayload.accessed_by;
+
+        const retry = await supabaseClient
+          .from('access_codes')
+          .insert(fallbackPayload)
+          .select('*')
+          .single();
+
+        if (retry.error) throw retry.error;
+        return retry.data;
+      }
+
+      throw error;
+    }
+
+    async function updateGuestAccessWithFallback(guestId, createdCode, now, operatorName) {
+      const fullPayload = {
+        access: true,
+        accessed_at: now,
+        access_code_id: createdCode.id,
+        attendance_status: 'confirmed',
+        confirmed: true,
+        confirmed_at: now,
+        access_confirmed_by: operatorName
+      };
+
+      let { error } = await supabaseClient
+        .from('event_guests')
+        .update(fullPayload)
+        .eq('id', guestId);
+
+      if (!error) return;
+
+      console.warn('Fallback updateGuestAccessWithFallback:', error);
+
+      const basicPayload = {
+        access: true,
+        accessed_at: now,
+        access_code_id: createdCode.id
+      };
+
+      const retry = await supabaseClient
+        .from('event_guests')
+        .update(basicPayload)
+        .eq('id', guestId);
+
+      if (retry.error) throw retry.error;
+    }
+
 
     async function confirmAccessFromResult(index) {
       const item = currentResults[index];
@@ -373,7 +593,31 @@
 
     async function confirmAccessCode(code, guest) {
       const now = new Date().toISOString();
-      const { data, error } = await supabaseClient.from('access_codes').update({ accessed: true, accessed_at: now, used_at: now, status: 'used' }).eq('id', code.id).or('accessed.is.null,accessed.eq.false').select('*').maybeSingle();
+      const operatorName = getCurrentOperatorName();
+      let updatePayload = { accessed: true, accessed_at: now, used_at: now, status: 'used', accessed_by: operatorName };
+
+      let { data, error } = await supabaseClient
+        .from('access_codes')
+        .update(updatePayload)
+        .eq('id', code.id)
+        .or('accessed.is.null,accessed.eq.false')
+        .select('*')
+        .maybeSingle();
+
+      if (error && (String(error.message || '').includes('accessed_by') || String(error.message || '').includes('schema cache') || String(error.message || '').includes('Could not find'))) {
+        delete updatePayload.accessed_by;
+
+        const retry = await supabaseClient
+          .from('access_codes')
+          .update(updatePayload)
+          .eq('id', code.id)
+          .or('accessed.is.null,accessed.eq.false')
+          .select('*')
+          .maybeSingle();
+
+        data = retry.data;
+        error = retry.error;
+      }
       if (error) { showMessage('Erro ao baixar QR Code: ' + error.message, 'error'); return; }
       if (!data) { showMessage('Este QR Code já foi utilizado por outro operador.', 'warning'); await searchPortaria(); return; }
       await updateGuestAccess(data, guest, now);
@@ -387,8 +631,43 @@
     async function updateGuestAccess(accessCode, guest, now) {
       const guestId = accessCode.source_guest_id || guest?.id || null;
       if (!guestId) return;
-      const { error } = await supabaseClient.from('event_guests').update({ access: true, accessed_at: now, access_code_id: accessCode.id }).eq('id', guestId);
-      if (error) { console.warn('Não foi possível atualizar event_guests.access.', error); showMessage('QR Code baixado, mas não foi possível atualizar o acesso do convidado. Verifique as colunas event_guests.access/accessed_at/access_code_id.', 'warning'); }
+
+      const operatorName = getCurrentOperatorName();
+
+      const fullPayload = {
+        access: true,
+        accessed_at: now,
+        access_code_id: accessCode.id,
+        attendance_status: 'confirmed',
+        confirmed: true,
+        confirmed_at: guest?.confirmed_at || now,
+        access_confirmed_by: operatorName
+      };
+
+      let { error } = await supabaseClient
+        .from('event_guests')
+        .update(fullPayload)
+        .eq('id', guestId);
+
+      if (!error) return;
+
+      console.warn('Não foi possível atualizar event_guests com payload completo. Tentando básico.', error);
+
+      const basicPayload = {
+        access: true,
+        accessed_at: now,
+        access_code_id: accessCode.id
+      };
+
+      const retry = await supabaseClient
+        .from('event_guests')
+        .update(basicPayload)
+        .eq('id', guestId);
+
+      if (retry.error) {
+        console.warn('Não foi possível atualizar event_guests.access.', retry.error);
+        showMessage('QR Code baixado, mas não foi possível atualizar o acesso do convidado. Verifique as colunas event_guests.access/accessed_at/access_code_id.', 'warning');
+      }
     }
 
     async function loadRecentAccesses() {
