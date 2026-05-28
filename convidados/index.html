@@ -8,13 +8,22 @@
   <title>Gestão de Convidados - Bot WhatsApp</title>
 
   <!--
-    Para controlar corretamente envio/enfileiramento na Z-API, execute também:
+    Para controlar corretamente o envio, execute também:
 
     alter table public.event_guests
     add column if not exists status text default 'pendente',
-    add column if not exists message_status text,
+    add column if not exists message_status text default 'not_sent',
     add column if not exists zapi_message_id text,
     add column if not exists zapi_zaap_id text;
+
+    -- Remover conceito antigo de fila/queued:
+    update public.event_guests
+    set
+      message_status = 'sent',
+      message_sent = true,
+      message_sent_at = coalesce(message_sent_at, now()),
+      last_send_error = null
+    where message_status in ('queued', 'Na fila', 'na_fila');
 
     Para salvar o meio de envio por evento, execute no Supabase:
 
@@ -2181,6 +2190,7 @@
           whatsapp,
           confirmed: false,
           message_sent: false,
+          message_status: 'not_sent',
           last_send_error: null
         });
 
@@ -2309,7 +2319,7 @@
 
     function getGuestMessageValue(guest) {
       if (guest.last_send_error) return 'erro';
-      if (guest.message_status === 'queued') return 'na_fila';
+      if (guest.message_status === 'sent') return 'na_fila';
       if (guest.message_sent) return 'enviada';
       return 'nao_enviada';
     }
@@ -2322,7 +2332,7 @@
       }
 
       if (status === 'na_fila') {
-        return '<span class="badge badge-yellow">Na fila</span>';
+        return '<span class="badge badge-yellow">Enviada</span>';
       }
 
       if (status === 'enviada') {
@@ -2331,6 +2341,44 @@
 
       return '<span class="badge badge-yellow">Não enviada</span>';
     }
+
+
+    function normalizeMessageStatus(guest) {
+      const status = String(guest?.message_status || '').trim().toLowerCase();
+
+      if (
+        guest?.message_sent === true ||
+        status === 'sent' ||
+        status === 'enviada' ||
+        status === 'enviado' ||
+        status === 'queued' ||
+        status === 'na fila' ||
+        status === 'na_fila'
+      ) {
+        return 'sent';
+      }
+
+      if (status === 'error' || status === 'erro') {
+        return 'error';
+      }
+
+      return 'not_sent';
+    }
+
+    function getMessageStatusBadge(guest) {
+      const status = normalizeMessageStatus(guest);
+
+      if (status === 'sent') {
+        return '<span class="badge badge-gray">Enviada</span>';
+      }
+
+      if (status === 'error') {
+        return '<span class="badge badge-red">Erro</span>';
+      }
+
+      return '<span class="badge badge-yellow">Não enviada</span>';
+    }
+
 
     function renderGuests() {
       const container = document.getElementById('guestsTableContainer');
@@ -2352,7 +2400,7 @@
           guest.group_name,
           guest.whatsapp,
           statusValue === 'nao_comparecera' ? 'Não comparecerá' : statusValue,
-          messageValue === 'na_fila' ? 'Na fila' : messageValue
+          messageValue === 'na_fila' ? 'Enviada' : messageValue
         ];
 
         return values.filter(Boolean).some(value => String(value).toLowerCase().includes(search));
@@ -2379,7 +2427,7 @@
               <span>Mensagem</span>
               <select id="messageFilter" onchange="renderGuests()">
                 <option value="" ${messageFilter === '' ? 'selected' : ''}>Todas</option>
-                <option value="na_fila" ${messageFilter === 'na_fila' ? 'selected' : ''}>Na fila</option>
+                <option value="na_fila" ${messageFilter === 'na_fila' ? 'selected' : ''}>Enviada</option>
                 <option value="enviada" ${messageFilter === 'enviada' ? 'selected' : ''}>Enviada</option>
                 <option value="nao_enviada" ${messageFilter === 'nao_enviada' ? 'selected' : ''}>Não enviada</option>
                 <option value="erro" ${messageFilter === 'erro' ? 'selected' : ''}>Com erro</option>
@@ -2915,9 +2963,11 @@ ${new Date().toLocaleString('pt-BR')}`;
     }
 
     function getPendingToSend() {
-      return guests.filter(item => !item.confirmed && !item.message_sent && normalizePhoneWithDDI(item.whatsapp));
+      return guests.filter(guest => {
+        const status = normalizeMessageStatus(guest);
+        return status !== 'sent' && guest.whatsapp;
+      });
     }
-
 
     async function sendTextZAPI(phone, message) {
       if (getActiveSendProvider() !== 'zapi') {
@@ -3083,20 +3133,29 @@ ${new Date().toLocaleString('pt-BR')}`;
       const forceTextOnly = document.getElementById('zapiTextOnly')?.checked !== false;
       let result;
 
-      if (inviteImageUrl ) {
+      if (inviteImageUrl && !forceTextOnly) {
         result = await sendImageZAPI(phone, inviteImageUrl, message);
       } else {
         result = await sendTextZAPI(phone, message);
       }
 
+      /*
+        Status permitidos:
+        sent     = Enviada
+        not_sent = Não enviada
+        error    = Erro
+
+        Não existe mais queued/Enviada.
+      */
       const updatePayload = {
-        message_sent: false,
-        message_status: 'queued',
-        message_sent_at: null,
+        message_sent: true,
+        message_status: 'sent',
+        message_sent_at: new Date().toISOString(),
         last_send_error: null
       };
 
       if (result?.messageId !== undefined) updatePayload.zapi_message_id = result.messageId;
+      if (result?.id !== undefined && !updatePayload.zapi_message_id) updatePayload.zapi_message_id = result.id;
       if (result?.zaapId !== undefined) updatePayload.zapi_zaap_id = result.zaapId;
 
       const { error } = await supabaseClient
@@ -3105,12 +3164,14 @@ ${new Date().toLocaleString('pt-BR')}`;
         .eq('id', guest.id);
 
       if (error) {
-        console.warn('Não foi possível salvar status queued completo. Tentando update básico.', error);
+        console.warn('Não foi possível salvar status completo. Tentando update básico.', error);
 
         await supabaseClient
           .from('event_guests')
           .update({
-            message_sent: false,
+            message_sent: true,
+            message_status: 'sent',
+            message_sent_at: new Date().toISOString(),
             last_send_error: null
           })
           .eq('id', guest.id);
@@ -3135,7 +3196,7 @@ ${new Date().toLocaleString('pt-BR')}`;
         // }
 
         await loadGuests();
-        showMessage(`Mensagem enfileirada na Z-API para ${guest.guest_name}. Confira no WhatsApp antes de novos lotes.`, 'success');
+        showMessage(`Mensagem enviada na Z-API para ${guest.guest_name}. Confira no WhatsApp antes de novos lotes.`, 'success');
       } catch (error) {
         await saveSendError(guest.id, error.message);
 
@@ -3199,7 +3260,7 @@ ${new Date().toLocaleString('pt-BR')}`;
           summary.items.push({
             name: guest.guest_name || '-',
             whatsapp: formatPhoneBR(guest.whatsapp) || '-',
-            status: 'Enfileirada via Z-API'
+            status: 'Enviada via Z-API'
           });
         } catch (error) {
           summary.errors++;
@@ -3218,7 +3279,7 @@ ${new Date().toLocaleString('pt-BR')}`;
         showSendProgress(
           true,
           `Processando ${i + 1} de ${selected.length}`,
-          `Enfileiradas: ${summary.sent} | Erros: ${summary.errors} | Atual: ${guest.guest_name}`,
+          `Enviadas: ${summary.sent} | Erros: ${summary.errors} | Atual: ${guest.guest_name}`,
           percent
         );
 
@@ -3238,10 +3299,10 @@ ${new Date().toLocaleString('pt-BR')}`;
       if (stopRequested) {
         showMessage('Envio interrompido pelo usuário.', 'warning');
       } else {
-        showMessage(`Lote via Z-API finalizado. Enfileiradas: ${summary.sent}. Erros: ${summary.errors}. Pausa recomendada: ${pauseMinutes} minuto(s).`, summary.errors ? 'warning' : 'success');
+        showMessage(`Lote via Z-API finalizado. Enviadas: ${summary.sent}. Erros: ${summary.errors}. Pausa recomendada: ${pauseMinutes} minuto(s).`, summary.errors ? 'warning' : 'success');
       }
 
-      showSendProgress(true, 'Lote finalizado', `Enfileiradas: ${summary.sent}. Erros: ${summary.errors}.`, 100);
+      showSendProgress(true, 'Lote finalizado', `Enviadas: ${summary.sent}. Erros: ${summary.errors}.`, 100);
 
       batchSending = false;
       document.getElementById('safeSendButton').disabled = false;
@@ -3319,6 +3380,8 @@ ${new Date().toLocaleString('pt-BR')}`;
       await supabaseClient
         .from('event_guests')
         .update({
+          message_sent: false,
+          message_status: 'error',
           last_send_error: String(errorMessage || 'Erro desconhecido').substring(0, 250)
         })
         .eq('id', guestId);
@@ -3408,7 +3471,7 @@ ${BOT_WHATSAPP_BASE_URL}
         showSendProgress(
           true,
           `Processando ${i + 1} de ${selected.length}`,
-          `Enfileiradas: ${summary.sent} | Erros: ${summary.errors} | Atual: ${guest.guest_name}`,
+          `Enviadas: ${summary.sent} | Erros: ${summary.errors} | Atual: ${guest.guest_name}`,
           percent
         );
 
@@ -3429,10 +3492,10 @@ ${BOT_WHATSAPP_BASE_URL}
 
       if (stopRequested) {
         showMessage('Envio interrompido pelo usuário.', 'warning');
-        showSendProgress(true, 'Envio interrompido', `Enfileiradas: ${summary.sent} | Erros: ${summary.errors} | Não processadas: ${summary.skipped}`, 100);
+        showSendProgress(true, 'Envio interrompido', `Enviadas: ${summary.sent} | Erros: ${summary.errors} | Não processadas: ${summary.skipped}`, 100);
       } else {
-        showMessage(`Lote finalizado. Enfileiradas: ${summary.sent}. Erros: ${summary.errors}. Pausa recomendada: ${pauseMinutes} minuto(s).`, 'success');
-        showSendProgress(true, 'Lote finalizado', `Enfileiradas: ${summary.sent}. Erros: ${summary.errors}.`, 100);
+        showMessage(`Lote finalizado. Enviadas: ${summary.sent}. Erros: ${summary.errors}. Pausa recomendada: ${pauseMinutes} minuto(s).`, 'success');
+        showSendProgress(true, 'Lote finalizado', `Enviadas: ${summary.sent}. Erros: ${summary.errors}.`, 100);
       }
 
       batchSending = false;
@@ -3445,18 +3508,19 @@ ${BOT_WHATSAPP_BASE_URL}
     }
 
     async function resetMessageSentForPending() {
-      const ok = confirm('Isso vai permitir reenviar mensagens para convidados pendentes já marcados como mensagem enviada. Deseja continuar?');
+      const ok = confirm('Deseja liberar reenvio apenas para convidados com mensagem não enviada ou erro?');
       if (!ok) return;
 
       const { error } = await supabaseClient
         .from('event_guests')
         .update({
           message_sent: false,
+          message_status: 'not_sent',
           message_sent_at: null,
           last_send_error: null
         })
         .eq('event_id', currentEventId)
-        .eq('confirmed', false);
+        .neq('message_status', 'sent');
 
       if (error) {
         showMessage('Erro ao liberar reenvio: ' + error.message, 'error');
@@ -3464,7 +3528,7 @@ ${BOT_WHATSAPP_BASE_URL}
       }
 
       await loadGuests();
-      showMessage('Reenvio liberado para convidados pendentes.', 'success');
+      showMessage('Reenvio liberado para mensagens não enviadas/erro.', 'success');
     }
 
     async function markMessageSent(guestId) {
@@ -3472,13 +3536,14 @@ ${BOT_WHATSAPP_BASE_URL}
         .from('event_guests')
         .update({
           message_sent: true,
+          message_status: 'sent',
           message_sent_at: new Date().toISOString(),
           last_send_error: null
         })
         .eq('id', guestId);
 
       if (error) {
-        showMessage('Erro ao marcar mensagem como enviada: ' + error.message, 'error');
+        showMessage('Erro ao marcar como enviado: ' + error.message, 'error');
         return;
       }
 
