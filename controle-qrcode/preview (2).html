@@ -1,0 +1,1162 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link href="../image/favicon.ico" rel="icon" type="image/x-icon" />
+  <title>Convidou - Planilha de QR Codes</title>
+
+  <!--
+    MÓDULO: EXPORTAÇÃO OFFLINE DE QR CODES
+
+    Usa exclusivamente:
+    public.access_codes
+
+    URL esperada:
+    /download-qrcode/?event_id=UUID
+
+    Exporta planilha Excel com:
+    nome, código, mesa, lugar, tipo, status, acesso, data de acesso,
+    telefone, e-mail, evento, data, hora e dados completos para gestão offline.
+  -->
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
+  <style>
+    :root {
+      --bg:#07080c;
+      --panel:rgba(18,22,31,.92);
+      --border:rgba(255,255,255,.09);
+      --text:#f8fafc;
+      --muted:#94a3b8;
+      --gold:#d8a84f;
+      --gold-2:#f2c46d;
+      --green:#81d99b;
+      --blue:#7aa8ff;
+      --red:#ef7777;
+      --shadow:0 28px 80px rgba(0,0,0,.35);
+    }
+
+    * { box-sizing:border-box; margin:0; padding:0; font-family:Inter, Arial, sans-serif; }
+
+    body {
+      min-height:100vh;
+      color:var(--text);
+      background:
+        radial-gradient(circle at 78% 8%, rgba(216,168,79,.18), transparent 32%),
+        radial-gradient(circle at 8% 38%, rgba(122,168,255,.10), transparent 28%),
+        linear-gradient(135deg, #07080c, #10131c 45%, #090b10);
+      padding:20px;
+      overflow-x:hidden;
+    }
+
+    body::before {
+      content:"";
+      position:fixed;
+      inset:0;
+      pointer-events:none;
+      background:
+        linear-gradient(90deg, rgba(255,255,255,.024) 1px, transparent 1px),
+        linear-gradient(rgba(255,255,255,.017) 1px, transparent 1px);
+      background-size:64px 64px;
+      mask-image:radial-gradient(circle at 50% 30%, black, transparent 75%);
+      z-index:0;
+    }
+
+    .container { position:relative; z-index:1; max-width:1480px; margin:0 auto; }
+
+    .top-nav {
+      position:sticky;
+      top:14px;
+      z-index:1000;
+      margin-bottom:24px;
+      background:rgba(7,8,12,.76);
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:26px;
+      box-shadow:0 24px 60px rgba(0,0,0,.34), inset 0 1px 0 rgba(255,255,255,.04);
+      backdrop-filter:blur(22px);
+    }
+
+    .nav-inner {
+      min-height:76px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:18px;
+      padding:14px 18px;
+      position:relative;
+    }
+
+    .brand {
+      display:inline-flex;
+      align-items:center;
+      gap:12px;
+      color:var(--text);
+      text-decoration:none;
+      font-weight:950;
+      letter-spacing:.08em;
+    }
+
+    .brand-mark {
+      width:42px;
+      height:42px;
+      border-radius:15px;
+      display:grid;
+      place-items:center;
+      color:var(--gold-2);
+      background:linear-gradient(135deg,#111827,#1e293b);
+      border:1px solid rgba(216,168,79,.35);
+      box-shadow:0 12px 30px rgba(216,168,79,.12);
+    }
+
+    .nav-actions { display:flex; align-items:center; gap:10px; }
+
+    .user-chip {
+      display:inline-flex;
+      align-items:center;
+      gap:10px;
+      padding:8px 13px 8px 8px;
+      border-radius:999px;
+      background:rgba(255,255,255,.065);
+      border:1px solid rgba(255,255,255,.09);
+      color:#dbe4ef;
+      font-weight:900;
+      font-size:13px;
+      white-space:nowrap;
+    }
+
+    .avatar {
+      width:34px;
+      height:34px;
+      border-radius:999px;
+      display:grid;
+      place-items:center;
+      color:#111827;
+      background:linear-gradient(135deg,var(--gold-2),var(--gold));
+      font-weight:950;
+    }
+
+    button, .nav-btn {
+      border:none;
+      border-radius:14px;
+      padding:13px 16px;
+      font-size:14px;
+      font-weight:950;
+      cursor:pointer;
+      text-decoration:none;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:8px;
+      transition:.2s;
+      white-space:nowrap;
+    }
+
+    button:hover, .nav-btn:hover { transform:translateY(-1px); filter:brightness(1.03); }
+    button:disabled { opacity:.6; cursor:not-allowed; transform:none; }
+
+    .nav-btn {
+      min-height:46px;
+      color:var(--text);
+      background:rgba(255,255,255,.075);
+      border:1px solid var(--border);
+    }
+
+    .nav-gold {
+      color:#111827;
+      background:linear-gradient(135deg,var(--gold-2),var(--gold));
+      border:1px solid rgba(216,168,79,.45);
+      box-shadow:0 16px 38px rgba(216,168,79,.16);
+    }
+
+    .nav-danger {
+      color:#ffb4b4;
+      background:rgba(239,119,119,.12);
+      border:1px solid rgba(239,119,119,.20);
+    }
+
+    .mobile-menu-button {
+      display:none;
+      width:52px;
+      height:52px;
+      border-radius:16px;
+      border:1px solid rgba(255,255,255,.10);
+      background:rgba(255,255,255,.06);
+      color:white;
+      font-size:24px;
+      cursor:pointer;
+      align-items:center;
+      justify-content:center;
+      padding:0;
+    }
+
+    .mobile-dropdown {
+      position:absolute;
+      top:calc(100% + 14px);
+      right:0;
+      width:310px;
+      background:rgba(15,18,28,.98);
+      border:1px solid rgba(255,255,255,.08);
+      border-radius:24px;
+      padding:16px;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+      backdrop-filter:blur(20px);
+      box-shadow:0 24px 60px rgba(0,0,0,.40);
+      opacity:0;
+      visibility:hidden;
+      transform:translateY(-10px);
+      transition:.25s;
+      z-index:999;
+    }
+
+    .mobile-dropdown.active { opacity:1; visibility:visible; transform:translateY(0); }
+
+    .mobile-link {
+      width:100%;
+      min-height:48px;
+      border-radius:16px;
+      border:1px solid rgba(255,255,255,.08);
+      background:rgba(255,255,255,.05);
+      color:white;
+      padding:0 16px;
+      display:flex;
+      align-items:center;
+      justify-content:flex-start;
+      font-size:14px;
+      font-weight:950;
+      cursor:pointer;
+      text-decoration:none;
+    }
+
+    .mobile-link.gold { background:linear-gradient(135deg,var(--gold-2),var(--gold)); color:#111827; }
+    .mobile-link.danger { color:#ffb4b4; border-color:rgba(239,119,119,.20); background:rgba(239,119,119,.10); }
+
+    .header {
+      position:relative;
+      overflow:hidden;
+      background:
+        linear-gradient(135deg, rgba(39,37,34,.88), rgba(16,20,31,.92)),
+        radial-gradient(circle at top right, rgba(216,168,79,.22), transparent 36%);
+      color:white;
+      border-radius:34px;
+      padding:38px 34px;
+      margin-bottom:18px;
+      border:1px solid rgba(216,168,79,.16);
+      box-shadow:var(--shadow);
+      backdrop-filter:blur(20px);
+    }
+
+    .header::before {
+      content:'';
+      position:absolute;
+      width:340px;
+      height:340px;
+      top:-140px;
+      right:-90px;
+      border-radius:999px;
+      background:rgba(255,255,255,.055);
+    }
+
+    .header::after {
+      content:'';
+      position:absolute;
+      inset:auto 0 0 0;
+      height:2px;
+      background:linear-gradient(90deg,transparent,rgba(216,168,79,.6),transparent);
+    }
+
+    .header-content {
+      position:relative;
+      z-index:2;
+      display:grid;
+      grid-template-columns:1fr auto;
+      gap:24px;
+      align-items:center;
+    }
+
+    .header-badge {
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      background:rgba(216,168,79,.10);
+      border:1px solid rgba(216,168,79,.18);
+      border-radius:999px;
+      padding:9px 14px;
+      color:var(--gold-2);
+      font-size:13px;
+      font-weight:950;
+      margin-bottom:18px;
+      letter-spacing:.08em;
+      text-transform:uppercase;
+    }
+
+    .header h1 {
+      font-size:clamp(34px,5vw,60px);
+      line-height:.96;
+      letter-spacing:-2px;
+      margin-bottom:14px;
+      max-width:850px;
+    }
+
+    .header p {
+      color:rgba(226,232,240,.82);
+      font-size:17px;
+      line-height:1.6;
+      max-width:780px;
+    }
+
+    .hero-actions { display:flex; gap:12px; flex-wrap:wrap; justify-content:flex-end; }
+
+    .card, .summary-box, .table-card {
+      background:var(--panel);
+      border:1px solid var(--border);
+      box-shadow:var(--shadow);
+      backdrop-filter:blur(18px);
+      border-radius:26px;
+      padding:24px;
+      margin-bottom:22px;
+      overflow:hidden;
+      position:relative;
+    }
+
+    .card::after, .summary-box::after {
+      content:'';
+      position:absolute;
+      width:150px;
+      height:150px;
+      border-radius:999px;
+      right:-78px;
+      top:-78px;
+      background:rgba(216,168,79,.055);
+      pointer-events:none;
+    }
+
+    .card > *, .summary-box > * { position:relative; z-index:2; }
+
+    .config-box { display:none; }
+    .config-box.active { display:block; }
+
+    .config-grid, .toolbar-grid {
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:16px;
+    }
+
+    .toolbar-grid {
+      grid-template-columns:2fr 1fr 1fr auto auto;
+      align-items:end;
+    }
+
+    .form-group { display:flex; flex-direction:column; gap:8px; }
+
+    label { font-weight:950; font-size:14px; color:#e5edf7; }
+
+    input, select {
+      width:100%;
+      padding:15px 16px;
+      border:1px solid var(--border);
+      border-radius:15px;
+      font-size:15px;
+      outline:none;
+      background:rgba(255,255,255,.055);
+      color:var(--text);
+      transition:.2s;
+      font-weight:800;
+    }
+
+    input::placeholder { color:#64748b; }
+    select option { color:#111827; background:#f8fafc; }
+
+    input:focus, select:focus {
+      border-color:rgba(216,168,79,.55);
+      box-shadow:0 0 0 4px rgba(216,168,79,.12);
+    }
+
+    .btn-primary {
+      color:#111827;
+      background:linear-gradient(135deg,var(--gold-2),var(--gold));
+      box-shadow:0 16px 38px rgba(216,168,79,.16);
+      border:1px solid rgba(216,168,79,.45);
+    }
+
+    .btn-secondary { background:rgba(255,255,255,.075); color:var(--text); border:1px solid var(--border); }
+    .btn-success { color:#07110b; background:linear-gradient(135deg,#a7f3d0,var(--green)); border:1px solid rgba(129,217,155,.45); }
+    .btn-warning { background:rgba(216,168,79,.14); color:var(--gold-2); border:1px solid rgba(216,168,79,.22); }
+
+    .message {
+      margin-bottom:18px;
+      padding:14px 16px;
+      border-radius:16px;
+      display:none;
+      font-size:14px;
+      font-weight:900;
+      border:1px solid transparent;
+    }
+
+    .message.success { display:block; background:rgba(129,217,155,.12); color:var(--green); border-color:rgba(129,217,155,.18); }
+    .message.error { display:block; background:rgba(239,119,119,.12); color:var(--red); border-color:rgba(239,119,119,.18); }
+    .message.info { display:block; background:rgba(122,168,255,.12); color:var(--blue); border-color:rgba(122,168,255,.18); }
+
+    .summary {
+      display:grid;
+      grid-template-columns:repeat(5,1fr);
+      gap:18px;
+      margin-bottom:22px;
+    }
+
+    .summary-box {
+      min-height:110px;
+      margin-bottom:0;
+    }
+
+    .summary-box span {
+      display:block;
+      color:var(--muted);
+      font-size:12px;
+      margin-bottom:8px;
+      font-weight:950;
+      text-transform:uppercase;
+      letter-spacing:.08em;
+    }
+
+    .summary-box strong {
+      font-size:34px;
+      color:var(--gold-2);
+      letter-spacing:-1px;
+    }
+
+    .table-card { padding:0; }
+
+    .table-head {
+      padding:20px;
+      border-bottom:1px solid rgba(255,255,255,.08);
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:14px;
+      flex-wrap:wrap;
+    }
+
+    .table-head h2 { font-size:22px; letter-spacing:-.4px; }
+
+    .table-wrap {
+      overflow:auto;
+      max-height:65vh;
+    }
+
+    table {
+      width:100%;
+      border-collapse:collapse;
+      min-width:1180px;
+      font-size:13px;
+    }
+
+    th, td {
+      padding:12px;
+      text-align:left;
+      border-bottom:1px solid rgba(255,255,255,.07);
+      color:#cbd5e1;
+      vertical-align:top;
+    }
+
+    th {
+      position:sticky;
+      top:0;
+      z-index:5;
+      background:#111827;
+      color:var(--muted);
+      font-size:11px;
+      text-transform:uppercase;
+      letter-spacing:.06em;
+    }
+
+    tr:hover td { background:rgba(255,255,255,.045); }
+
+    .badge {
+      padding:7px 10px;
+      border-radius:999px;
+      font-size:12px;
+      font-weight:950;
+      white-space:nowrap;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+    }
+
+    .badge-green { background:rgba(129,217,155,.12); color:var(--green); border:1px solid rgba(129,217,155,.18); }
+    .badge-yellow { background:rgba(216,168,79,.12); color:var(--gold-2); border:1px solid rgba(216,168,79,.18); }
+    .badge-red { background:rgba(239,119,119,.12); color:var(--red); border:1px solid rgba(239,119,119,.18); }
+    .badge-gray { background:rgba(255,255,255,.075); color:#cbd5e1; border:1px solid var(--border); }
+
+    .small-text { color:var(--muted); font-size:13px; line-height:1.45; margin-top:8px; }
+
+    .empty-state {
+      text-align:center;
+      padding:56px 20px;
+      color:var(--muted);
+      border-radius:22px;
+      border:1px dashed rgba(255,255,255,.12);
+      margin:20px;
+    }
+
+    @media(max-width:980px) {
+      body { padding:12px; }
+      .desktop-nav { display:none; }
+      .mobile-menu-button { display:flex; }
+      .header { padding:28px; border-radius:26px; }
+      .header-content, .config-grid, .toolbar-grid, .summary { grid-template-columns:1fr; }
+      button { width:100%; }
+      .hero-actions { justify-content:flex-start; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <nav class="top-nav">
+      <div class="nav-inner">
+        <a class="brand" href="/eventos/">
+          <div class="brand-mark">◇</div>
+          <strong>CONVIDOU</strong>
+        </a>
+
+        <div class="nav-actions desktop-nav">
+          <div class="user-chip">
+            <div class="avatar" id="userAvatar">U</div>
+            <span id="userName">Usuário</span>
+          </div>
+
+          <button class="nav-btn nav-gold" onclick="goEvents()">← Eventos</button>
+          <button class="nav-btn" onclick="toggleConfig()">⚙️ Configurações</button>
+          <button class="nav-btn nav-danger" onclick="logoutUser()">🚪 Sair</button>
+        </div>
+
+        <button class="mobile-menu-button" onclick="toggleMobileMenu()" title="Menu">☰</button>
+
+        <div class="mobile-dropdown" id="mobileDropdown">
+          <button class="mobile-link gold" onclick="goEvents()">← Eventos</button>
+          <button class="mobile-link" onclick="toggleConfig(); closeMobileMenu();">⚙️ Configurações</button>
+          <button class="mobile-link danger" onclick="logoutUser()">🚪 Sair</button>
+        </div>
+      </div>
+    </nav>
+
+    <div class="header">
+      <div class="header-content">
+        <div>
+          <span class="header-badge">📊 Gestão offline</span>
+          <h1>Planilha de QR Codes</h1>
+          <p>
+            Liste todos os QR Codes do evento em formato de tabela e exporte uma planilha Excel completa
+            para controle offline de entrada, mesas, lugares e status de acesso.
+          </p>
+        </div>
+
+        <div class="hero-actions">
+          <button class="btn-secondary" onclick="loadCodesFromSupabase()">Atualizar lista</button>
+          <button class="btn-primary" onclick="exportExcel()">📥 Baixar Excel</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="message" class="message"></div>
+
+    <div class="card config-box" id="configContainer">
+      <div class="config-grid">
+        <div class="form-group">
+          <label for="supabaseUrl">Supabase URL</label>
+          <input type="text" id="supabaseUrl" placeholder="https://xxxx.supabase.co" />
+        </div>
+
+        <div class="form-group">
+          <label for="supabaseKey">Supabase Anon Key</label>
+          <input type="password" id="supabaseKey" placeholder="Cole sua anon public key" />
+        </div>
+
+        <div class="form-group">
+          <label for="eventName">Nome do evento</label>
+          <input type="text" id="eventName" placeholder="Carregado automaticamente" />
+        </div>
+      </div>
+
+      <div class="hero-actions" style="justify-content:flex-start;margin-top:16px;">
+        <button class="btn-primary" onclick="saveSupabaseConfig()">Salvar e carregar</button>
+        <button class="btn-secondary" onclick="loadCodesFromSupabase()">Atualizar</button>
+      </div>
+
+      <p class="small-text">
+        Esta tela usa somente a tabela <strong>access_codes</strong>.
+      </p>
+    </div>
+
+    <div class="summary">
+      <div class="summary-box">
+        <span>Total QR Codes</span>
+        <strong id="totalAll">0</strong>
+      </div>
+      <div class="summary-box">
+        <span>Mesas</span>
+        <strong id="totalTables">0</strong>
+      </div>
+      <div class="summary-box">
+        <span>Individuais</span>
+        <strong id="totalIndividual">0</strong>
+      </div>
+      <div class="summary-box">
+        <span>Utilizados</span>
+        <strong id="totalUsed">0</strong>
+      </div>
+      <div class="summary-box">
+        <span>Pendentes</span>
+        <strong id="totalPending">0</strong>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="toolbar-grid">
+        <div class="form-group">
+          <label for="searchInput">Buscar</label>
+          <input type="text" id="searchInput" placeholder="Nome, código, WhatsApp, e-mail, mesa ou status" oninput="renderTable()" />
+        </div>
+
+        <div class="form-group">
+          <label for="typeFilter">Tipo</label>
+          <select id="typeFilter" onchange="renderTable()">
+            <option value="all">Todos</option>
+            <option value="mesa">Mesa</option>
+            <option value="individual">Individual</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="accessFilter">Acesso</label>
+          <select id="accessFilter" onchange="renderTable()">
+            <option value="all">Todos</option>
+            <option value="used">Utilizados</option>
+            <option value="pending">Pendentes</option>
+          </select>
+        </div>
+
+        <button class="btn-secondary" onclick="clearFilters()">Limpar filtros</button>
+        <button class="btn-primary" onclick="exportExcel()">📥 Baixar Excel</button>
+      </div>
+    </div>
+
+    <div class="table-card">
+      <div class="table-head">
+        <div>
+          <h2>QR Codes do evento</h2>
+          <p class="small-text"><span id="visibleCount">0</span> registros visíveis na tabela.</p>
+        </div>
+
+        <div class="hero-actions">
+          <button class="btn-success" onclick="exportExcel(true)">Baixar apenas filtrados</button>
+          <button class="btn-warning" onclick="exportExcel(false)">Baixar todos</button>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Status acesso</th>
+              <th>Tipo</th>
+              <th>Nome</th>
+              <th>QR Code</th>
+              <th>Mesa</th>
+              <th>Lugar</th>
+              <th>WhatsApp</th>
+              <th>E-mail</th>
+              <th>Evento</th>
+              <th>Data</th>
+              <th>Hora</th>
+              <th>Status</th>
+              <th>Acessado em</th>
+              <th>Usado em</th>
+              <th>ID</th>
+            </tr>
+          </thead>
+          <tbody id="tableBody">
+            <tr>
+              <td colspan="16">Carregando...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+<script>
+  let supabaseClient = null;
+  let allCodes = [];
+  let visibleCodes = [];
+  let currentEventId = null;
+  let currentEventData = null;
+
+  const DEFAULT_SUPABASE_URL = 'https://pfyctxoikdrephjogdtm.supabase.co';
+  const DEFAULT_SUPABASE_KEY = 'sb_publishable_h_5hK_HTT-XJ4WUoOGzkGg_tqkBDLjv';
+
+  const savedUrl = localStorage.getItem('supabase_url') || DEFAULT_SUPABASE_URL;
+  const savedKey = localStorage.getItem('supabase_key') || DEFAULT_SUPABASE_KEY;
+
+  document.getElementById('supabaseUrl').value = savedUrl;
+  document.getElementById('supabaseKey').value = savedKey;
+
+  setupPremiumNav();
+  initializeSystem();
+
+  function connectSupabase(url, key) {
+    const { createClient } = supabase;
+    supabaseClient = createClient(url, key);
+  }
+
+  async function initializeSystem() {
+    const params = new URLSearchParams(window.location.search);
+    currentEventId = params.get('event_id') || localStorage.getItem('event_id');
+
+    if (!currentEventId) {
+      showMessage('Informe o event_id na URL. Ex: /download-qrcode/?event_id=UUID', 'error');
+      toggleConfig(true);
+      renderTable();
+      return;
+    }
+
+    if (!savedUrl || !savedKey) {
+      showMessage('Configure o Supabase para carregar os QR Codes.', 'info');
+      toggleConfig(true);
+      return;
+    }
+
+    connectSupabase(savedUrl, savedKey);
+    await loadEventFromURL();
+    await loadCodesFromSupabase();
+  }
+
+  async function loadEventFromURL() {
+    if (!currentEventId || !supabaseClient) return false;
+
+    const { data, error } = await supabaseClient
+      .from('events')
+      .select('id, name, event_date, event_time, location')
+      .eq('id', currentEventId)
+      .maybeSingle();
+
+    if (error) {
+      showMessage('Erro ao buscar evento: ' + error.message, 'error');
+      return false;
+    }
+
+    if (!data) {
+      showMessage('Evento não encontrado para este ID.', 'error');
+      return false;
+    }
+
+    currentEventData = data;
+    localStorage.setItem('event_id', data.id);
+    localStorage.setItem('event_name', data.name || '');
+
+    document.getElementById('eventName').value = data.name || '';
+
+    return true;
+  }
+
+  async function saveSupabaseConfig() {
+    const url = document.getElementById('supabaseUrl').value.trim().replace('/rest/v1/', '').replace('/rest/v1', '');
+    const key = document.getElementById('supabaseKey').value.trim();
+
+    if (!url || !key) {
+      showMessage('Informe a URL e a Anon Key do Supabase.', 'error');
+      return;
+    }
+
+    localStorage.setItem('supabase_url', url);
+    localStorage.setItem('supabase_key', key);
+
+    connectSupabase(url, key);
+    await loadEventFromURL();
+    await loadCodesFromSupabase();
+
+    showMessage('Configurações salvas.', 'success');
+  }
+
+  async function loadCodesFromSupabase() {
+    if (!supabaseClient) {
+      showMessage('Supabase não conectado.', 'error');
+      return;
+    }
+
+    const eventId = currentEventId || localStorage.getItem('event_id');
+
+    if (!eventId) {
+      allCodes = [];
+      renderTable();
+      updateSummary();
+      showMessage('Informe um event_id válido na URL.', 'error');
+      return;
+    }
+
+    showMessage('Carregando QR Codes...', 'info');
+
+    let all = [];
+    let from = 0;
+    const limit = 1000;
+
+    while (true) {
+      const { data, error } = await supabaseClient
+        .from('access_codes')
+        .select('*')
+        .eq('event_id', eventId)
+        .order('table_number', { ascending: true, nullsFirst: false })
+        .order('seat_number', { ascending: true, nullsFirst: false })
+        .range(from, from + limit - 1);
+
+      if (error) {
+        showMessage('Erro ao buscar QR Codes: ' + error.message, 'error');
+        return;
+      }
+
+      if (!data || data.length === 0) break;
+
+      all = all.concat(data);
+
+      if (data.length < limit) break;
+      from += limit;
+    }
+
+    allCodes = all;
+    renderTable();
+    updateSummary();
+    showMessage(`${allCodes.length} QR Codes carregados.`, 'success');
+  }
+
+  function getFilteredCodes() {
+    const search = document.getElementById('searchInput').value.trim().toLowerCase();
+    const type = document.getElementById('typeFilter').value;
+    const access = document.getElementById('accessFilter').value;
+
+    return allCodes.filter(item => {
+      const itemType = item.ticket_type || 'mesa';
+      const itemAccess = item.accessed === true ? 'used' : 'pending';
+
+      if (type !== 'all' && itemType !== type) return false;
+      if (access !== 'all' && itemAccess !== access) return false;
+
+      if (!search) return true;
+
+      const values = [
+        item.customer_name,
+        item.qr_code,
+        item.customer_whatsapp,
+        item.customer_email,
+        item.table_number,
+        item.seat_number,
+        item.event_name,
+        item.event_date,
+        item.event_time,
+        item.status,
+        item.id
+      ];
+
+      return values
+        .filter(value => value !== null && value !== undefined)
+        .some(value => String(value).toLowerCase().includes(search));
+    });
+  }
+
+  function renderTable() {
+    const tbody = document.getElementById('tableBody');
+    visibleCodes = getFilteredCodes();
+
+    document.getElementById('visibleCount').textContent = visibleCodes.length;
+
+    if (visibleCodes.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="16">Nenhum QR Code encontrado.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = visibleCodes.map((item, index) => `
+      <tr>
+        <td>${index + 1}</td>
+        <td>${item.accessed ? '<span class="badge badge-green">Utilizado</span>' : '<span class="badge badge-yellow">Pendente</span>'}</td>
+        <td>${escapeHTML(getTicketTypeLabel(item.ticket_type))}</td>
+        <td>${escapeHTML(item.customer_name || '-')}</td>
+        <td><strong>${escapeHTML(item.qr_code || '-')}</strong></td>
+        <td>${escapeHTML(item.table_number || '-')}</td>
+        <td>${escapeHTML(item.seat_number || '-')}</td>
+        <td>${escapeHTML(formatPhoneBR(item.customer_whatsapp) || '-')}</td>
+        <td>${escapeHTML(item.customer_email || '-')}</td>
+        <td>${escapeHTML(item.event_name || currentEventData?.name || '-')}</td>
+        <td>${escapeHTML(formatDateBR(item.event_date) || '-')}</td>
+        <td>${escapeHTML(formatTime(item.event_time) || '-')}</td>
+        <td>${escapeHTML(item.status || '-')}</td>
+        <td>${escapeHTML(formatDateTimeBR(item.accessed_at) || '-')}</td>
+        <td>${escapeHTML(formatDateTimeBR(item.used_at) || '-')}</td>
+        <td>${escapeHTML(item.id || '-')}</td>
+      </tr>
+    `).join('');
+  }
+
+  function updateSummary() {
+    const mesaCodes = allCodes.filter(item => (item.ticket_type || 'mesa') === 'mesa');
+    const individualCodes = allCodes.filter(item => (item.ticket_type || 'mesa') === 'individual');
+    const uniqueTables = new Set(mesaCodes.map(item => `${item.event_id || item.event_name}-${item.table_number}`).filter(Boolean));
+    const used = allCodes.filter(item => item.accessed === true).length;
+
+    document.getElementById('totalAll').textContent = allCodes.length;
+    document.getElementById('totalTables').textContent = uniqueTables.size;
+    document.getElementById('totalIndividual').textContent = individualCodes.length;
+    document.getElementById('totalUsed').textContent = used;
+    document.getElementById('totalPending').textContent = allCodes.length - used;
+  }
+
+  function getExcelRows(items) {
+    return items.map((item, index) => ({
+      '#': index + 1,
+      'Status Acesso': item.accessed ? 'Utilizado' : 'Pendente',
+      'Tipo': getTicketTypeLabel(item.ticket_type),
+      'Nome': item.customer_name || '',
+      'Código QR': item.qr_code || '',
+      'Mesa': item.table_number || '',
+      'Lugar': item.seat_number || '',
+      'WhatsApp': formatPhoneBR(item.customer_whatsapp) || '',
+      'WhatsApp Limpo': normalizeDigits(item.customer_whatsapp),
+      'E-mail': item.customer_email || '',
+      'Evento': item.event_name || currentEventData?.name || '',
+      'Data Evento': formatDateBR(item.event_date) || '',
+      'Hora Evento': formatTime(item.event_time) || '',
+      'Status Interno': item.status || '',
+      'Acessado Em': formatDateTimeBR(item.accessed_at) || '',
+      'Usado Em': formatDateTimeBR(item.used_at) || '',
+      'Criado Em': formatDateTimeBR(item.created_at) || '',
+      'ID QR Code': item.id || '',
+      'Event ID': item.event_id || ''
+    }));
+  }
+
+  function exportExcel(onlyFiltered = true) {
+    const items = onlyFiltered ? visibleCodes : allCodes;
+
+    if (!items || items.length === 0) {
+      showMessage('Nenhum QR Code para exportar.', 'error');
+      return;
+    }
+
+    const rows = getExcelRows(items);
+    const worksheet = XLSX.utils.json_to_sheet(rows);
+
+    worksheet['!cols'] = [
+      { wch: 6 },
+      { wch: 16 },
+      { wch: 16 },
+      { wch: 28 },
+      { wch: 34 },
+      { wch: 10 },
+      { wch: 10 },
+      { wch: 18 },
+      { wch: 16 },
+      { wch: 28 },
+      { wch: 28 },
+      { wch: 14 },
+      { wch: 12 },
+      { wch: 16 },
+      { wch: 22 },
+      { wch: 22 },
+      { wch: 22 },
+      { wch: 38 },
+      { wch: 38 }
+    ];
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'QR Codes');
+
+    const fileName = `${getSearchFilePrefix()}${safeFileName(getEventName())}-qrcodes-offline.xlsx`;
+    XLSX.writeFile(workbook, fileName);
+
+    showMessage(`Planilha exportada com ${items.length} registros.`, 'success');
+  }
+
+  function clearFilters() {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('typeFilter').value = 'all';
+    document.getElementById('accessFilter').value = 'all';
+    renderTable();
+  }
+
+  function getEventName() {
+    return document.getElementById('eventName').value.trim() || currentEventData?.name || 'evento';
+  }
+
+  function getSearchFilePrefix() {
+    const search = document.getElementById('searchInput')?.value.trim() || '';
+    return search ? safeFileName(search) + '-' : '';
+  }
+
+  function getTicketTypeLabel(type) {
+    return (type || 'mesa') === 'individual' ? 'Individual' : 'Mesa';
+  }
+
+  function normalizeDigits(value) {
+    return String(value || '').replace(/\D/g, '');
+  }
+
+  function formatPhoneBR(value) {
+    const digits = normalizeDigits(value);
+    if (!digits) return '';
+
+    let local = digits;
+    if (local.startsWith('55')) local = local.slice(2);
+
+    if (local.length === 11) return `(${local.slice(0, 2)}) ${local.slice(2, 7)}-${local.slice(7)}`;
+    if (local.length === 10) return `(${local.slice(0, 2)}) ${local.slice(2, 6)}-${local.slice(6)}`;
+
+    return value;
+  }
+
+  function formatDateBR(dateString) {
+    if (!dateString) return '';
+
+    const parts = String(dateString).split('-');
+
+    if (parts.length !== 3) return dateString;
+
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  }
+
+  function formatTime(time) {
+    if (!time) return '';
+    return String(time).slice(0, 5);
+  }
+
+  function formatDateTimeBR(dateString) {
+    if (!dateString) return '';
+
+    const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) return dateString;
+
+    return date.toLocaleString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  }
+
+  function safeFileName(value) {
+    return String(value || 'arquivo')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-zA-Z0-9-_]+/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '')
+      .toLowerCase();
+  }
+
+  function escapeHTML(value) {
+    return String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function toggleConfig(forceOpen = false) {
+    const container = document.getElementById('configContainer');
+    if (forceOpen) {
+      container.classList.add('active');
+      return;
+    }
+    container.classList.toggle('active');
+  }
+
+  function showMessage(text, type = 'success') {
+    const message = document.getElementById('message');
+    message.textContent = text;
+    message.className = `message ${type}`;
+
+    setTimeout(() => {
+      message.className = 'message';
+      message.textContent = '';
+    }, 5000);
+  }
+
+  function getLoggedUserForNav() {
+    const keys = ['convidou_user_session', 'loggedUser', 'user_session', 'currentUser'];
+
+    for (const key of keys) {
+      try {
+        const value = localStorage.getItem(key);
+        if (!value) continue;
+        const parsed = JSON.parse(value);
+        if (parsed && (parsed.name || parsed.email || parsed.id)) return parsed;
+      } catch (error) {}
+    }
+
+    return { name: 'Usuário' };
+  }
+
+  function getFirstName(value) {
+    return String(value || 'Usuário').trim().split(' ')[0] || 'Usuário';
+  }
+
+  function getInitials(value) {
+    return String(value || 'U')
+      .split(' ')
+      .filter(Boolean)
+      .slice(0, 2)
+      .map(part => part[0])
+      .join('')
+      .toUpperCase() || 'U';
+  }
+
+  function setupPremiumNav() {
+    const user = getLoggedUserForNav();
+    const label = user.name || user.email || 'Usuário';
+    const firstName = getFirstName(label);
+    const initials = getInitials(label);
+
+    const userName = document.getElementById('userName');
+    const userAvatar = document.getElementById('userAvatar');
+
+    if (userName) userName.textContent = firstName;
+    if (userAvatar) userAvatar.textContent = initials;
+  }
+
+  function toggleMobileMenu() {
+    const menu = document.getElementById('mobileDropdown');
+    if (menu) menu.classList.toggle('active');
+  }
+
+  function closeMobileMenu() {
+    const menu = document.getElementById('mobileDropdown');
+    if (menu) menu.classList.remove('active');
+  }
+
+  function goEvents() {
+    window.location.href = '/eventos/';
+  }
+
+  function logoutUser() {
+    localStorage.removeItem('convidou_user_session');
+    localStorage.removeItem('loggedUser');
+    localStorage.removeItem('user_session');
+    localStorage.removeItem('currentUser');
+    window.location.href = '/login/';
+  }
+
+  document.addEventListener('click', function(event) {
+    const menu = document.getElementById('mobileDropdown');
+    const button = document.querySelector('.mobile-menu-button');
+
+    if (menu && button && !menu.contains(event.target) && !button.contains(event.target)) {
+      menu.classList.remove('active');
+    }
+  });
+</script>
+</body>
+</html>

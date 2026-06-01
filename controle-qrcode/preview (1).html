@@ -1,0 +1,3818 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link href="../image/favicon.ico" rel="icon" type="image/x-icon" />
+  <title>Gestão de Convidados - Bot WhatsApp</title>
+
+  <!--
+    Para controlar corretamente o envio, execute também:
+
+    alter table public.event_guests
+    add column if not exists attendance_status text default 'pending',
+    add column if not exists message_status text default 'not_sent',
+    add column if not exists zapi_message_id text,
+    add column if not exists zapi_zaap_id text;
+
+    -- Remover conceito antigo de fila/queued:
+    update public.event_guests
+    set
+      message_status = 'sent',
+      message_sent = true,
+      message_sent_at = coalesce(message_sent_at, now()),
+      last_send_error = null
+    where message_status in ('queued', 'Na fila', 'na_fila');
+
+    Para salvar o meio de envio por evento, execute no Supabase:
+
+    alter table public.events
+    add column if not exists send_provider text default 'bot',
+    add column if not exists zapi_instance_id text,
+    add column if not exists zapi_instance_token text,
+    add column if not exists zapi_client_token text;
+  -->
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
+  <style>
+    :root {
+      --bg: #07080c;
+      --panel: rgba(18, 22, 31, .92);
+      --panel-2: rgba(12, 15, 23, .84);
+      --panel-soft: rgba(255,255,255,.055);
+      --border: rgba(255,255,255,.09);
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --muted-2: #64748b;
+      --gold: #d8a84f;
+      --gold-2: #f2c46d;
+      --green: #81d99b;
+      --blue: #7aa8ff;
+      --red: #ef7777;
+      --purple: #b58cff;
+      --shadow: 0 28px 80px rgba(0,0,0,.35);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: Inter, Arial, sans-serif;
+    }
+
+    body {
+      min-height: 100vh;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 78% 8%, rgba(216,168,79,.18), transparent 32%),
+        radial-gradient(circle at 8% 38%, rgba(122,168,255,.10), transparent 28%),
+        radial-gradient(circle at bottom left, rgba(129,217,155,.07), transparent 30%),
+        linear-gradient(135deg, #07080c, #10131c 45%, #090b10);
+      padding: 20px;
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background:
+        linear-gradient(90deg, rgba(255,255,255,.024) 1px, transparent 1px),
+        linear-gradient(rgba(255,255,255,.017) 1px, transparent 1px);
+      background-size: 64px 64px;
+      mask-image: radial-gradient(circle at 50% 30%, black, transparent 75%);
+      z-index: 0;
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      max-width: 1480px;
+      margin: 0 auto;
+    }
+
+    /* NAV PADRÃO PREMIUM */
+    .top-nav {
+      position: sticky;
+      top: 14px;
+      z-index: 1000;
+      margin-bottom: 24px;
+      background: rgba(7, 8, 12, .76);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 26px;
+      box-shadow:
+        0 24px 60px rgba(0,0,0,.34),
+        inset 0 1px 0 rgba(255,255,255,.04);
+      backdrop-filter: blur(22px);
+    }
+
+    .nav-inner {
+      min-height: 76px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 14px 18px;
+    }
+
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--text);
+      text-decoration: none;
+      font-weight: 950;
+      letter-spacing: .08em;
+    }
+
+    .brand-mark {
+      width: 42px;
+      height: 42px;
+      border-radius: 15px;
+      display: grid;
+      place-items: center;
+      color: var(--gold-2);
+      background: linear-gradient(135deg, #111827, #1e293b);
+      border: 1px solid rgba(216,168,79,.35);
+      box-shadow: 0 12px 30px rgba(216,168,79,.12);
+      flex-shrink: 0;
+    }
+
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .user-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 13px 8px 8px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.065);
+      border: 1px solid rgba(255,255,255,.09);
+      color: #dbe4ef;
+      font-weight: 900;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .avatar {
+      width: 34px;
+      height: 34px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      color: #111827;
+      background: linear-gradient(135deg, var(--gold-2), var(--gold));
+      font-weight: 950;
+    }
+
+    button,
+    .btn-link,
+    .nav-btn {
+      border: none;
+      border-radius: 14px;
+      padding: 13px 16px;
+      font-weight: 950;
+      cursor: pointer;
+      font-size: 14px;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: .2s;
+      white-space: nowrap;
+      gap: 8px;
+    }
+
+    button:hover,
+    .btn-link:hover,
+    .nav-btn:hover {
+      transform: translateY(-1px);
+      filter: brightness(1.03);
+    }
+
+    button:disabled {
+      opacity: .6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .nav-btn {
+      min-height: 46px;
+      color: var(--text);
+      background: rgba(255,255,255,.075);
+      border: 1px solid var(--border);
+    }
+
+    .nav-btn:hover {
+      background: rgba(255,255,255,.11);
+      color: var(--gold-2);
+      border-color: rgba(216,168,79,.22);
+    }
+
+    .nav-gold {
+      color: #111827;
+      background: linear-gradient(135deg, var(--gold-2), var(--gold));
+      border: 1px solid rgba(216,168,79,.45);
+      box-shadow: 0 16px 38px rgba(216,168,79,.16);
+    }
+
+    .nav-gold:hover {
+      color: #111827;
+    }
+
+    .nav-danger {
+      color: #ffb4b4;
+      background: rgba(239,119,119,.12);
+      border: 1px solid rgba(239,119,119,.20);
+    }
+
+    .mobile-menu-button {
+      display: none;
+      width: 52px;
+      height: 52px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.06);
+      color: white;
+      font-size: 24px;
+      cursor: pointer;
+      transition: .2s;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      box-shadow:
+        0 14px 30px rgba(0,0,0,.22),
+        inset 0 1px 0 rgba(255,255,255,.08);
+      backdrop-filter: blur(18px);
+    }
+
+    .mobile-menu-button:hover {
+      background: rgba(216,168,79,.14);
+      border-color: rgba(216,168,79,.22);
+      color: var(--gold-2);
+    }
+
+    .mobile-dropdown {
+      position: absolute;
+      top: calc(100% + 14px);
+      right: 0;
+      width: 310px;
+      background: rgba(15,18,28,.98);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 24px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      backdrop-filter: blur(20px);
+      box-shadow: 0 24px 60px rgba(0,0,0,.40);
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(-10px);
+      transition: .25s;
+      z-index: 999;
+    }
+
+    .mobile-dropdown.active {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+    }
+
+    .mobile-user {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      margin-bottom: 4px;
+    }
+
+    .mobile-user strong {
+      color: var(--text);
+      display: block;
+    }
+
+    .mobile-user p {
+      color: var(--muted);
+      font-size: 13px;
+      margin-top: 3px;
+    }
+
+    .mobile-link {
+      width: 100%;
+      min-height: 48px;
+      border-radius: 16px;
+      border: 1px solid rgba(255,255,255,.08);
+      background: rgba(255,255,255,.05);
+      color: white;
+      padding: 0 16px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-start;
+      font-size: 14px;
+      font-weight: 950;
+      cursor: pointer;
+      text-decoration: none;
+      transition: .2s;
+    }
+
+    .mobile-link:hover {
+      background: rgba(255,255,255,.10);
+    }
+
+    .mobile-link.gold {
+      background: linear-gradient(135deg, var(--gold-2), var(--gold));
+      color: #111827;
+      border-color: rgba(216,168,79,.48);
+    }
+
+    .mobile-link.danger {
+      color: #ffb4b4;
+      border-color: rgba(239,119,119,.20);
+      background: rgba(239,119,119,.10);
+    }
+
+    /* HERO */
+    .header {
+      position: relative;
+      overflow: hidden;
+      background:
+        linear-gradient(135deg, rgba(39,37,34,.88), rgba(16,20,31,.92)),
+        radial-gradient(circle at top right, rgba(216,168,79,.22), transparent 36%);
+      color: white;
+      border-radius: 34px;
+      padding: 38px 34px;
+      margin-bottom: 18px;
+      border: 1px solid rgba(216,168,79,.16);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(20px);
+    }
+
+    .header::before {
+      content: '';
+      position: absolute;
+      width: 340px;
+      height: 340px;
+      top: -140px;
+      right: -90px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.055);
+    }
+
+    .header::after {
+      content: '';
+      position: absolute;
+      inset: auto 0 0 0;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, rgba(216,168,79,.6), transparent);
+    }
+
+    .header-content {
+      position: relative;
+      z-index: 2;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 24px;
+      align-items: center;
+    }
+
+    .header-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(216,168,79,.10);
+      border: 1px solid rgba(216,168,79,.18);
+      border-radius: 999px;
+      padding: 9px 14px;
+      color: var(--gold-2);
+      font-size: 13px;
+      font-weight: 950;
+      margin-bottom: 18px;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+    }
+
+    .header h1 {
+      font-size: clamp(34px, 5vw, 60px);
+      line-height: .96;
+      letter-spacing: -2px;
+      margin-bottom: 14px;
+      max-width: 850px;
+    }
+
+    .header p {
+      color: rgba(226,232,240,.82);
+      font-size: 17px;
+      line-height: 1.6;
+      max-width: 760px;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .hero-actions button {
+      min-height: 48px;
+    }
+
+    /* CARDS E FORM */
+    .card,
+    .panel,
+    .info-box {
+      position: relative;
+      overflow: hidden;
+      background: var(--panel);
+      border-radius: 26px;
+      padding: 24px;
+      margin-bottom: 20px;
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+      backdrop-filter: blur(18px);
+    }
+
+    .card::after,
+    .panel::after,
+    .info-box::after {
+      content: '';
+      position: absolute;
+      width: 150px;
+      height: 150px;
+      border-radius: 999px;
+      right: -78px;
+      top: -78px;
+      background: rgba(216,168,79,.055);
+      pointer-events: none;
+    }
+
+    .card > *,
+    .panel > *,
+    .info-box > * {
+      position: relative;
+      z-index: 2;
+    }
+
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .info-box {
+      margin-bottom: 0;
+      padding: 20px;
+      min-height: 118px;
+    }
+
+    .info-box span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      margin-bottom: 8px;
+      font-weight: 950;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    .info-box strong {
+      font-size: 24px;
+      color: var(--text);
+      letter-spacing: -.6px;
+      word-break: break-word;
+    }
+
+    .summary-box strong {
+      font-size: 36px;
+      color: var(--gold-2);
+    }
+
+    h2,
+    h3 {
+      color: var(--text);
+      letter-spacing: -.5px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    label {
+      font-weight: 950;
+      font-size: 14px;
+      color: #e5edf7;
+    }
+
+    input,
+    textarea,
+    select {
+      width: 100%;
+      padding: 14px;
+      border: 1px solid var(--border);
+      border-radius: 15px;
+      font-size: 15px;
+      outline: none;
+      background: rgba(255,255,255,.055);
+      color: var(--text);
+      transition: .2s;
+      font-weight: 800;
+    }
+
+    select option {
+      color: #111827;
+      background: #f8fafc;
+    }
+
+    input::placeholder,
+    textarea::placeholder {
+      color: #64748b;
+    }
+
+    textarea {
+      min-height: 260px;
+      resize: vertical;
+      line-height: 1.45;
+    }
+
+    input:focus,
+    textarea:focus,
+    select:focus {
+      border-color: rgba(216,168,79,.55);
+      box-shadow: 0 0 0 4px rgba(216,168,79,.12);
+    }
+
+    .btn-primary {
+      color: #111827;
+      background: linear-gradient(135deg, var(--gold-2), var(--gold));
+      box-shadow: 0 16px 38px rgba(216,168,79,.16);
+      border: 1px solid rgba(216,168,79,.45);
+    }
+
+    .btn-success {
+      color: #07110b;
+      background: linear-gradient(135deg, #a7f3d0, var(--green));
+      box-shadow: 0 16px 38px rgba(129,217,155,.14);
+      border: 1px solid rgba(129,217,155,.45);
+    }
+
+    .btn-warning {
+      background: rgba(216,168,79,.14);
+      color: var(--gold-2);
+      border: 1px solid rgba(216,168,79,.22);
+    }
+
+    .btn-danger {
+      background: rgba(239,119,119,.12);
+      color: var(--red);
+      border: 1px solid rgba(239,119,119,.20);
+    }
+
+    .btn-secondary {
+      background: rgba(255,255,255,.075);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .btn-dark {
+      background: rgba(255,255,255,.09);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .message {
+      display: none;
+      padding: 14px 16px;
+      border-radius: 16px;
+      margin-bottom: 18px;
+      font-size: 14px;
+      font-weight: 900;
+      border: 1px solid transparent;
+    }
+
+    .message.success {
+      display: block;
+      background: rgba(129,217,155,.12);
+      color: var(--green);
+      border-color: rgba(129,217,155,.18);
+    }
+
+    .message.error {
+      display: block;
+      background: rgba(239,119,119,.12);
+      color: var(--red);
+      border-color: rgba(239,119,119,.18);
+    }
+
+    .message.info {
+      display: block;
+      background: rgba(122,168,255,.12);
+      color: var(--blue);
+      border-color: rgba(122,168,255,.18);
+    }
+
+    .message.warning {
+      display: block;
+      background: rgba(216,168,79,.12);
+      color: var(--gold-2);
+      border-color: rgba(216,168,79,.18);
+    }
+
+    .config-box {
+      display: none;
+    }
+
+    .config-box.active,
+    .config-box[style*="block"] {
+      display: block;
+    }
+
+    .import-section {
+      display: grid;
+      grid-template-columns: 1fr 230px;
+      gap: 14px;
+      align-items: center;
+    }
+
+    .import-section button {
+      height: 54px;
+    }
+
+    .safe-send-box {
+      border: 1px solid rgba(216,168,79,.20);
+      background: rgba(216,168,79,.10);
+      border-radius: 18px;
+      padding: 18px;
+      margin-bottom: 18px;
+    }
+
+    .safe-send-box h3 {
+      color: var(--gold-2);
+      margin-bottom: 8px;
+    }
+
+    .safe-send-box p {
+      color: #e9d8a6;
+      line-height: 1.45;
+      font-size: 14px;
+    }
+
+    .send-controls {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 14px;
+      margin-top: 16px;
+    }
+
+    .send-progress {
+      display: none;
+      margin-top: 18px;
+      padding: 16px;
+      border-radius: 16px;
+      background: rgba(122,168,255,.12);
+      border: 1px solid rgba(122,168,255,.18);
+      color: var(--blue);
+    }
+
+    .send-progress.active {
+      display: block;
+    }
+
+    .progress-bar {
+      height: 14px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.075);
+      overflow: hidden;
+      margin-top: 10px;
+      border: 1px solid var(--border);
+    }
+
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--gold), var(--green));
+      transition: .3s;
+      box-shadow: 0 0 22px rgba(216,168,79,.28);
+    }
+
+    .tools {
+      display: grid;
+      grid-template-columns: minmax(220px, 2fr) minmax(170px, 1fr) minmax(170px, 1fr) auto auto auto;
+      gap: 14px;
+      align-items: end;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+      min-width: 980px;
+    }
+
+    #guestsTableContainer {
+      overflow-x: auto;
+      border-radius: 18px;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,.035);
+    }
+
+    th,
+    td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid rgba(255,255,255,.07);
+      vertical-align: top;
+      color: #cbd5e1;
+    }
+
+    th {
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      background: rgba(255,255,255,.045);
+    }
+
+    .th-filter {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-width: 160px;
+    }
+
+    .th-filter span {
+      display: block;
+    }
+
+    .th-filter select {
+      padding: 9px 10px;
+      border-radius: 11px;
+      font-size: 12px;
+      letter-spacing: 0;
+      text-transform: none;
+    }
+
+    tr:hover td {
+      background: rgba(255,255,255,.045);
+    }
+
+    .table-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .badge {
+      padding: 7px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 950;
+      white-space: nowrap;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .badge-green {
+      background: rgba(129,217,155,.12);
+      color: var(--green);
+      border: 1px solid rgba(129,217,155,.18);
+    }
+
+    .badge-yellow {
+      background: rgba(216,168,79,.12);
+      color: var(--gold-2);
+      border: 1px solid rgba(216,168,79,.18);
+    }
+
+    .badge-gray {
+      background: rgba(255,255,255,.075);
+      color: #cbd5e1;
+      border: 1px solid var(--border);
+    }
+
+    .badge-red {
+      background: rgba(239,119,119,.12);
+      color: var(--red);
+      border: 1px solid rgba(239,119,119,.18);
+    }
+
+    .small-text {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+      margin-top: 8px;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--muted);
+      background: rgba(255,255,255,.035);
+      border: 1px dashed var(--border);
+      border-radius: 18px;
+    }
+
+    .accordion-card {
+      overflow: hidden;
+    }
+
+    .accordion-header {
+      width: 100%;
+      border: none;
+      background: transparent;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 0;
+      cursor: pointer;
+      color: var(--text);
+      text-align: left;
+    }
+
+    .accordion-header:hover {
+      transform: none;
+      filter: none;
+    }
+
+    .accordion-title {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+    }
+
+    .accordion-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      background: rgba(216,168,79,.12);
+      color: var(--gold-2);
+      border: 1px solid rgba(216,168,79,.18);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+
+    .accordion-title h2 {
+      margin-bottom: 4px;
+      font-size: 22px;
+      color: var(--text);
+    }
+
+    .accordion-toggle {
+      background: rgba(255,255,255,.075);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 10px 14px;
+      font-size: 13px;
+      font-weight: 950;
+      flex-shrink: 0;
+    }
+
+    .accordion-body {
+      display: none;
+      padding-top: 22px;
+      margin-top: 20px;
+      border-top: 1px solid rgba(255,255,255,.07);
+    }
+
+    .accordion-card.active .accordion-body {
+      display: block;
+    }
+
+    .accordion-card.active .accordion-toggle {
+      background: linear-gradient(135deg, var(--gold-2), var(--gold));
+      color: #111827;
+      border-color: rgba(216,168,79,.45);
+    }
+
+    .message-layout {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 380px;
+      gap: 22px;
+      align-items: start;
+    }
+
+    .message-text-column {
+      min-width: 0;
+    }
+
+    .invite-preview-box {
+      background: rgba(255,255,255,.045);
+      border: 1px solid rgba(255,255,255,.07);
+      border-radius: 18px;
+      padding: 18px;
+    }
+
+    .invite-preview-box label {
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    .invite-preview-empty {
+      min-height: 360px;
+      border: 1px dashed rgba(255,255,255,.14);
+      border-radius: 16px;
+      background: rgba(0,0,0,.14);
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 20px;
+      overflow: hidden;
+    }
+
+    .invite-preview-empty img {
+      width: 100%;
+      max-height: 420px;
+      object-fit: contain;
+      border-radius: 14px;
+      display: block;
+    }
+
+    .invite-actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 14px;
+      flex-wrap: wrap;
+    }
+
+    .invite-actions button {
+      flex: 1;
+      min-width: 150px;
+    }
+
+    .invite-help {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .loading-spinner {
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255, 255, 255, .45);
+      border-top-color: white;
+      border-radius: 999px;
+      display: inline-block;
+      animation: spin .75s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @media(max-width: 980px) {
+      body {
+        padding: 12px;
+      }
+
+      .top-nav {
+        top: 10px;
+        border-radius: 22px;
+      }
+
+      .desktop-nav {
+        display: none;
+      }
+
+      .mobile-menu-button {
+        display: flex;
+      }
+
+      .mobile-dropdown {
+        width: min(310px, calc(100vw - 48px));
+      }
+
+      .header {
+        padding: 28px;
+        border-radius: 26px;
+      }
+
+      .header-content {
+        grid-template-columns: 1fr;
+      }
+
+      .hero-actions {
+        justify-content: flex-start;
+      }
+
+      .grid-4,
+      .grid-3,
+      .grid-2,
+      .send-controls,
+      .tools,
+      .import-section {
+        grid-template-columns: 1fr;
+      }
+
+      button,
+      .btn-link {
+        width: 100%;
+      }
+
+      .mobile-menu-button {
+        width: 52px;
+      }
+
+      #guestsTableContainer,
+      table {
+        display: block;
+        overflow-x: auto;
+      }
+
+      .message-layout {
+        grid-template-columns: 1fr;
+      }
+
+      .invite-actions button {
+        width: 100%;
+      }
+
+      .accordion-header {
+        align-items: flex-start;
+      }
+    }
+
+    @media(max-width: 640px) {
+      .nav-inner {
+        min-height: 68px;
+        padding: 12px;
+      }
+
+      .brand strong {
+        font-size: 14px;
+      }
+
+      .header h1 {
+        font-size: 34px;
+      }
+
+      .header p {
+        font-size: 15px;
+      }
+
+      .hero-actions {
+        flex-direction: column;
+      }
+
+      .card,
+      .panel,
+      .info-box {
+        border-radius: 22px;
+        padding: 20px;
+      }
+    }
+
+    /* Ações compactas no mobile */
+    @media(max-width: 980px) {
+      #guestsTableContainer th:first-child,
+      #guestsTableContainer td:first-child {
+        width: 190px;
+        min-width: 190px;
+      }
+
+      .table-actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 6px;
+        align-items: stretch;
+      }
+
+      .table-actions button {
+        width: 100%;
+        min-height: 34px;
+        padding: 8px 6px;
+        border-radius: 10px;
+        font-size: 11px;
+        line-height: 1.1;
+      }
+
+      .table-actions .action-send {
+        grid-column: span 1;
+      }
+    }
+
+    @media(max-width: 640px) {
+      #guestsTableContainer th:first-child,
+      #guestsTableContainer td:first-child {
+        width: 176px;
+        min-width: 176px;
+      }
+
+      .table-actions {
+        gap: 5px;
+      }
+
+      .table-actions button {
+        min-height: 32px;
+        padding: 7px 5px;
+        border-radius: 9px;
+        font-size: 10.5px;
+      }
+    }
+
+
+    .provider-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:12px 0 18px}
+    .provider-card{position:relative;cursor:pointer;display:block}
+    .provider-card input{position:absolute;opacity:0;pointer-events:none}
+    .provider-content{min-height:118px;border-radius:20px;border:1px solid var(--border);background:rgba(255,255,255,.045);padding:18px;transition:.2s;display:flex;flex-direction:column;justify-content:space-between;gap:10px}
+    .provider-content strong{color:var(--text);font-size:17px;display:flex;align-items:center;gap:8px}
+    .provider-content span{color:var(--muted);font-size:13px;line-height:1.45;font-weight:800}
+    .provider-card input:checked + .provider-content{border-color:rgba(216,168,79,.50);background:linear-gradient(135deg,rgba(216,168,79,.13),rgba(255,255,255,.045));box-shadow:0 18px 44px rgba(216,168,79,.12)}
+    .provider-card input:checked + .provider-content::after{content:'Selecionado';position:absolute;top:14px;right:14px;padding:7px 10px;border-radius:999px;background:linear-gradient(135deg,var(--gold-2),var(--gold));color:#111827;font-size:11px;font-weight:950}
+    .provider-settings{display:none;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.035);border-radius:20px;padding:18px;margin-top:14px}
+    .provider-settings.active{display:block}
+    @media(max-width:980px){.provider-grid{grid-template-columns:1fr}}
+
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <nav class="top-nav">
+      <div class="nav-inner">
+        <a class="brand" href="/eventos/">
+          <div class="brand-mark">◇</div>
+          <strong>CONVIDOU</strong>
+        </a>
+
+        <div class="nav-actions desktop-nav">
+          <div class="user-chip">
+            <div class="avatar" id="userAvatar">U</div>
+            <span id="userName">Usuário</span>
+          </div>
+
+          <button class="nav-btn nav-gold" onclick="goEvents()">
+            ← Eventos
+          </button>
+
+          <button class="nav-btn" onclick="toggleConfig()">
+            ⚙️ Configurações
+          </button>
+
+          <button class="nav-btn nav-danger" onclick="logoutUser()">
+            🚪 Sair
+          </button>
+        </div>
+
+        <button class="mobile-menu-button" onclick="toggleMobileMenu()" title="Menu">
+          ☰
+        </button>
+
+        <div class="mobile-dropdown" id="mobileDropdown">
+          <div class="mobile-user">
+            <div class="avatar" id="userAvatarMobile">U</div>
+            <div>
+              <strong id="userNameMobile">Usuário</strong>
+              <p>Gestão de convidados</p>
+            </div>
+          </div>
+
+          <button class="mobile-link gold" onclick="goEvents()">
+            ← Eventos
+          </button>
+
+          <button class="mobile-link" onclick="toggleConfig(); closeMobileMenu();">
+            ⚙️ Configurações
+          </button>
+
+          <button class="mobile-link danger" onclick="logoutUser()">
+            🚪 Sair
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <div class="header">
+      <div class="header-content">
+        <div>
+          <div class="header-badge">Área interna</div>
+          <h1>Gestão de convidados</h1>
+          <p>
+            Importe convidados, cadastre avulsos, envie mensagens pelo Bot WhatsApp,
+            acompanhe confirmações e controle cada disparo em uma tela mais limpa e elegante.
+          </p>
+        </div>
+
+        <div class="hero-actions">
+          <button class="btn-secondary" onclick="loadGuests()">Atualizar lista</button>
+          <button class="btn-warning" onclick="exportGuestsExcel()">📥 Exportar Excel</button>
+          <button class="btn-primary" onclick="document.getElementById('accordionAddGuest')?.classList.add('active')">
+            + Adicionar convidado
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div id="message" class="message"></div>
+
+    <div class="card config-box" id="configBox">
+      <h2 style="margin-bottom:18px;">Configurações</h2>
+
+      <h3 style="margin-bottom:12px;">Supabase</h3>
+      <div class="grid-2">
+        <div class="form-group">
+          <label for="supabaseUrl">Supabase URL</label>
+          <input id="supabaseUrl" type="text" placeholder="https://xxxx.supabase.co" />
+        </div>
+        <div class="form-group">
+          <label for="supabaseKey">Supabase Anon Key</label>
+          <input id="supabaseKey" type="password" placeholder="Cole sua anon/public key" />
+        </div>
+      </div>
+
+      <h3 style="margin:22px 0 12px;">Meio de envio</h3>
+
+      <div class="provider-grid">
+        <label class="provider-card">
+          <input type="radio" name="sendProvider" id="providerBot" value="bot" onchange="handleSendProviderChange()" checked />
+          <div class="provider-content">
+            <strong>🔗 Bot WhatsApp / Link</strong>
+            <span>Usa o endpoint bot-whatsapp-leila.clin.digital com o celular sincronizado no QR Code.</span>
+          </div>
+        </label>
+
+        <label class="provider-card">
+          <input type="radio" name="sendProvider" id="providerZapi" value="zapi" onchange="handleSendProviderChange()" />
+          <div class="provider-content">
+            <strong>⚡ Z-API</strong>
+            <span>Usa a instância Z-API configurada abaixo para enviar texto ou imagem com legenda.</span>
+          </div>
+        </label>
+      </div>
+
+      <div id="botSettingsBox" class="provider-settings active">
+        <h3 style="margin-bottom:12px;">Bot WhatsApp / Link</h3>
+        <div class="safe-send-box" style="margin-bottom:0;">
+          <h3>📲 Sincronização do celular</h3>
+          <p>
+            Para sincronizar o celular que fará os envios, acesse
+            <a href="https://bot-whatsapp-leila.clin.digital/" target="_blank" rel="noopener" style="color:var(--gold-2);font-weight:950;">
+              https://bot-whatsapp-leila.clin.digital/
+            </a>
+            e leia o QR Code pelo WhatsApp.
+          </p>
+          <p style="margin-top:10px;">
+            O envio usa o endpoint <strong>POST /message</strong> com intervalo automático entre 100ms e 500ms por requisição.
+          </p>
+        </div>
+      </div>
+
+      <div id="zapiSettingsBox" class="provider-settings">
+        <h3 style="margin-bottom:12px;">Z-API</h3>
+        <div class="grid-3">
+          <div class="form-group">
+            <label for="zapiInstanceId">Instance ID</label>
+            <input id="zapiInstanceId" type="text" placeholder="Instance ID da Z-API" />
+          </div>
+
+          <div class="form-group">
+            <label for="zapiInstanceToken">Instance Token</label>
+            <input id="zapiInstanceToken" type="password" placeholder="Token da instância" />
+          </div>
+
+          <div class="form-group">
+            <label for="zapiClientToken">Client Token</label>
+            <input id="zapiClientToken" type="password" placeholder="Client-Token" />
+          </div>
+        </div>
+        <p class="small-text">A escolha do meio de envio será salva na tabela <strong>events</strong> deste evento.</p>
+        <label style="display:flex;gap:10px;align-items:flex-start;margin-top:14px;color:var(--muted);font-size:13px;line-height:1.45;">
+          <input id="zapiTextOnly" type="checkbox" checked style="width:auto;margin-top:3px;" />
+          <span>
+            <strong style="color:var(--gold-2);">Modo seguro:</strong>
+            enviar somente texto pela Z-API, mesmo que exista imagem do convite cadastrada.
+          </span>
+        </label>
+      </div>
+
+      <div style="margin-top:16px; display:flex; gap:12px; flex-wrap:wrap;">
+        <button class="btn-primary" onclick="saveConfig()">Salvar configurações</button>
+        <button class="btn-secondary" onclick="testSelectedSendProvider()">Testar meio selecionado</button>
+      </div>
+    </div>
+
+    <div class="grid-4">
+      <div class="info-box"><span>Evento</span><strong id="eventName">-</strong></div>
+      <div class="info-box"><span>Data</span><strong id="eventDate">-</strong></div>
+      <div class="info-box"><span>Hora</span><strong id="eventTime">-</strong></div>
+      <div class="info-box"><span>Local</span><strong id="eventLocation">-</strong></div>
+    </div>
+
+    <div class="grid-4">
+      <div class="info-box summary-box"><span>Total de convidados</span><strong id="totalGuests">0</strong></div>
+      <div class="info-box summary-box"><span>Confirmados</span><strong id="confirmedGuests">0</strong></div>
+      <div class="info-box summary-box"><span>Pendentes</span><strong id="pendingGuests">0</strong></div>
+      <div class="info-box summary-box"><span>Grupos</span><strong id="totalGroups">0</strong></div>
+    </div>
+
+    <div class="card accordion-card active" id="accordionAddGuest">
+      <button class="accordion-header" type="button" onclick="toggleAccordion('accordionAddGuest')">
+        <div class="accordion-title">
+          <span class="accordion-icon">👤</span>
+          <div>
+            <h2>Adicionar convidado</h2>
+            <p class="small-text" style="margin-top:0;">Cadastre convidados avulsos sem precisar usar planilha.</p>
+          </div>
+        </div>
+        <span class="accordion-toggle">Exibir</span>
+      </button>
+
+      <div class="accordion-body">
+        <div class="grid-3">
+          <div class="form-group">
+            <label for="singleGuestName">Nome do convidado</label>
+            <input id="singleGuestName" type="text" placeholder="Ex: Maria Silva" />
+          </div>
+
+          <div class="form-group">
+            <label for="singleGuestGroup">Grupo</label>
+            <input id="singleGuestGroup" type="text" placeholder="Ex: Família, Mesa 01, VIP" />
+          </div>
+
+          <div class="form-group">
+            <label for="singleGuestWhatsapp">WhatsApp</label>
+            <input id="singleGuestWhatsapp" type="text" placeholder="Ex: (81) 99999-9999" />
+          </div>
+        </div>
+
+        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:16px;">
+          <button id="addSingleGuestButton" class="btn-success" onclick="addSingleGuest()">Adicionar convidado</button>
+          <button class="btn-secondary" onclick="clearSingleGuestForm()">Limpar campos</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card accordion-card" id="accordionImport">
+      <button class="accordion-header" type="button" onclick="toggleAccordion('accordionImport')">
+        <div class="accordion-title">
+          <span class="accordion-icon">📥</span>
+          <div>
+            <h2>Importar planilha</h2>
+            <p class="small-text" style="margin-top:0;">Importe convidados em lote usando o modelo aceito pelo sistema.
+            </p>
+          </div>
+        </div>
+        <span class="accordion-toggle">Exibir</span>
+      </button>
+
+      <div class="accordion-body">
+        <div class="import-section">
+          <div class="form-group">
+            <label for="spreadsheetFile">Planilha Excel ou CSV</label>
+            <input type="file" id="spreadsheetFile" accept=".xlsx,.xls,.csv" />
+            <p class="small-text">A planilha deve conter as colunas: <strong>Nome do Convidado</strong>, <strong>Nome do
+                Grupo</strong> e <strong>Whatsapp</strong>.</p>
+          </div>
+          <button id="importButton" class="btn-primary" onclick="importSpreadsheet()">Importar convidados</button>
+        </div>
+
+        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:14px;">
+          <button class="btn-secondary" onclick="downloadGuestSpreadsheetTemplate()">⬇️ Baixar modelo da
+            planilha</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card accordion-card" id="accordionMessage">
+      <button class="accordion-header" type="button" onclick="toggleAccordion('accordionMessage')">
+        <div class="accordion-title">
+          <span class="accordion-icon">💬</span>
+          <div>
+            <h2>Mensagem padrão</h2>
+            <p class="small-text" style="margin-top:0;">Escolha um modelo ativo cadastrado no banco ou escreva uma
+              mensagem avulsa.</p>
+          </div>
+        </div>
+        <span class="accordion-toggle">Exibir</span>
+      </button>
+
+      <div class="accordion-body">
+        <div class="message-layout">
+          <div class="message-text-column">
+            <div class="form-group" style="margin-bottom:18px;">
+              <label for="messageTemplateSelect">Modelo de mensagem</label>
+              <select id="messageTemplateSelect" onchange="applySelectedTemplate()">
+                <option value="">✍️ Mensagem avulsa / personalizada</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="messageTemplate">Mensagem enviada ao convidado</label>
+              <textarea id="messageTemplate"></textarea>
+              <p class="small-text">Variáveis disponíveis: <strong>{{nome}}, {{grupo}}, {{evento}}, {{data}}, {{hora}},
+                  {{local}}, {{maps}}, {{link}}</strong></p>
+            </div>
+          </div>
+
+          <div class="invite-preview-box">
+            <label>Convite do evento</label>
+
+            <div id="inviteImagePreviewArea" class="invite-preview-empty">
+              Nenhum convite cadastrado.
+            </div>
+
+            <div class="form-group" style="margin-top:14px;">
+              <label for="eventInviteImage">Subir / alterar convite</label>
+              <input id="eventInviteImage" type="file" accept="image/jpeg,image/png,.jpg,.jpeg,.png"
+                onchange="previewAndUploadEventInvite()" />
+              <p class="invite-help">Se houver convite cadastrado, ele será enviado como imagem no campo photo pelo Bot WhatsApp.</p>
+            </div>
+
+            <div class="invite-actions">
+              <button class="btn-secondary" type="button" onclick="document.getElementById('eventInviteImage').click()">
+                Alterar convite
+              </button>
+
+              <button class="btn-danger" type="button" onclick="removeEventInvite()">
+                Remover convite
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    <div class="card accordion-card" id="accordionSearch">
+      <button class="accordion-header" type="button" onclick="toggleAccordion('accordionSearch')">
+        <div class="accordion-title">
+          <span class="accordion-icon">🔎</span>
+          <div>
+            <h2>Buscar</h2>
+            <p class="small-text" style="margin-top:0;">Filtre convidados por nome, grupo ou WhatsApp.</p>
+          </div>
+        </div>
+        <span class="accordion-toggle">Exibir</span>
+      </button>
+
+      <div class="accordion-body">
+        <div class="tools">
+          <div class="form-group">
+            <label for="searchInput">Buscar convidado</label>
+            <input id="searchInput" type="text" placeholder="Nome, grupo ou WhatsApp" oninput="renderGuests()" />
+          </div>
+
+          <button class="btn-secondary" onclick="loadGuests()">Atualizar lista</button>
+          <button class="btn-warning" onclick="exportGuestsExcel()">📥 Exportar Excel</button>
+          <button class="btn-warning" onclick="sendNextPending()">Enviar próximo pendente</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel accordion-card active" id="accordionGuests">
+      <button class="accordion-header" type="button" onclick="toggleAccordion('accordionGuests')">
+        <div class="accordion-title">
+          <span class="accordion-icon">📋</span>
+          <div>
+            <h2>Convidados do evento</h2>
+            <p class="small-text" style="margin-top:0;">Lista de convidados cadastrados, status de envio e confirmação.
+            </p>
+          </div>
+        </div>
+        <span class="accordion-toggle">Exibir</span>
+      </button>
+
+      <div class="accordion-body">
+        <div id="guestsTableContainer"></div>
+      </div>
+    </div>
+
+    <div class="card accordion-card" id="accordionSend">
+      <button class="accordion-header" type="button" onclick="toggleAccordion('accordionSend')">
+        <div class="accordion-title">
+          <span class="accordion-icon">🚀</span>
+          <div>
+            <h2>Envio em massa</h2>
+            <p class="small-text" style="margin-top:0;">Envie convites por lote usando o meio selecionado nas configurações.</p>
+          </div>
+        </div>
+        <span class="accordion-toggle">Exibir</span>
+      </button>
+
+      <div class="accordion-body">
+        <div class="safe-send-box">
+          <h3>⚠️ Envio protegido</h3>
+          <p>O envio em massa usa lotes, intervalo entre mensagens, pula quem já recebeu e registra erros. Para reduzir
+            risco de bloqueio, comece com lotes pequenos e aumente aos poucos.</p>
+          <p style="margin-top:10px;"><strong>Importante:</strong> se o WhatsApp já estiver com restrição, o sistema deve parar o envio.
+            Use apenas para contatos que aceitaram receber mensagens e prefira ferramentas oficiais para grandes volumes.</p>
+        </div>
+
+        <div class="send-controls">
+          <div class="form-group">
+            <label for="batchLimit">Mensagens por lote</label>
+            <select id="batchLimit">
+              <option value="5" selected>5 - teste</option>
+              <option value="10">10 - muito seguro</option>
+              <option value="20">20 - seguro</option>
+              <option value="30">30 - moderado</option>
+              <option value="50">50 - maior risco</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Intervalo entre mensagens</label>
+            <input type="text" value="100ms a 500ms automático" disabled />
+          </div>
+
+          <div class="form-group">
+            <label for="pauseMinutes">Pausa recomendada após lote</label>
+            <select id="pauseMinutes">
+              <option value="2">2 minutos</option>
+              <option value="5" selected>5 minutos</option>
+              <option value="10">10 minutos</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>&nbsp;</label>
+            <button id="safeSendButton" class="btn-success" onclick="startBatchSend()">Iniciar envio em
+              massa</button>
+          </div>
+        </div>
+
+        <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:14px;">
+          <button id="stopSendButton" class="btn-danger" onclick="stopBatchSend()" disabled>Parar envio</button>
+          <button class="btn-secondary" onclick="resetMessageSentForPending()">Liberar reenvio dos pendentes</button>
+        </div>
+
+        <div id="sendProgress" class="send-progress">
+          <strong id="sendProgressTitle">Preparando envio...</strong>
+          <p id="sendProgressText" style="margin-top:8px;">-</p>
+          <div class="progress-bar">
+            <div class="progress-fill" id="sendProgressFill"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    let supabaseClient = null;
+    let currentEventId = null;
+    let currentEventData = null;
+    let guests = [];
+    let messageTemplates = [];
+    let currentResponsibleData = null;
+    let batchSending = false;
+    let stopRequested = false;
+
+    const DEFAULT_SUPABASE_URL = 'https://pfyctxoikdrephjogdtm.supabase.co';
+    const DEFAULT_SUPABASE_KEY = 'sb_publishable_h_5hK_HTT-XJ4WUoOGzkGg_tqkBDLjv';
+
+    const BOT_WHATSAPP_BASE_URL = 'https://bot-whatsapp-leila.clin.digital';
+    const BOT_WHATSAPP_MESSAGE_URL = BOT_WHATSAPP_BASE_URL + '/message';
+
+    const SEND_PROVIDER_STORAGE_KEY = 'send_provider';
+    const DEFAULT_SEND_PROVIDER = 'bot';
+
+    const DEFAULT_ZAPI_INSTANCE_ID = '3F32B148C8CA1249DCAE3222B0EDC9B1';
+    const DEFAULT_ZAPI_INSTANCE_TOKEN = '234C8842D08C0B205C20CC98';
+    const DEFAULT_ZAPI_CLIENT_TOKEN = 'F1348d160382741d398e5d37761e89b6cS';
+
+    let currentSendProvider = localStorage.getItem(SEND_PROVIDER_STORAGE_KEY) || DEFAULT_SEND_PROVIDER;
+
+
+    const savedUrl = localStorage.getItem('supabase_url') || DEFAULT_SUPABASE_URL;
+    const savedKey = localStorage.getItem('supabase_key') || DEFAULT_SUPABASE_KEY;
+
+    document.getElementById('supabaseUrl').value = savedUrl;
+    document.getElementById('supabaseKey').value = savedKey;
+
+    const savedZapiInstanceId = localStorage.getItem('zapi_instance_id') || DEFAULT_ZAPI_INSTANCE_ID;
+    const savedZapiInstanceToken = localStorage.getItem('zapi_instance_token') || DEFAULT_ZAPI_INSTANCE_TOKEN;
+    const savedZapiClientToken = localStorage.getItem('zapi_client_token') || DEFAULT_ZAPI_CLIENT_TOKEN;
+
+    if (document.getElementById('zapiInstanceId')) document.getElementById('zapiInstanceId').value = savedZapiInstanceId;
+    if (document.getElementById('zapiInstanceToken')) document.getElementById('zapiInstanceToken').value = savedZapiInstanceToken;
+    if (document.getElementById('zapiClientToken')) document.getElementById('zapiClientToken').value = savedZapiClientToken;
+    applySavedSendProviderUI();
+
+
+    const singleGuestWhatsappInput = document.getElementById('singleGuestWhatsapp');
+    if (singleGuestWhatsappInput) {
+      singleGuestWhatsappInput.addEventListener('input', e => {
+        e.target.value = formatPhoneInput(e.target.value);
+      });
+    }
+
+    initializePage();
+
+    async function initializePage() {
+      const params = new URLSearchParams(window.location.search);
+      currentEventId = params.get('event_id');
+
+      if (!currentEventId) {
+        showMessage('Informe o event_id na URL. Ex: /convidados/?event_id=UUID', 'error');
+        return;
+      }
+
+      if (savedUrl && savedKey) {
+        connectSupabase(savedUrl, savedKey);
+        await loadEvent();
+        await loadTemplates();
+        await loadGuests();
+      } else {
+        toggleConfig();
+        showMessage('Configure o Supabase para carregar convidados.', 'info');
+      }
+    }
+
+    function goEvents() {
+      window.location.href = '/eventos/';
+    }
+
+    function toggleConfig() {
+      const box = document.getElementById('configBox');
+      box.style.display = box.style.display === 'none' || !box.style.display ? 'block' : 'none';
+    }
+
+
+    function applySavedSendProviderUI() {
+      const provider = currentSendProvider || DEFAULT_SEND_PROVIDER;
+      const botRadio = document.getElementById('providerBot');
+      const zapiRadio = document.getElementById('providerZapi');
+
+      if (botRadio) botRadio.checked = provider === 'bot';
+      if (zapiRadio) zapiRadio.checked = provider === 'zapi';
+
+      handleSendProviderChange(false);
+    }
+
+    function getSelectedSendProvider() {
+      const selected = document.querySelector('input[name="sendProvider"]:checked');
+      return selected?.value || DEFAULT_SEND_PROVIDER;
+    }
+
+    function getActiveSendProvider() {
+      const selected = getSelectedSendProvider();
+      const provider = selected || currentEventData?.send_provider || currentSendProvider || DEFAULT_SEND_PROVIDER;
+      return provider === 'zapi' ? 'zapi' : 'bot';
+    }
+
+    function handleSendProviderChange(shouldPersist = true) {
+      currentSendProvider = getSelectedSendProvider();
+
+      const botBox = document.getElementById('botSettingsBox');
+      const zapiBox = document.getElementById('zapiSettingsBox');
+
+      if (botBox) botBox.classList.toggle('active', currentSendProvider === 'bot');
+      if (zapiBox) zapiBox.classList.toggle('active', currentSendProvider === 'zapi');
+
+      if (shouldPersist) {
+        localStorage.setItem(SEND_PROVIDER_STORAGE_KEY, currentSendProvider);
+      }
+    }
+
+    function getZAPIConfigFromInputs() {
+      return {
+        instanceId: document.getElementById('zapiInstanceId')?.value.trim() || '',
+        token: document.getElementById('zapiInstanceToken')?.value.trim() || '',
+        clientToken: document.getElementById('zapiClientToken')?.value.trim() || ''
+      };
+    }
+
+    function validateZAPIConfig(showAlert = true) {
+      const config = getZAPIConfigFromInputs();
+
+      if (!config.instanceId || !config.token || !config.clientToken) {
+        if (showAlert) showMessage('Preencha Instance ID, Instance Token e Client Token da Z-API.', 'error');
+        return null;
+      }
+
+      return config;
+    }
+
+    async function saveSendProviderOnEvent() {
+      if (!supabaseClient || !currentEventId) return;
+
+      const provider = getSelectedSendProvider();
+      const zapiConfig = getZAPIConfigFromInputs();
+
+      const payload = {
+        send_provider: provider,
+        zapi_instance_id: zapiConfig.instanceId || null,
+        zapi_instance_token: zapiConfig.token || null,
+        zapi_client_token: zapiConfig.clientToken || null
+      };
+
+      const { error } = await supabaseClient
+        .from('events')
+        .update(payload)
+        .eq('id', currentEventId);
+
+      if (error) {
+        throw new Error(
+          'Não foi possível salvar o meio de envio. Crie as colunas send_provider, zapi_instance_id, zapi_instance_token e zapi_client_token na tabela events. ' +
+          error.message
+        );
+      }
+
+      currentEventData = { ...(currentEventData || {}), ...payload };
+    }
+
+    async function testSelectedSendProvider() {
+      const provider = getSelectedSendProvider();
+
+      if (provider === 'zapi') {
+        if (!validateZAPIConfig(true)) return;
+        showMessage('Configuração Z-API preenchida. Faça um envio único para validar a instância.', 'success');
+        return;
+      }
+
+      await testBotWhatsappConfig();
+    }
+
+    function connectSupabase(url, key) {
+      const { createClient } = supabase;
+      supabaseClient = createClient(url, key);
+    }
+
+    async function saveConfig() {
+      const url = document.getElementById('supabaseUrl').value.trim().replace('/rest/v1/', '').replace('/rest/v1', '');
+      const key = document.getElementById('supabaseKey').value.trim();
+      const provider = getSelectedSendProvider();
+      const zapiConfig = getZAPIConfigFromInputs();
+
+      if (!url || !key) {
+        showMessage('Informe URL e chave do Supabase.', 'error');
+        return;
+      }
+
+      if (provider === 'zapi' && !validateZAPIConfig(true)) {
+        return;
+      }
+
+      localStorage.setItem('supabase_url', url);
+      localStorage.setItem('supabase_key', key);
+      localStorage.setItem(SEND_PROVIDER_STORAGE_KEY, provider);
+      localStorage.setItem('zapi_instance_id', zapiConfig.instanceId);
+      localStorage.setItem('zapi_instance_token', zapiConfig.token);
+      localStorage.setItem('zapi_client_token', zapiConfig.clientToken);
+
+      currentSendProvider = provider;
+      handleSendProviderChange(true);
+      connectSupabase(url, key);
+
+      try {
+        await saveSendProviderOnEvent();
+      } catch (error) {
+        showMessage(error.message, 'error');
+        return;
+      }
+
+      await loadEvent();
+      await loadTemplates();
+      await loadGuests();
+
+      showMessage(
+        provider === 'zapi'
+          ? 'Configurações salvas. Envio configurado para Z-API.'
+          : 'Configurações salvas. Envio configurado para Bot WhatsApp / Link.',
+        'success'
+      );
+    }
+
+
+    async function loadTemplates() {
+      if (!supabaseClient) return;
+
+      const select = document.getElementById('messageTemplateSelect');
+      if (!select) return;
+
+      select.innerHTML = '<option value="">✍️ Mensagem avulsa / personalizada</option>';
+
+      const { data, error } = await supabaseClient
+        .from('message_templates')
+        .select('id, nome, mensagem, status')
+        .eq('status', 'ativa')
+        .order('nome', { ascending: true });
+
+      if (error) {
+        console.error('Erro ao carregar modelos de mensagem:', error);
+        showMessage('Não foi possível carregar os modelos de mensagem.', 'warning');
+        return;
+      }
+
+      messageTemplates = data || [];
+
+      messageTemplates.forEach(template => {
+        const option = document.createElement('option');
+        option.value = template.id;
+        option.textContent = template.nome;
+        select.appendChild(option);
+      });
+    }
+
+    function applySelectedTemplate() {
+      const select = document.getElementById('messageTemplateSelect');
+      const modeInput = document.getElementById('messageTemplateMode');
+      const textarea = document.getElementById('messageTemplate');
+
+      if (!select || !textarea) return;
+
+      const templateId = select.value;
+
+      if (!templateId) {
+        if (modeInput) modeInput.value = 'Mensagem avulsa / personalizada';
+        textarea.focus();
+        return;
+      }
+
+      const template = messageTemplates.find(item => item.id === templateId);
+
+      if (!template) {
+        showMessage('Modelo não encontrado. Atualize os modelos e tente novamente.', 'error');
+        return;
+      }
+
+      textarea.value = template.mensagem || '';
+
+      if (modeInput) {
+        modeInput.value = `Modelo selecionado: ${template.nome}`;
+      }
+
+      showMessage(`Modelo "${template.nome}" carregado no campo mensagem.`, 'success');
+    }
+
+    async function reloadTemplates() {
+      await loadTemplates();
+      showMessage('Modelos de mensagem atualizados.', 'success');
+    }
+
+
+    async function loadEvent() {
+      const { data, error } = await supabaseClient
+        .from('events')
+        .select('id, user_id, name, event_date, event_time, location, google_maps_link, invitation_image_url, invitation_image_path')
+        .eq('id', currentEventId)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Erro ao carregar evento:', error);
+        showMessage('Erro ao carregar evento: ' + error.message, 'error');
+        return;
+      }
+
+      if (!data) {
+        showMessage('Evento não encontrado para o ID informado.', 'error');
+        return;
+      }
+
+      currentEventData = data;
+
+      /*
+        Campos opcionais do meio de envio.
+        Se as colunas ainda não existirem no banco, esta consulta falha silenciosamente
+        e a tela continua carregando o evento normalmente.
+      */
+      const { data: providerData, error: providerError } = await supabaseClient
+        .from('events')
+        .select('send_provider, zapi_instance_id, zapi_instance_token, zapi_client_token')
+        .eq('id', currentEventId)
+        .maybeSingle();
+
+      if (!providerError && providerData) {
+        currentEventData = {
+          ...currentEventData,
+          ...providerData
+        };
+
+        if (providerData.send_provider) {
+          currentSendProvider = providerData.send_provider;
+          localStorage.setItem(SEND_PROVIDER_STORAGE_KEY, currentSendProvider);
+        }
+
+        if (providerData.zapi_instance_id) localStorage.setItem('zapi_instance_id', providerData.zapi_instance_id);
+        if (providerData.zapi_instance_token) localStorage.setItem('zapi_instance_token', providerData.zapi_instance_token);
+        if (providerData.zapi_client_token) localStorage.setItem('zapi_client_token', providerData.zapi_client_token);
+      } else if (providerError) {
+        console.warn(
+          'Campos de meio de envio ainda não existem na tabela events. Rode o ALTER TABLE informado no arquivo.',
+          providerError
+        );
+      }
+
+      const zapiInstanceIdInputEvent = document.getElementById('zapiInstanceId');
+      const zapiInstanceTokenInputEvent = document.getElementById('zapiInstanceToken');
+      const zapiClientTokenInputEvent = document.getElementById('zapiClientToken');
+
+      if (zapiInstanceIdInputEvent) {
+        zapiInstanceIdInputEvent.value =
+          currentEventData.zapi_instance_id ||
+          localStorage.getItem('zapi_instance_id') ||
+          DEFAULT_ZAPI_INSTANCE_ID;
+      }
+
+      if (zapiInstanceTokenInputEvent) {
+        zapiInstanceTokenInputEvent.value =
+          currentEventData.zapi_instance_token ||
+          localStorage.getItem('zapi_instance_token') ||
+          DEFAULT_ZAPI_INSTANCE_TOKEN;
+      }
+
+      if (zapiClientTokenInputEvent) {
+        zapiClientTokenInputEvent.value =
+          currentEventData.zapi_client_token ||
+          localStorage.getItem('zapi_client_token') ||
+          DEFAULT_ZAPI_CLIENT_TOKEN;
+      }
+
+      applySavedSendProviderUI();
+
+      renderEventInvitePreview();
+      document.getElementById('eventName').textContent = currentEventData.name || '-';
+      document.getElementById('eventDate').textContent = formatDateBR(currentEventData.event_date) || '-';
+      document.getElementById('eventTime').textContent = formatTime(currentEventData.event_time) || '-';
+      document.getElementById('eventLocation').textContent = currentEventData.location || '-';
+    }
+
+
+    function renderEventInvitePreview() {
+      const area = document.getElementById('inviteImagePreviewArea');
+      if (!area) return;
+
+      if (currentEventData?.invitation_image_url) {
+        area.innerHTML = `
+      <img
+        src="${escapeHTML(currentEventData.invitation_image_url)}"
+        alt="Convite do evento" />
+    `;
+        return;
+      }
+
+      area.innerHTML = 'Nenhum convite cadastrado.';
+    }
+
+    async function previewAndUploadEventInvite() {
+      const input = document.getElementById('eventInviteImage');
+      const file = input?.files?.[0];
+
+      if (!file) return;
+
+      if (!supabaseClient || !currentEventId) {
+        showMessage('Evento ou Supabase não carregado.', 'error');
+        input.value = '';
+        return;
+      }
+
+      if (!['image/jpeg', 'image/png'].includes(file.type)) {
+        showMessage('O convite precisa ser JPG ou PNG.', 'error');
+        input.value = '';
+        return;
+      }
+
+      if (file.size > 8 * 1024 * 1024) {
+        showMessage('O arquivo deve ter no máximo 8MB.', 'error');
+        input.value = '';
+        return;
+      }
+
+      try {
+        showMessage('Enviando convite...', 'info');
+
+        const extension = file.name.split('.').pop().toLowerCase();
+        const path = `convites/${currentEventId}-${Date.now()}.${extension}`;
+
+        const { error: uploadError } = await supabaseClient.storage
+          .from('event-invitations')
+          .upload(path, file, {
+            cacheControl: '3600',
+            upsert: true
+          });
+
+        if (uploadError) throw uploadError;
+
+        const { data: publicData } = supabaseClient.storage
+          .from('event-invitations')
+          .getPublicUrl(path);
+
+        const { error: updateError } = await supabaseClient
+          .from('events')
+          .update({
+            invitation_image_url: publicData.publicUrl,
+            invitation_image_path: path
+          })
+          .eq('id', currentEventId);
+
+        if (updateError) throw updateError;
+
+        currentEventData.invitation_image_url = publicData.publicUrl;
+        currentEventData.invitation_image_path = path;
+
+        renderEventInvitePreview();
+        showMessage('Convite atualizado com sucesso.', 'success');
+      } catch (error) {
+        showMessage('Erro ao atualizar convite: ' + error.message, 'error');
+      } finally {
+        input.value = '';
+      }
+    }
+
+    async function removeEventInvite() {
+      if (!currentEventData?.invitation_image_url) {
+        showMessage('Nenhum convite cadastrado para remover.', 'info');
+        return;
+      }
+
+      const ok = confirm('Deseja remover o convite deste evento?');
+      if (!ok) return;
+
+      const { error } = await supabaseClient
+        .from('events')
+        .update({
+          invitation_image_url: null,
+          invitation_image_path: null
+        })
+        .eq('id', currentEventId);
+
+      if (error) {
+        showMessage('Erro ao remover convite: ' + error.message, 'error');
+        return;
+      }
+
+      currentEventData.invitation_image_url = null;
+      currentEventData.invitation_image_path = null;
+
+      renderEventInvitePreview();
+      showMessage('Convite removido com sucesso.', 'success');
+    }
+
+
+    async function loadGuests() {
+      if (!supabaseClient || !currentEventId) return;
+
+      let allGuests = [];
+      let from = 0;
+      const limit = 1000;
+
+      while (true) {
+        const { data, error } = await supabaseClient
+          .from('event_guests')
+          .select('*')
+          .eq('event_id', currentEventId)
+          .order('created_at', { ascending: true })
+          .range(from, from + limit - 1);
+
+        if (error) {
+          showMessage('Erro ao carregar convidados: ' + error.message, 'error');
+          return;
+        }
+
+        if (!data || data.length === 0) {
+          break;
+        }
+
+        allGuests = allGuests.concat(data);
+
+        if (data.length < limit) {
+          break;
+        }
+
+        from += limit;
+      }
+
+      guests = allGuests;
+      renderGuests();
+      updateSummary();
+    }
+
+
+    async function importSpreadsheet() {
+      const input = document.getElementById('spreadsheetFile');
+      const file = input.files[0];
+      const button = document.getElementById('importButton');
+
+      if (!file) {
+        showMessage('Selecione uma planilha para importar.', 'error');
+        return;
+      }
+
+      if (!currentEventId) {
+        showMessage('Evento não carregado.', 'error');
+        return;
+      }
+
+      button.disabled = true;
+      button.textContent = 'Importando...';
+
+      try {
+        const rows = await readSpreadsheet(file);
+        const guestsToInsert = rows.map(normalizeRow).filter(item => item.guest_name);
+
+        if (guestsToInsert.length === 0) {
+          showMessage('Nenhum convidado válido encontrado na planilha.', 'error');
+          return;
+        }
+
+        const { error } = await supabaseClient.from('event_guests').insert(guestsToInsert);
+
+        if (error) {
+          showMessage('Erro ao importar convidados: ' + error.message, 'error');
+          return;
+        }
+
+        input.value = '';
+        await loadGuests();
+        showMessage(`${guestsToInsert.length} convidados importados com sucesso.`, 'success');
+      } catch (error) {
+        showMessage('Erro ao ler planilha: ' + error.message, 'error');
+      } finally {
+        button.disabled = false;
+        button.textContent = 'Importar convidados';
+      }
+    }
+
+
+    async function addSingleGuest() {
+      if (!supabaseClient || !currentEventId) {
+        showMessage('Evento ou Supabase não carregado.', 'error');
+        return;
+      }
+
+      const button = document.getElementById('addSingleGuestButton');
+      const guestName = document.getElementById('singleGuestName').value.trim();
+      const groupName = document.getElementById('singleGuestGroup').value.trim();
+      const whatsapp = normalizePhone(document.getElementById('singleGuestWhatsapp').value);
+
+      if (!guestName) {
+        showMessage('Informe o nome do convidado.', 'error');
+        return;
+      }
+
+      if (!whatsapp) {
+        showMessage('Informe o WhatsApp do convidado.', 'error');
+        return;
+      }
+
+      button.disabled = true;
+      button.textContent = 'Adicionando...';
+
+      const { error } = await supabaseClient
+        .from('event_guests')
+        .insert({
+          event_id: currentEventId,
+          guest_name: guestName,
+          group_name: groupName || null,
+          whatsapp,
+          confirmed: false,
+          message_sent: false,
+          message_status: 'not_sent',
+          last_send_error: null
+        });
+
+      button.disabled = false;
+      button.textContent = 'Adicionar convidado';
+
+      if (error) {
+        showMessage('Erro ao adicionar convidado: ' + error.message, 'error');
+        return;
+      }
+
+      clearSingleGuestForm();
+      await loadGuests();
+      showMessage('Convidado adicionado com sucesso.', 'success');
+    }
+
+    function clearSingleGuestForm() {
+      document.getElementById('singleGuestName').value = '';
+      document.getElementById('singleGuestGroup').value = '';
+      document.getElementById('singleGuestWhatsapp').value = '';
+    }
+
+    function downloadGuestSpreadsheetTemplate() {
+      const rows = [
+        ['Nome do Convidado', 'Nome do Grupo', 'Whatsapp'],
+        ['Maria Silva', 'Família', '81999999999'],
+        ['João Santos', 'Amigos', '81988888888']
+      ];
+
+      const csvContent = rows
+        .map(row => row.map(value => '"' + String(value).replace(/"/g, '""') + '"').join(';'))
+        .join(String.fromCharCode(10));
+
+      const blob = new Blob([String.fromCharCode(65279) + csvContent], {
+        type: 'text/csv;charset=utf-8;'
+      });
+
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'modelo-importacao-convidados.csv';
+      link.style.display = 'none';
+
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      setTimeout(() => URL.revokeObjectURL(url), 3000);
+      showMessage('Modelo da planilha baixado.', 'success');
+    }
+
+    function toggleAccordion(id) {
+      const card = document.getElementById(id);
+      if (!card) return;
+      card.classList.toggle('active');
+    }
+
+    function readSpreadsheet(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = event => {
+          try {
+            const data = new Uint8Array(event.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+            const rows = XLSX.utils.sheet_to_json(firstSheet, { defval: '' });
+            resolve(rows);
+          } catch (error) {
+            reject(error);
+          }
+        };
+        reader.onerror = () => reject(new Error('Não foi possível ler o arquivo.'));
+        reader.readAsArrayBuffer(file);
+      });
+    }
+
+    function normalizeRow(row) {
+      const guestName = getValueByPossibleNames(row, ['Nome do Convidado', 'Nome', 'Convidado', 'guest_name']);
+      const groupName = getValueByPossibleNames(row, ['Nome do Grupo', 'Grupo', 'group_name']);
+      const whatsapp = getValueByPossibleNames(row, ['Whatsapp', 'WhatsApp', 'Telefone', 'Celular', 'whatsapp']);
+
+      return {
+        event_id: currentEventId,
+        guest_name: String(guestName || '').trim(),
+        group_name: String(groupName || '').trim() || null,
+        whatsapp: normalizePhone(whatsapp),
+        confirmed: false,
+        message_sent: false,
+        last_send_error: null
+      };
+    }
+
+    function getValueByPossibleNames(row, names) {
+      const normalizedMap = {};
+      Object.keys(row).forEach(key => {
+        normalizedMap[normalizeText(key)] = row[key];
+      });
+
+      for (const name of names) {
+        const value = normalizedMap[normalizeText(name)];
+        if (value !== undefined && value !== null && String(value).trim() !== '') return value;
+      }
+
+      return '';
+    }
+
+    function getGuestStatusValue(guest) {
+      if (guest.status === 'nao_comparecera') return 'nao_comparecera';
+      if (guest.confirmed === true) return 'confirmado';
+      return 'pendente';
+    }
+
+    function getGuestStatusBadge(guest) {
+      const status = getGuestStatusValue(guest);
+
+      if (status === 'nao_comparecera') {
+        return '<span class="badge badge-red">Não comparecerá</span>';
+      }
+
+      if (status === 'confirmado') {
+        return '<span class="badge badge-green">Confirmado</span>';
+      }
+
+      return '<span class="badge badge-yellow">Pendente</span>';
+    }
+
+    function getGuestMessageValue(guest) {
+      if (guest.last_send_error) return 'erro';
+      if (guest.message_status === 'sent') return 'na_fila';
+      if (guest.message_sent) return 'enviada';
+      return 'nao_enviada';
+    }
+
+    function getGuestMessageBadge(guest) {
+      const status = getGuestMessageValue(guest);
+
+      if (status === 'erro') {
+        return `<span class="badge badge-red">Erro</span>`;
+      }
+
+      if (status === 'na_fila') {
+        return '<span class="badge badge-yellow">Enviada</span>';
+      }
+
+      if (status === 'enviada') {
+        return '<span class="badge badge-gray">Enviada</span>';
+      }
+
+      return '<span class="badge badge-yellow">Não enviada</span>';
+    }
+
+
+
+    function normalizeAttendanceStatus(status) {
+      const value = String(status || '').trim().toLowerCase();
+
+      if (value === 'confirmed' || value === 'confirmado' || value === 'confirmada') {
+        return 'confirmed';
+      }
+
+      if (
+        value === 'not_attending' ||
+        value === 'nao_comparecera' ||
+        value === 'não_comparecerá' ||
+        value === 'cancelado' ||
+        value === 'cancelada'
+      ) {
+        return 'not_attending';
+      }
+
+      return 'pending';
+    }
+
+    function getGuestAttendanceStatus(guest) {
+      if (guest?.confirmed === true) return 'confirmed';
+      return normalizeAttendanceStatus(guest?.attendance_status);
+    }
+
+    function getAttendanceBadge(status) {
+      switch (normalizeAttendanceStatus(status)) {
+        case 'confirmed':
+          return '<span class="badge badge-green">Confirmado</span>';
+        case 'not_attending':
+          return '<span class="badge badge-red">Não comparecerá</span>';
+        default:
+          return '<span class="badge badge-yellow">Pendente</span>';
+      }
+    }
+
+
+    function normalizeMessageStatus(guest) {
+      const status = String(guest?.message_status || '').trim().toLowerCase();
+
+      if (
+        guest?.message_sent === true ||
+        status === 'sent' ||
+        status === 'enviada' ||
+        status === 'enviado' ||
+        status === 'queued' ||
+        status === 'na fila' ||
+        status === 'na_fila'
+      ) {
+        return 'sent';
+      }
+
+      if (status === 'error' || status === 'erro') {
+        return 'error';
+      }
+
+      return 'not_sent';
+    }
+
+    function getMessageStatusBadge(guest) {
+      const status = normalizeMessageStatus(guest);
+
+      if (status === 'sent') {
+        return '<span class="badge badge-gray">Enviada</span>';
+      }
+
+      if (status === 'error') {
+        return '<span class="badge badge-red">Erro</span>';
+      }
+
+      return '<span class="badge badge-yellow">Não enviada</span>';
+    }
+
+
+    function renderGuests() {
+      const container = document.getElementById('guestsTableContainer');
+      const search = document.getElementById('searchInput')?.value.trim().toLowerCase() || '';
+      const statusFilter = document.getElementById('statusFilter')?.value || '';
+      const messageFilter = document.getElementById('messageFilter')?.value || '';
+
+      const filtered = guests.filter(guest => {
+        const statusValue = getGuestStatusValue(guest);
+        const messageValue = getGuestMessageValue(guest);
+
+        if (statusFilter && statusValue !== statusFilter) return false;
+        if (messageFilter && messageValue !== messageFilter) return false;
+
+        if (!search) return true;
+
+        const values = [
+          guest.guest_name,
+          guest.group_name,
+          guest.whatsapp,
+          statusValue === 'nao_comparecera' ? 'Não comparecerá' : statusValue,
+          messageValue === 'na_fila' ? 'Enviada' : messageValue
+        ];
+
+        return values.filter(Boolean).some(value => String(value).toLowerCase().includes(search));
+      });
+
+      container.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th>Ações</th>
+          <th>
+            <div class="th-filter">
+              <span>Status</span>
+              <select id="statusFilter" onchange="renderGuests()">
+                <option value="" ${statusFilter === '' ? 'selected' : ''}>Todos</option>
+                <option value="pendente" ${statusFilter === 'pendente' ? 'selected' : ''}>Pendente</option>
+                <option value="confirmado" ${statusFilter === 'confirmado' ? 'selected' : ''}>Confirmado</option>
+                <option value="nao_comparecera" ${statusFilter === 'nao_comparecera' ? 'selected' : ''}>Não comparecerá</option>
+              </select>
+            </div>
+          </th>
+          <th>
+            <div class="th-filter">
+              <span>Mensagem</span>
+              <select id="messageFilter" onchange="renderGuests()">
+                <option value="" ${messageFilter === '' ? 'selected' : ''}>Todas</option>
+                <option value="na_fila" ${messageFilter === 'na_fila' ? 'selected' : ''}>Enviada</option>
+                <option value="enviada" ${messageFilter === 'enviada' ? 'selected' : ''}>Enviada</option>
+                <option value="nao_enviada" ${messageFilter === 'nao_enviada' ? 'selected' : ''}>Não enviada</option>
+                <option value="erro" ${messageFilter === 'erro' ? 'selected' : ''}>Com erro</option>
+              </select>
+            </div>
+          </th>
+          <th>Convidado</th>
+          <th>Grupo</th>
+          <th>WhatsApp</th>
+          <th>Confirmado em</th>
+          <th>Erro</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        ${filtered.length === 0 ? `
+          <tr>
+            <td colspan="8">
+              <div class="empty-state">Nenhum convidado encontrado.</div>
+            </td>
+          </tr>
+        ` : filtered.map(guest => `
+          <tr>
+            <td>
+              <div class="table-actions">
+                <button
+                  class="btn-secondary action-copy"
+                  onclick="copyConfirmationLink('${guest.id}')">
+                  Copiar
+                </button>
+
+                <button
+                  id="sendBtn-${guest.id}"
+                  class="btn-success action-send"
+                  onclick="sendSingleGuestWithLoading('${guest.id}')">
+                  Enviar
+                </button>
+
+                <button
+                  class="btn-dark action-sent"
+                  onclick="markMessageSent('${guest.id}')"
+                  ${guest.message_sent ? 'disabled' : ''}>
+                  Enviado
+                </button>
+
+                <button
+                  class="btn-warning action-edit"
+                  onclick="editGuest('${guest.id}')">
+                  Alterar
+                </button>
+
+                <button
+                  class="btn-danger action-delete"
+                  onclick="deleteGuest('${guest.id}')">
+                  Remover
+                </button>
+              </div>
+            </td>
+
+            <td>
+              <select onchange="updateGuestStatus('${guest.id}', this.value)" style="min-width:170px;">
+                <option value="pendente" ${getGuestStatusValue(guest) === 'pendente' ? 'selected' : ''}>Pendente</option>
+                <option value="confirmado" ${getGuestStatusValue(guest) === 'confirmado' ? 'selected' : ''}>Confirmado</option>
+                <option value="nao_comparecera" ${getGuestStatusValue(guest) === 'nao_comparecera' ? 'selected' : ''}>Não comparecerá</option>
+              </select>
+              <div style="margin-top:8px;">
+                ${getGuestStatusBadge(guest)}
+              </div>
+            </td>
+
+            <td>
+              ${getGuestMessageBadge(guest)}
+            </td>
+
+            <td>${escapeHTML(guest.guest_name)}</td>
+            <td>${escapeHTML(guest.group_name || '-')}</td>
+            <td>${escapeHTML(formatPhoneBR(guest.whatsapp) || '-')}</td>
+            <td>${formatDateTimeBR(guest.confirmed_at) || '-'}</td>
+
+            <td>
+              ${guest.last_send_error
+          ? `<span class="badge badge-red">${escapeHTML(guest.last_send_error)}</span>`
+          : '-'}
+            </td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+    }
+
+    async function updateGuestStatus(guestId, newStatus) {
+      const attendanceStatus = normalizeAttendanceStatus(newStatus);
+
+      const payload = {
+        attendance_status: attendanceStatus
+      };
+
+      if (attendanceStatus === 'confirmed') {
+        payload.confirmed = true;
+        payload.confirmed_at = new Date().toISOString();
+      } else {
+        payload.confirmed = false;
+        payload.confirmed_at = null;
+      }
+
+      const { error } = await supabaseClient
+        .from('event_guests')
+        .update(payload)
+        .eq('id', guestId);
+
+      if (error) {
+        showMessage('Erro ao alterar status de presença: ' + error.message + ' Verifique se a coluna attendance_status existe na tabela event_guests.', 'error');
+        return;
+      }
+
+      await loadGuests();
+
+      const label = attendanceStatus === 'confirmed'
+        ? 'Confirmado'
+        : attendanceStatus === 'not_attending'
+          ? 'Não comparecerá'
+          : 'Pendente';
+
+      showMessage(`Status alterado para ${label}.`, 'success');
+    }
+
+
+    async function editGuest(guestId) {
+      if (!supabaseClient) {
+        showMessage('Supabase não carregado.', 'error');
+        return;
+      }
+
+      const guest = guests.find(item => item.id === guestId);
+      if (!guest) {
+        showMessage('Convidado não encontrado. Atualize a lista e tente novamente.', 'error');
+        return;
+      }
+
+      const guestName = prompt('Nome do convidado:', guest.guest_name || '');
+      if (guestName === null) return;
+
+      const groupName = prompt('Grupo:', guest.group_name || '');
+      if (groupName === null) return;
+
+      const whatsappInput = prompt('WhatsApp:', formatPhoneBR(guest.whatsapp) || '');
+      if (whatsappInput === null) return;
+
+      const normalizedName = guestName.trim();
+      const normalizedWhatsapp = normalizePhone(whatsappInput);
+
+      if (!normalizedName) {
+        showMessage('O nome do convidado não pode ficar vazio.', 'error');
+        return;
+      }
+
+      if (!normalizedWhatsapp) {
+        showMessage('O WhatsApp do convidado não pode ficar vazio.', 'error');
+        return;
+      }
+
+      const { error } = await supabaseClient
+        .from('event_guests')
+        .update({
+          guest_name: normalizedName,
+          group_name: groupName.trim() || null,
+          whatsapp: normalizedWhatsapp
+        })
+        .eq('id', guestId);
+
+      if (error) {
+        showMessage('Erro ao alterar convidado: ' + error.message, 'error');
+        return;
+      }
+
+      await loadGuests();
+      showMessage('Convidado alterado com sucesso.', 'success');
+    }
+
+    async function deleteGuest(guestId) {
+      if (!supabaseClient) {
+        showMessage('Supabase não carregado.', 'error');
+        return;
+      }
+
+      if (!currentEventId) {
+        showMessage('Evento não carregado.', 'error');
+        return;
+      }
+
+      const guest = guests.find(item => item.id === guestId);
+      if (!guest) {
+        showMessage('Convidado não encontrado. Atualize a lista e tente novamente.', 'error');
+        return;
+      }
+
+      const ok = confirm(`Deseja remover o convidado "${guest.guest_name || '-'}"?`);
+      if (!ok) return;
+
+      try {
+        const { data, error } = await supabaseClient
+          .from('event_guests')
+          .delete()
+          .eq('id', guestId)
+          .eq('event_id', currentEventId)
+          .select('id');
+
+        if (error) {
+          showMessage('Erro ao remover convidado: ' + error.message, 'error');
+          return;
+        }
+
+        if (!data || data.length === 0) {
+          showMessage('O convidado não foi removido. Verifique se a policy DELETE foi criada no Supabase.', 'warning');
+          return;
+        }
+
+        guests = guests.filter(item => item.id !== guestId);
+        renderGuests();
+        updateSummary();
+        showMessage('Convidado removido com sucesso.', 'success');
+      } catch (error) {
+        showMessage('Erro ao remover convidado: ' + error.message, 'error');
+      }
+    }
+
+    async function sendSingleGuestBotWhatsappWithLoading(guestId) {
+      const button = document.getElementById(`sendBtn-${guestId}`);
+
+      if (button) {
+        button.disabled = true;
+        button.innerHTML = `
+      <span class="loading-spinner"></span>
+      Enviando...
+    `;
+      }
+
+      try {
+        await sendSingleGuestBotWhatsapp(guestId);
+      } finally {
+        if (button) {
+          button.disabled = false;
+          button.innerHTML = 'Enviar';
+        }
+      }
+    }
+
+
+    async function sendSingleGuestWithLoading(guestId) {
+      const button = document.getElementById(`sendBtn-${guestId}`);
+
+      if (button) {
+        button.disabled = true;
+        button.innerHTML = `<span class="loading-spinner"></span> Enviando...`;
+      }
+
+      try {
+        await sendSingleGuest(guestId);
+      } finally {
+        if (button) {
+          button.disabled = false;
+          button.innerHTML = 'Enviar';
+        }
+      }
+    }
+
+    async function sendSingleGuest(guestId) {
+      const provider = getActiveSendProvider();
+
+      if (provider === 'zapi') {
+        return sendSingleGuestZAPI(guestId);
+      }
+
+      return sendSingleGuestBotWhatsapp(guestId);
+    }
+
+    async function sendNextPending() {
+      const provider = getActiveSendProvider();
+
+      if (provider === 'zapi') {
+        if (!ensureMessageTemplateFilled()) return;
+
+        const pending = getPendingToSend();
+        if (pending.length === 0) {
+          showMessage('Nenhum convidado pendente disponível para envio.', 'info');
+          return;
+        }
+
+        return sendSingleGuestZAPI(pending[0].id);
+      }
+
+      return sendNextPendingBotWhatsapp();
+    }
+
+    async function startBatchSend() {
+      const provider = getActiveSendProvider();
+
+      if (provider === 'zapi') {
+        return startZAPIBatchSend();
+      }
+
+      return startBotWhatsappBatchSend();
+    }
+
+    async function updateAttendanceStatus(guestId, status) {
+      return updateGuestStatus(guestId, status);
+    }
+
+    function updateSummary() {
+      const total = guests.length;
+      const confirmed = guests.filter(item => item.confirmed === true).length;
+      const pending = total - confirmed;
+      const groups = new Set(guests.map(item => item.group_name).filter(Boolean));
+
+      document.getElementById('totalGuests').textContent = total;
+      document.getElementById('confirmedGuests').textContent = confirmed;
+      document.getElementById('pendingGuests').textContent = pending;
+      document.getElementById('totalGroups').textContent = groups.size;
+    }
+
+    function getConfirmationLink(guestId) {
+      return `${window.location.origin}/confirmar-presenca/?guest_id=${encodeURIComponent(guestId)}`;
+    }
+
+    async function getEventResponsible(forceReload = false) {
+      if (!forceReload && currentResponsibleData) {
+        return currentResponsibleData;
+      }
+
+      if (!currentEventData?.user_id) {
+        currentResponsibleData = null;
+        return null;
+      }
+
+      const { data, error } = await supabaseClient
+        .from('users')
+        .select('id, name, whatsapp')
+        .eq('id', currentEventData.user_id)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Erro ao carregar responsável do evento:', error);
+        currentResponsibleData = null;
+        return null;
+      }
+
+      currentResponsibleData = data || null;
+      return currentResponsibleData;
+    }
+
+    function buildResponsibleFooter(responsible) {
+      if (!responsible?.whatsapp) {
+        return '';
+      }
+
+      return `
+
+---
+📲 *Dúvidas ou respostas?*
+Fale diretamente com ${responsible.name || 'o responsável'}:
+${formatPhoneBR(responsible.whatsapp)}`;
+    }
+
+    function buildIndividualSendLog(guest, status, errorMessage = '') {
+      return `📩 *Log de envio - Convidou*
+
+🎉 *Evento:* ${currentEventData?.name || '-'}
+
+👤 *Convidado:* ${guest.guest_name || '-'}
+📱 *WhatsApp:* ${formatPhoneBR(guest.whatsapp) || '-'}
+
+📌 *Status:* ${status}
+
+${errorMessage ? `⚠️ *Erro:* ${errorMessage}` : '✅ Mensagem enviada com sucesso.'}
+
+🕒 ${new Date().toLocaleString('pt-BR')}`;
+    }
+
+    function buildBatchSendLog(summary) {
+      const sentList = (summary.items || [])
+        .map((item, index) => {
+          return `${index + 1}. ${item.name} - ${item.whatsapp} - ${item.status}`;
+        })
+        .join('\n');
+
+      return `📊 *Resumo do envio em massa - Convidou*
+
+🎉 *Evento:* ${currentEventData?.name || '-'}
+
+✅ *Enviadas:* ${summary.sent}
+⚠️ *Erros:* ${summary.errors}
+⏭️ *Não processadas:* ${summary.skipped}
+📌 *Total do lote:* ${summary.total}
+
+📋 *Log dos envios:*
+${sentList || '-'}
+
+🕒 Finalizado em:
+${new Date().toLocaleString('pt-BR')}`;
+    }
+
+    async function sendLogToResponsible(message, providerOverride = null) {
+      const responsible = await getEventResponsible();
+
+      if (!responsible?.whatsapp) {
+        console.warn('Responsável do evento sem WhatsApp para receber log.');
+        return;
+      }
+
+      const phone = normalizePhoneWithDDI(responsible.whatsapp);
+
+      if (!phone) {
+        console.warn('WhatsApp do responsável inválido para receber log.');
+        return;
+      }
+
+      const provider = providerOverride || getActiveSendProvider();
+
+      if (provider === 'zapi') {
+        await sendTextZAPI(phone, message);
+        return;
+      }
+
+      await sendBotWhatsapp(phone, message);
+    }
+
+    function getMessageTemplateText() {
+      const textarea = document.getElementById('messageTemplate');
+      return (textarea?.value || '').trim();
+    }
+
+    function ensureMessageTemplateFilled() {
+      if (getMessageTemplateText()) return true;
+
+      document.getElementById('accordionMessage')?.classList.add('active');
+      const textarea = document.getElementById('messageTemplate');
+      if (textarea) textarea.focus();
+
+      showMessage('Informe a mensagem enviada ao convidado antes de enviar.', 'error');
+      return false;
+    }
+
+    async function buildGuestMessage(guest) {
+      const template = getMessageTemplateText();
+
+      if (!template) {
+        throw new Error('Informe a mensagem enviada ao convidado antes de enviar.');
+      }
+      const link = getConfirmationLink(guest.id);
+      const maps = currentEventData?.google_maps_link || '';
+      const responsible = await getEventResponsible();
+
+      let message = template
+        .replaceAll('{{nome}}', guest.guest_name || '')
+        .replaceAll('{{grupo}}', guest.group_name || '')
+        .replaceAll('{{evento}}', currentEventData?.name || '')
+        .replaceAll('{{data}}', formatDateBR(currentEventData?.event_date) || '')
+        .replaceAll('{{hora}}', formatTime(currentEventData?.event_time) || '')
+        .replaceAll('{{local}}', currentEventData?.location || '')
+        .replaceAll('{{maps}}', maps)
+        .replaceAll('{{link}}', link);
+
+      // message += buildResponsibleFooter(responsible);
+
+      return message.trim();
+    }
+
+    async function copyConfirmationLink(guestId) {
+      const link = getConfirmationLink(guestId);
+      await navigator.clipboard.writeText(link);
+      showMessage('Link de confirmação copiado.', 'success');
+    }
+
+    function randomDelayMs(min = 100, max = 500) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
+    async function testBotWhatsappConfig() {
+      window.open(BOT_WHATSAPP_BASE_URL, '_blank', 'noopener');
+      showMessage('Página do QR Code aberta. Leia o QR Code para sincronizar o celular.', 'info');
+    }
+
+    function getBotWhatsappErrorMessage(result, fallback = 'Erro retornado pelo Bot WhatsApp.') {
+      if (!result || typeof result !== 'object') return fallback;
+      return result.message || result.error || result.errorMessage || result.exception || fallback;
+    }
+
+    async function sendBotWhatsapp(phone, message, photo = null, timeoutMs = 45000) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+      const payload = {
+        message,
+        from: phone
+      };
+
+      if (photo) {
+        payload.image = photo;
+      }
+
+      let response;
+      let result = {};
+
+      try {
+        response = await fetch(BOT_WHATSAPP_MESSAGE_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(payload),
+          signal: controller.signal
+        });
+
+        result = await response.json().catch(() => ({}));
+      } catch (error) {
+        if (error.name === 'AbortError') {
+          throw new Error('Timeout no Bot WhatsApp. O envio pode ter ficado preso.');
+        }
+
+        throw new Error('Falha de conexão com o Bot WhatsApp: ' + (error.message || 'erro desconhecido'));
+      } finally {
+        clearTimeout(timeout);
+      }
+
+      if (!response.ok) {
+        throw new Error(getBotWhatsappErrorMessage(result, `Erro Bot WhatsApp HTTP ${response.status}`));
+      }
+
+      return result || { ok: true };
+    }
+
+    function getPendingToSend() {
+      return guests.filter(guest => {
+        const status = normalizeMessageStatus(guest);
+        return status !== 'sent' && guest.whatsapp;
+      });
+    }
+
+    async function sendTextZAPI(phone, message) {
+      if (getActiveSendProvider() !== 'zapi') {
+        throw new Error('Envio Z-API bloqueado: o meio selecionado não é Z-API.');
+      }
+
+      const config = validateZAPIConfig(true);
+      if (!config) throw new Error('Z-API não configurada.');
+
+      const cleanPhone = String(phone || '').replace(/\D/g, '').trim();
+
+      if (!cleanPhone || cleanPhone.length < 12) {
+        throw new Error('Telefone inválido para envio via Z-API.');
+      }
+
+      const url =
+        `https://api.z-api.io/instances/${encodeURIComponent(config.instanceId)}` +
+        `/token/${encodeURIComponent(config.token)}/send-text`;
+
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 45000);
+
+      let response;
+      let result = {};
+
+      try {
+        response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Client-Token': config.clientToken
+          },
+          body: JSON.stringify({
+            phone: cleanPhone,
+            message
+          }),
+          signal: controller.signal
+        });
+
+        result = await response.json().catch(() => ({}));
+      } catch (error) {
+        if (error.name === 'AbortError') {
+          throw new Error('Timeout na Z-API. A mensagem pode ter ficado presa na fila.');
+        }
+
+        throw new Error('Falha de conexão com a Z-API: ' + (error.message || 'erro desconhecido'));
+      } finally {
+        clearTimeout(timeout);
+      }
+
+      console.log('Z-API send-text status:', response.status);
+      console.log('Z-API send-text result:', result);
+
+      if (!response.ok) {
+        throw new Error(
+          result.message ||
+          result.error ||
+          result.errorMessage ||
+          `Erro Z-API HTTP ${response.status}`
+        );
+      }
+
+      if (result.error || result.errorMessage) {
+        throw new Error(result.message || result.error || result.errorMessage || 'Erro retornado pela Z-API.');
+      }
+
+      if (!result.messageId && !result.zaapId && !result.id) {
+        throw new Error('A Z-API respondeu, mas não retornou ID/messageId/zaapId.');
+      }
+
+      return {
+        queued: true,
+        messageId: result.messageId || result.id || null,
+        zaapId: result.zaapId || null,
+        raw: result
+      };
+    }
+
+    async function sendImageZAPI(phone, imageUrl, caption) {
+      if (getActiveSendProvider() !== 'zapi') {
+        throw new Error('Envio Z-API bloqueado: o meio selecionado não é Z-API.');
+      }
+
+      const config = validateZAPIConfig(true);
+      if (!config) throw new Error('Z-API não configurada.');
+
+      const cleanPhone = String(phone || '').replace(/\D/g, '').trim();
+
+      if (!cleanPhone || cleanPhone.length < 12) {
+        throw new Error('Telefone inválido para envio via Z-API.');
+      }
+
+      const url =
+        `https://api.z-api.io/instances/${encodeURIComponent(config.instanceId)}` +
+        `/token/${encodeURIComponent(config.token)}/send-image`;
+
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 60000);
+
+      let response;
+      let result = {};
+
+      try {
+        response = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Client-Token': config.clientToken
+          },
+          body: JSON.stringify({
+            phone: cleanPhone,
+            image: imageUrl,
+            caption: caption || ''
+          }),
+          signal: controller.signal
+        });
+
+        result = await response.json().catch(() => ({}));
+      } catch (error) {
+        if (error.name === 'AbortError') {
+          throw new Error('Timeout na Z-API ao enviar imagem.');
+        }
+
+        throw new Error('Falha de conexão com a Z-API: ' + (error.message || 'erro desconhecido'));
+      } finally {
+        clearTimeout(timeout);
+      }
+
+      console.log('Z-API send-image status:', response.status);
+      console.log('Z-API send-image result:', result);
+
+      if (!response.ok) {
+        throw new Error(
+          result.message ||
+          result.error ||
+          result.errorMessage ||
+          `Erro Z-API HTTP ${response.status}`
+        );
+      }
+
+      if (result.error || result.errorMessage) {
+        throw new Error(result.message || result.error || result.errorMessage || 'Erro retornado pela Z-API.');
+      }
+
+      if (!result.messageId && !result.zaapId && !result.id) {
+        throw new Error('A Z-API respondeu, mas não retornou ID/messageId/zaapId.');
+      }
+
+      return {
+        queued: true,
+        messageId: result.messageId || result.id || null,
+        zaapId: result.zaapId || null,
+        raw: result
+      };
+    }
+
+    async function sendGuestZAPI(guest) {
+      const phone = normalizePhoneWithDDI(guest.whatsapp);
+      if (!phone) throw new Error('Telefone inválido.');
+
+      const message = await buildGuestMessage(guest);
+      const inviteImageUrl = currentEventData?.invitation_image_url || '';
+      const forceTextOnly = document.getElementById('zapiTextOnly')?.checked !== false;
+      let result;
+
+      if (inviteImageUrl && !forceTextOnly) {
+        result = await sendImageZAPI(phone, inviteImageUrl, message);
+      } else {
+        result = await sendTextZAPI(phone, message);
+      }
+
+      /*
+        Status permitidos:
+        sent     = Enviada
+        not_sent = Não enviada
+        error    = Erro
+
+        Não existe mais queued/Enviada.
+      */
+      const updatePayload = {
+        message_sent: true,
+        message_status: 'sent',
+        message_sent_at: new Date().toISOString(),
+        last_send_error: null
+      };
+
+      if (result?.messageId !== undefined) updatePayload.zapi_message_id = result.messageId;
+      if (result?.id !== undefined && !updatePayload.zapi_message_id) updatePayload.zapi_message_id = result.id;
+      if (result?.zaapId !== undefined) updatePayload.zapi_zaap_id = result.zaapId;
+
+      const { error } = await supabaseClient
+        .from('event_guests')
+        .update(updatePayload)
+        .eq('id', guest.id);
+
+      if (error) {
+        console.warn('Não foi possível salvar status completo. Tentando update básico.', error);
+
+        await supabaseClient
+          .from('event_guests')
+          .update({
+            message_sent: true,
+            message_status: 'sent',
+            message_sent_at: new Date().toISOString(),
+            last_send_error: null
+          })
+          .eq('id', guest.id);
+      }
+
+      return result;
+    }
+
+    async function sendSingleGuestZAPI(guestId) {
+      const guest = guests.find(item => item.id === guestId);
+      if (!guest) return;
+
+      if (!ensureMessageTemplateFilled()) return;
+
+      try {
+        await sendGuestZAPI(guest);
+
+        // try {
+        //   await sendLogToResponsible(buildIndividualSendLog(guest, 'Enviado via Z-API'), 'zapi');
+        // } catch (logError) {
+        //   console.warn('Mensagem enviada, mas não foi possível enviar o log ao responsável:', logError);
+        // }
+
+        await loadGuests();
+        showMessage(`Mensagem enviada na Z-API para ${guest.guest_name}. Confira no WhatsApp antes de novos lotes.`, 'success');
+      } catch (error) {
+        await saveSendError(guest.id, error.message);
+
+        try {
+          await sendLogToResponsible(buildIndividualSendLog(guest, 'Erro via Z-API', error.message), 'zapi');
+        } catch (logError) {
+          console.warn('Erro no envio e também no log ao responsável:', logError);
+        }
+
+        await loadGuests();
+        showMessage('Erro ao enviar via Z-API: ' + error.message, 'error');
+      }
+    }
+
+    async function startZAPIBatchSend() {
+      if (batchSending) return;
+      if (!ensureMessageTemplateFilled()) return;
+      if (!validateZAPIConfig(true)) return;
+
+      const pending = getPendingToSend();
+
+      if (pending.length === 0) {
+        showMessage('Nenhum convidado pendente com WhatsApp disponível para envio.', 'info');
+        return;
+      }
+
+      const batchLimit = Number(document.getElementById('batchLimit').value);
+      const pauseMinutes = Number(document.getElementById('pauseMinutes').value);
+      const selected = pending.slice(0, batchLimit);
+
+      const ok = confirm(`Envio em massa via Z-API\n\nSerão processadas ${selected.length} mensagens neste lote.\n\nDeseja iniciar?`);
+      if (!ok) return;
+
+      batchSending = true;
+      stopRequested = false;
+      document.getElementById('safeSendButton').disabled = true;
+      document.getElementById('stopSendButton').disabled = false;
+
+      showSendProgress(true, 'Iniciando envio via Z-API...', 'Preparando contatos...', 0);
+
+      const summary = {
+        sent: 0,
+        errors: 0,
+        skipped: 0,
+        total: selected.length,
+        items: []
+      };
+
+      for (let i = 0; i < selected.length; i++) {
+        if (stopRequested) {
+          summary.skipped = selected.length - i;
+          break;
+        }
+
+        const guest = selected[i];
+
+        try {
+          await sendGuestZAPI(guest);
+
+          summary.sent++;
+          summary.items.push({
+            name: guest.guest_name || '-',
+            whatsapp: formatPhoneBR(guest.whatsapp) || '-',
+            status: 'Enviada via Z-API'
+          });
+        } catch (error) {
+          summary.errors++;
+          const errorMessage = error.message || 'Erro desconhecido';
+
+          summary.items.push({
+            name: guest.guest_name || '-',
+            whatsapp: formatPhoneBR(guest.whatsapp) || '-',
+            status: 'Erro Z-API: ' + errorMessage
+          });
+
+          await saveSendError(guest.id, errorMessage);
+        }
+
+        const percent = Math.round(((i + 1) / selected.length) * 100);
+        showSendProgress(
+          true,
+          `Processando ${i + 1} de ${selected.length}`,
+          `Enviadas: ${summary.sent} | Erros: ${summary.errors} | Atual: ${guest.guest_name}`,
+          percent
+        );
+
+        if (i < selected.length - 1) {
+          await sleep(randomDelayMs(25000, 60000));
+        }
+      }
+
+      await loadGuests();
+
+      try {
+        await sendLogToResponsible(buildBatchSendLog(summary), getActiveSendProvider());
+      } catch (logError) {
+        console.warn('Envio em massa finalizado, mas não foi possível enviar o resumo ao responsável:', logError);
+      }
+
+      if (stopRequested) {
+        showMessage('Envio interrompido pelo usuário.', 'warning');
+      } else {
+        showMessage(`Lote via Z-API finalizado. Enviadas: ${summary.sent}. Erros: ${summary.errors}. Pausa recomendada: ${pauseMinutes} minuto(s).`, summary.errors ? 'warning' : 'success');
+      }
+
+      showSendProgress(true, 'Lote finalizado', `Enviadas: ${summary.sent}. Erros: ${summary.errors}.`, 100);
+
+      batchSending = false;
+      document.getElementById('safeSendButton').disabled = false;
+      document.getElementById('stopSendButton').disabled = true;
+    }
+
+    async function sendSingleGuestBotWhatsapp(guestId) {
+      const guest = guests.find(item => item.id === guestId);
+      if (!guest) return;
+
+      if (!ensureMessageTemplateFilled()) return;
+
+      try {
+        await sendGuestBotWhatsapp(guest);
+
+        try {
+          await sendLogToResponsible(
+            buildIndividualSendLog(guest, 'Enviado')
+          );
+        } catch (logError) {
+          console.warn('Mensagem enviada, mas não foi possível enviar o log ao responsável:', logError);
+        }
+
+        await loadGuests();
+        showMessage(`Mensagem enviada para ${guest.guest_name}. Log enviado ao responsável do evento.`, 'success');
+      } catch (error) {
+        await saveSendError(guest.id, error.message);
+
+        try {
+          await sendLogToResponsible(
+            buildIndividualSendLog(guest, 'Erro', error.message)
+          );
+        } catch (logError) {
+          console.warn('Erro no envio e também no log ao responsável:', logError);
+        }
+
+        await loadGuests();
+        showMessage('Erro ao enviar pelo Bot WhatsApp: ' + error.message, 'error');
+      }
+    }
+
+    async function sendNextPendingBotWhatsapp() {
+      if (!ensureMessageTemplateFilled()) return;
+
+      const pending = getPendingToSend();
+      if (pending.length === 0) {
+        showMessage('Nenhum convidado pendente disponível para envio.', 'info');
+        return;
+      }
+
+      await sendSingleGuestBotWhatsapp(pending[0].id);
+    }
+
+    async function sendGuestBotWhatsapp(guest) {
+      const phone = normalizePhoneWithDDI(guest.whatsapp);
+      if (!phone) throw new Error('Telefone inválido.');
+
+      const message = await buildGuestMessage(guest);
+      const photo = currentEventData?.invitation_image_url || null;
+      const result = await sendBotWhatsapp(phone, message, photo);
+
+      await supabaseClient
+        .from('event_guests')
+        .update({
+          message_sent: true,
+          message_sent_at: new Date().toISOString(),
+          last_send_error: null
+        })
+        .eq('id', guest.id);
+
+      return result || { ok: true };
+    }
+
+    async function saveSendError(guestId, errorMessage) {
+      await supabaseClient
+        .from('event_guests')
+        .update({
+          message_sent: false,
+          message_status: 'error',
+          last_send_error: String(errorMessage || 'Erro desconhecido').substring(0, 250)
+        })
+        .eq('id', guestId);
+    }
+
+    async function startBotWhatsappBatchSend() {
+      if (batchSending) return;
+
+      if (!ensureMessageTemplateFilled()) return;
+
+      const pending = getPendingToSend();
+      if (pending.length === 0) {
+        showMessage('Nenhum convidado pendente com WhatsApp disponível para envio.', 'info');
+        return;
+      }
+
+      const selectedBatchLimit = Number(document.getElementById('batchLimit').value);
+      const pauseMinutes = Number(document.getElementById('pauseMinutes').value);
+      const batchLimit = Math.min(selectedBatchLimit, 50);
+      const selected = pending.slice(0, batchLimit);
+
+      const ok = confirm(
+        `Envio em massa via Bot WhatsApp
+
+` +
+        `Serão processadas ${selected.length} mensagens neste lote.
+` +
+        `Intervalo aplicado: aleatório entre 100ms e 500ms por requisição.
+
+` +
+        `Antes de iniciar, confira se o celular já leu o QR Code em:
+${BOT_WHATSAPP_BASE_URL}
+
+` +
+        `Deseja iniciar?`
+      );
+
+      if (!ok) return;
+
+      batchSending = true;
+      stopRequested = false;
+      document.getElementById('safeSendButton').disabled = true;
+      document.getElementById('stopSendButton').disabled = false;
+      showSendProgress(true, 'Iniciando envio pelo Bot WhatsApp...', 'Preparando contatos...', 0);
+
+      const summary = {
+        sent: 0,
+        errors: 0,
+        skipped: 0,
+        total: selected.length,
+        items: []
+      };
+
+      for (let i = 0; i < selected.length; i++) {
+        if (stopRequested) {
+          summary.skipped = selected.length - i;
+          break;
+        }
+
+        const guest = selected[i];
+
+        try {
+          const result = await sendGuestBotWhatsapp(guest);
+
+          summary.sent++;
+          summary.items.push({
+            name: guest.guest_name || '-',
+            whatsapp: formatPhoneBR(guest.whatsapp) || '-',
+            status: `Enviado Bot WhatsApp: ${result.messageId || result.id || result.status || 'ok'}`
+          });
+        } catch (error) {
+          summary.errors++;
+
+          const errorMessage = error.message || 'Erro desconhecido';
+
+          summary.items.push({
+            name: guest.guest_name || '-',
+            whatsapp: formatPhoneBR(guest.whatsapp) || '-',
+            status: 'Erro: ' + errorMessage
+          });
+
+          await saveSendError(guest.id, errorMessage);
+          console.error('Erro ao enviar para', guest.guest_name, error);
+        }
+
+        const percent = Math.round(((i + 1) / selected.length) * 100);
+        showSendProgress(
+          true,
+          `Processando ${i + 1} de ${selected.length}`,
+          `Enviadas: ${summary.sent} | Erros: ${summary.errors} | Atual: ${guest.guest_name}`,
+          percent
+        );
+
+        if (i < selected.length - 1) {
+          await sleep(randomDelayMs(100, 500));
+        }
+      }
+
+      await loadGuests();
+
+      try {
+        await sendLogToResponsible(
+          buildBatchSendLog(summary)
+        );
+      } catch (logError) {
+        console.warn('Envio em massa finalizado, mas não foi possível enviar o resumo ao responsável:', logError);
+      }
+
+      if (stopRequested) {
+        showMessage('Envio interrompido pelo usuário.', 'warning');
+        showSendProgress(true, 'Envio interrompido', `Enviadas: ${summary.sent} | Erros: ${summary.errors} | Não processadas: ${summary.skipped}`, 100);
+      } else {
+        showMessage(`Lote finalizado. Enviadas: ${summary.sent}. Erros: ${summary.errors}. Pausa recomendada: ${pauseMinutes} minuto(s).`, 'success');
+        showSendProgress(true, 'Lote finalizado', `Enviadas: ${summary.sent}. Erros: ${summary.errors}.`, 100);
+      }
+
+      batchSending = false;
+      document.getElementById('safeSendButton').disabled = false;
+      document.getElementById('stopSendButton').disabled = true;
+    }
+
+    function stopBatchSend() {
+      stopRequested = true;
+    }
+
+    async function resetMessageSentForPending() {
+      const ok = confirm('Deseja liberar reenvio apenas para convidados com mensagem não enviada ou erro?');
+      if (!ok) return;
+
+      const { error } = await supabaseClient
+        .from('event_guests')
+        .update({
+          message_sent: false,
+          message_status: 'not_sent',
+          message_sent_at: null,
+          last_send_error: null
+        })
+        .eq('event_id', currentEventId)
+        .neq('message_status', 'sent');
+
+      if (error) {
+        showMessage('Erro ao liberar reenvio: ' + error.message, 'error');
+        return;
+      }
+
+      await loadGuests();
+      showMessage('Reenvio liberado para mensagens não enviadas/erro.', 'success');
+    }
+
+    async function markMessageSent(guestId) {
+      const { error } = await supabaseClient
+        .from('event_guests')
+        .update({
+          message_sent: true,
+          message_status: 'sent',
+          message_sent_at: new Date().toISOString(),
+          last_send_error: null
+        })
+        .eq('id', guestId);
+
+      if (error) {
+        showMessage('Erro ao marcar como enviado: ' + error.message, 'error');
+        return;
+      }
+
+      await loadGuests();
+      showMessage('Mensagem marcada como enviada.', 'success');
+    }
+
+    function showSendProgress(active, title, text, percent) {
+      const box = document.getElementById('sendProgress');
+      box.classList.toggle('active', active);
+      document.getElementById('sendProgressTitle').textContent = title;
+      document.getElementById('sendProgressText').textContent = text;
+      document.getElementById('sendProgressFill').style.width = `${percent}%`;
+    }
+
+    function sleep(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    function formatPhoneInput(value) {
+      const numbers = String(value || '')
+        .replace(/\D/g, '')
+        .substring(0, 11);
+
+      if (numbers.length <= 2) {
+        return numbers;
+      }
+
+      if (numbers.length <= 6) {
+        return numbers.replace(/^(\d{2})(\d+)/, '($1) $2');
+      }
+
+      if (numbers.length <= 10) {
+        return numbers
+          .replace(/^(\d{2})(\d{4})(\d+)/, '($1) $2-$3');
+      }
+
+      return numbers
+        .replace(/^(\d{2})(\d{5})(\d+)/, '($1) $2-$3');
+    }
+
+    function normalizePhone(value) {
+      if (!value) return '';
+      return String(value).replace(/\D/g, '').replace(/^55/, '').slice(0, 11);
+    }
+
+    function normalizePhoneWithDDI(value) {
+      const phone = normalizePhone(value);
+      if (!phone) return '';
+      return `55${phone}`;
+    }
+
+    function formatPhoneBR(value) {
+      const phone = normalizePhone(value);
+      if (!phone) return '';
+      if (phone.length === 11) return phone.replace(/^(\d{2})(\d{5})(\d{4})$/, '($1) $2-$3');
+      if (phone.length === 10) return phone.replace(/^(\d{2})(\d{4})(\d{4})$/, '($1) $2-$3');
+      return phone;
+    }
+
+    function normalizeText(value) {
+      return String(value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-zA-Z0-9]/g, '')
+        .toLowerCase();
+    }
+
+    function formatDateBR(dateString) {
+      if (!dateString) return '';
+      const parts = String(dateString).split('-');
+      if (parts.length !== 3) return dateString;
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+
+    function formatTime(timeString) {
+      if (!timeString) return '';
+      return String(timeString).substring(0, 5);
+    }
+
+    function formatDateTimeBR(dateString) {
+      if (!dateString) return '';
+      const date = new Date(dateString);
+      if (Number.isNaN(date.getTime())) return dateString;
+      return date.toLocaleString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+
+    function escapeHTML(value) {
+      return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+
+    function getLoggedUserForNav() {
+      const keys = [
+        'convidou_user_session',
+        'loggedUser',
+        'user_session',
+        'currentUser'
+      ];
+
+      for (const key of keys) {
+        try {
+          const value = localStorage.getItem(key);
+          if (!value) continue;
+          const parsed = JSON.parse(value);
+          if (parsed && (parsed.name || parsed.email || parsed.id)) return parsed;
+        } catch (error) {}
+      }
+
+      return {
+        name: 'Usuário'
+      };
+    }
+
+    function getFirstName(value) {
+      return String(value || 'Usuário').trim().split(' ')[0] || 'Usuário';
+    }
+
+    function getInitials(value) {
+      return String(value || 'U')
+        .split(' ')
+        .filter(Boolean)
+        .slice(0, 2)
+        .map(part => part[0])
+        .join('')
+        .toUpperCase() || 'U';
+    }
+
+    function setupPremiumNav() {
+      const user = getLoggedUserForNav();
+      const label = user.name || user.email || 'Usuário';
+      const firstName = getFirstName(label);
+      const initials = getInitials(label);
+
+      const userName = document.getElementById('userName');
+      const userAvatar = document.getElementById('userAvatar');
+      const userNameMobile = document.getElementById('userNameMobile');
+      const userAvatarMobile = document.getElementById('userAvatarMobile');
+
+      if (userName) userName.textContent = firstName;
+      if (userAvatar) userAvatar.textContent = initials;
+      if (userNameMobile) userNameMobile.textContent = firstName;
+      if (userAvatarMobile) userAvatarMobile.textContent = initials;
+    }
+
+    function toggleMobileMenu() {
+      const menu = document.getElementById('mobileDropdown');
+      if (menu) menu.classList.toggle('active');
+    }
+
+    function closeMobileMenu() {
+      const menu = document.getElementById('mobileDropdown');
+      if (menu) menu.classList.remove('active');
+    }
+
+    function logoutUser() {
+      localStorage.removeItem('convidou_user_session');
+      localStorage.removeItem('loggedUser');
+      localStorage.removeItem('user_session');
+      localStorage.removeItem('currentUser');
+      window.location.href = '/login/';
+    }
+
+    document.addEventListener('click', function(event) {
+      const menu = document.getElementById('mobileDropdown');
+      const button = document.querySelector('.mobile-menu-button');
+
+      if (
+        menu &&
+        button &&
+        !menu.contains(event.target) &&
+        !button.contains(event.target)
+      ) {
+        menu.classList.remove('active');
+      }
+    });
+
+    function showMessage(text, type) {
+      alert(text);
+      console.log(type + ': ' + text);
+    }
+    
+    function exportGuestsExcel() {
+      if (!guests || guests.length === 0) {
+        showMessage('Nenhum convidado para exportar.', 'warning');
+        return;
+      }
+
+      const rows = guests.map(guest => ({
+        'Nome': guest.guest_name || '',
+        'Grupo': guest.group_name || '',
+        'Telefone': formatPhoneBR(guest.whatsapp || ''),
+        'Status': guest.confirmed ? 'Confirmado' : 'Pendente',
+        'Mensagem': guest.message_sent ? 'Enviada' : 'Não enviada'
+      }));
+
+      const worksheet = XLSX.utils.json_to_sheet(rows);
+
+      worksheet['!cols'] = [
+        { wch: 32 }, // Nome
+        { wch: 24 }, // Grupo
+        { wch: 20 }, // Telefone
+        { wch: 16 }, // Status
+        { wch: 18 }  // Mensagem
+      ];
+
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Convidados');
+
+      const eventName = currentEventData?.name || 'evento';
+      const safeEventName = normalizeText(eventName)
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '') || 'evento';
+
+      XLSX.writeFile(workbook, `convidados-${safeEventName}.xlsx`);
+
+      showMessage('Planilha exportada com sucesso.', 'success');
+    }
+
+
+setupPremiumNav();
+  </script>
+</body>
+
+</html>
