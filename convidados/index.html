@@ -726,35 +726,281 @@
       align-items: end;
     }
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 14px;
-      min-width: 980px;
+    /* GRID MODERNO DE CONVIDADOS */
+    #guestsTableContainer {
+      overflow: hidden;
+      border-radius: 24px;
+      border: 1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.035);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
     }
 
-    #guestsTableContainer {
-      overflow-x: auto;
-      border-radius: 18px;
-      border: 1px solid var(--border);
+    .guest-grid-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 16px;
+      border-bottom: 1px solid rgba(255,255,255,.08);
       background: rgba(255,255,255,.035);
+    }
+
+    .guest-grid-title strong {
+      display: block;
+      color: var(--text);
+      font-size: 16px;
+      letter-spacing: -.2px;
+    }
+
+    .guest-grid-title span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 3px;
+      font-weight: 850;
+    }
+
+    .guest-grid-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+
+
+    .guest-search-box {
+      flex: 1 1 360px;
+      min-width: 280px;
+      max-width: 560px;
+      position: relative;
+    }
+
+    .guest-search-box input {
+      height: 46px;
+      padding: 13px 44px 13px 44px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.07);
+      border-color: rgba(255,255,255,.10);
+      font-size: 14px;
+    }
+
+    .guest-search-box::before {
+      content: '🔎';
+      position: absolute;
+      left: 16px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 14px;
+      opacity: .72;
+      z-index: 2;
+    }
+
+    .guest-search-clear {
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 32px;
+      height: 32px;
+      min-height: 32px;
+      padding: 0;
+      border-radius: 999px;
+      background: rgba(255,255,255,.08);
+      color: var(--muted);
+      border: 1px solid rgba(255,255,255,.08);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .guest-search-clear:hover {
+      transform: translateY(-50%);
+      color: var(--text);
+      background: rgba(255,255,255,.12);
+    }
+
+    .guest-grid-topline {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      width: 100%;
+    }
+
+    .guest-grid-controlbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      width: 100%;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+
+    .guest-filter-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .guest-filter-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 42px;
+      padding: 7px 8px 7px 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,.09);
+      background: rgba(255,255,255,.055);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 950;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+    }
+
+    .guest-filter-pill select {
+      min-width: 150px;
+      height: 32px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 900;
+      text-transform: none;
+      letter-spacing: 0;
+      background: rgba(0,0,0,.18);
+    }
+
+    .guest-quick-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .guest-quick-actions button {
+      min-height: 42px;
+      padding: 10px 14px;
+      border-radius: 999px;
+    }
+
+    .sort-btn {
+      min-height: 42px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      color: #111827;
+      background: linear-gradient(135deg, var(--gold-2), var(--gold));
+      border: 1px solid rgba(216,168,79,.45);
+      box-shadow: 0 14px 28px rgba(216,168,79,.12);
+    }
+
+    .guest-table-wrap {
+      width: 100%;
+      overflow-x: auto;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 14px;
+      min-width: 1120px;
     }
 
     th,
     td {
-      padding: 12px;
+      padding: 14px 16px;
       text-align: left;
       border-bottom: 1px solid rgba(255,255,255,.07);
-      vertical-align: top;
-      color: #cbd5e1;
+      vertical-align: middle;
+      color: #d9e2ef;
     }
 
     th {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      color: #a9b8cd;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      background: rgba(12,15,23,.96);
+      backdrop-filter: blur(16px);
+      white-space: nowrap;
+    }
+
+    tbody tr {
+      transition: .18s ease;
+    }
+
+    tbody tr:nth-child(even) td {
+      background: rgba(255,255,255,.018);
+    }
+
+    tbody tr:hover td {
+      background: rgba(216,168,79,.055);
+    }
+
+    .col-actions { width: 250px; }
+    .col-status { width: 190px; }
+    .col-message { width: 140px; }
+    .col-name { min-width: 260px; }
+    .col-group { min-width: 170px; }
+    .col-phone { min-width: 155px; }
+    .col-date { min-width: 155px; }
+    .col-error { min-width: 210px; }
+
+    .guest-name-cell {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .guest-initial {
+      width: 38px;
+      height: 38px;
+      border-radius: 14px;
+      display: inline-grid;
+      place-items: center;
+      flex-shrink: 0;
+      color: #111827;
+      background: linear-gradient(135deg, var(--gold-2), var(--gold));
+      font-weight: 950;
+      box-shadow: 0 10px 22px rgba(216,168,79,.12);
+    }
+
+    .guest-main strong {
+      display: block;
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.25;
+    }
+
+    .guest-main span {
+      display: block;
       color: var(--muted);
       font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: .05em;
-      background: rgba(255,255,255,.045);
+      margin-top: 4px;
+      font-weight: 800;
+    }
+
+    .guest-phone {
+      color: #e2e8f0;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .guest-error-text {
+      display: inline-block;
+      max-width: 260px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .th-filter {
@@ -776,14 +1022,19 @@
       text-transform: none;
     }
 
-    tr:hover td {
-      background: rgba(255,255,255,.045);
+    .table-actions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 7px;
+      min-width: 220px;
     }
 
-    .table-actions {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
+    .table-actions button {
+      min-height: 34px;
+      padding: 8px 9px;
+      border-radius: 11px;
+      font-size: 11px;
+      line-height: 1.1;
     }
 
     .badge {
@@ -819,6 +1070,134 @@
       background: rgba(239,119,119,.12);
       color: var(--red);
       border: 1px solid rgba(239,119,119,.18);
+    }
+
+    @media(max-width: 980px) {
+      #guestsTableContainer {
+        border: none;
+        background: transparent;
+        box-shadow: none;
+        overflow: visible;
+      }
+
+      .guest-grid-toolbar {
+        border: 1px solid var(--border);
+        border-radius: 20px;
+        margin-bottom: 12px;
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .guest-grid-topline,
+      .guest-grid-controlbar,
+      .guest-grid-actions,
+      .guest-search-box,
+      .guest-filter-group,
+      .guest-filter-pill,
+      .guest-quick-actions,
+      .sort-btn {
+        width: 100%;
+      }
+
+      .guest-grid-topline,
+      .guest-grid-controlbar {
+        align-items: stretch;
+        flex-direction: column;
+      }
+
+      .guest-search-box {
+        min-width: 0;
+        max-width: none;
+      }
+
+      .guest-filter-pill {
+        justify-content: space-between;
+        border-radius: 16px;
+      }
+
+      .guest-filter-pill select {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .guest-quick-actions button {
+        width: 100%;
+      }
+
+      .guest-table-wrap {
+        overflow: visible;
+      }
+
+      table,
+      thead,
+      tbody,
+      tr,
+      th,
+      td {
+        display: block;
+        width: 100%;
+        min-width: 0;
+      }
+
+      thead {
+        display: none;
+      }
+
+      tbody {
+        display: grid;
+        gap: 12px;
+      }
+
+      tbody tr {
+        border: 1px solid rgba(255,255,255,.10);
+        border-radius: 22px;
+        padding: 14px;
+        background: rgba(255,255,255,.045);
+        box-shadow: 0 18px 40px rgba(0,0,0,.18);
+      }
+
+      tbody tr:nth-child(even) td,
+      tbody tr:hover td,
+      td {
+        background: transparent;
+      }
+
+      td {
+        border-bottom: 1px solid rgba(255,255,255,.07);
+        padding: 11px 0;
+        display: grid;
+        grid-template-columns: 120px minmax(0, 1fr);
+        gap: 12px;
+        align-items: center;
+      }
+
+      td::before {
+        content: attr(data-label);
+        color: var(--muted);
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: .08em;
+        font-weight: 950;
+      }
+
+      td:last-child {
+        border-bottom: none;
+      }
+
+      td[data-label="Ações"] {
+        display: block;
+        padding-top: 4px;
+      }
+
+      td[data-label="Ações"]::before {
+        display: block;
+        margin-bottom: 10px;
+      }
+
+      .table-actions {
+        min-width: 0;
+        width: 100%;
+      }
     }
 
     .small-text {
@@ -1094,55 +1473,6 @@
       }
     }
 
-    /* Ações compactas no mobile */
-    @media(max-width: 980px) {
-      #guestsTableContainer th:first-child,
-      #guestsTableContainer td:first-child {
-        width: 190px;
-        min-width: 190px;
-      }
-
-      .table-actions {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 6px;
-        align-items: stretch;
-      }
-
-      .table-actions button {
-        width: 100%;
-        min-height: 34px;
-        padding: 8px 6px;
-        border-radius: 10px;
-        font-size: 11px;
-        line-height: 1.1;
-      }
-
-      .table-actions .action-send {
-        grid-column: span 1;
-      }
-    }
-
-    @media(max-width: 640px) {
-      #guestsTableContainer th:first-child,
-      #guestsTableContainer td:first-child {
-        width: 176px;
-        min-width: 176px;
-      }
-
-      .table-actions {
-        gap: 5px;
-      }
-
-      .table-actions button {
-        min-height: 32px;
-        padding: 7px 5px;
-        border-radius: 9px;
-        font-size: 10.5px;
-      }
-    }
-
-
     .provider-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:12px 0 18px}
     .provider-card{position:relative;cursor:pointer;display:block}
     .provider-card input{position:absolute;opacity:0;pointer-events:none}
@@ -1154,6 +1484,103 @@
     .provider-settings{display:none;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.035);border-radius:20px;padding:18px;margin-top:14px}
     .provider-settings.active{display:block}
     @media(max-width:980px){.provider-grid{grid-template-columns:1fr}}
+
+
+    /* Grid limpo: busca no topo, filtros dentro do cabeçalho */
+    .guest-grid-toolbar.clean {
+      display: grid;
+      grid-template-columns: 220px minmax(280px, 1fr) auto;
+      gap: 16px;
+      align-items: center;
+      padding: 18px 20px;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      background: linear-gradient(180deg, rgba(255,255,255,.045), rgba(255,255,255,.02));
+    }
+
+    .guest-grid-toolbar.clean .guest-grid-title span {
+      margin-top: 5px;
+    }
+
+    .guest-grid-toolbar.clean .guest-search-box {
+      width: 100%;
+      max-width: 620px;
+      justify-self: center;
+    }
+
+    .guest-grid-toolbar.clean .guest-main-action {
+      justify-self: end;
+      min-height: 46px;
+      padding: 12px 18px;
+      border-radius: 999px;
+    }
+
+    .table-head-cell {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-width: 120px;
+    }
+
+    .table-head-title {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: #c8d4e6;
+      font-weight: 950;
+    }
+
+    .table-head-filter,
+    .table-head-search {
+      width: 100%;
+      min-height: 38px;
+      padding: 8px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: 850;
+      color: #e2e8f0;
+      background: rgba(255,255,255,.045);
+      border: 1px solid rgba(255,255,255,.10);
+      text-transform: none;
+      letter-spacing: 0;
+    }
+
+    .table-head-filter:focus,
+    .table-head-search:focus {
+      border-color: rgba(216,168,79,.48);
+      box-shadow: 0 0 0 3px rgba(216,168,79,.10);
+    }
+
+    .table-sort-btn {
+      width: fit-content;
+      min-height: auto;
+      padding: 0;
+      border: 0;
+      border-radius: 0;
+      color: #f2c46d;
+      background: transparent;
+      box-shadow: none;
+      font-size: 15px;
+      line-height: 1;
+    }
+
+    .table-sort-btn:hover {
+      transform: none;
+      filter: brightness(1.18);
+    }
+
+    @media(max-width: 980px) {
+      .guest-grid-toolbar.clean {
+        grid-template-columns: 1fr;
+        align-items: stretch;
+      }
+
+      .guest-grid-toolbar.clean .guest-search-box,
+      .guest-grid-toolbar.clean .guest-main-action {
+        max-width: none;
+        justify-self: stretch;
+        width: 100%;
+      }
+    }
 
   </style>
 </head>
@@ -1465,32 +1892,6 @@
     </div>
 
 
-    <div class="card accordion-card" id="accordionSearch">
-      <button class="accordion-header" type="button" onclick="toggleAccordion('accordionSearch')">
-        <div class="accordion-title">
-          <span class="accordion-icon">🔎</span>
-          <div>
-            <h2>Buscar</h2>
-            <p class="small-text" style="margin-top:0;">Filtre convidados por nome, grupo ou WhatsApp.</p>
-          </div>
-        </div>
-        <span class="accordion-toggle">Exibir</span>
-      </button>
-
-      <div class="accordion-body">
-        <div class="tools">
-          <div class="form-group">
-            <label for="searchInput">Buscar convidado</label>
-            <input id="searchInput" type="text" placeholder="Nome, grupo ou WhatsApp" oninput="renderGuests()" />
-          </div>
-
-          <button class="btn-secondary" onclick="loadGuests()">Atualizar lista</button>
-          <button class="btn-warning" onclick="exportGuestsExcel()">📥 Exportar Excel</button>
-          <button class="btn-warning" onclick="sendNextPending()">Enviar próximo pendente</button>
-        </div>
-      </div>
-    </div>
-
     <div class="panel accordion-card active" id="accordionGuests">
       <button class="accordion-header" type="button" onclick="toggleAccordion('accordionGuests')">
         <div class="accordion-title">
@@ -1585,6 +1986,8 @@
     let currentEventId = null;
     let currentEventData = null;
     let guests = [];
+    let guestSortDirection = 'asc';
+    let guestSearchTerm = '';
     let messageTemplates = [];
     let currentResponsibleData = null;
     let batchSending = false;
@@ -2380,9 +2783,48 @@
     }
 
 
-    function renderGuests() {
+    function toggleGuestNameSort() {
+      guestSortDirection = guestSortDirection === 'asc' ? 'desc' : 'asc';
+      renderGuests();
+    }
+
+    function normalizeSortText(value) {
+      return String(value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim();
+    }
+
+    function getGuestInitial(name) {
+      const cleanName = String(name || '?').trim();
+      return escapeHTML(cleanName.charAt(0).toUpperCase() || '?');
+    }
+
+
+
+    function normalizeSearchTerm(value) {
+      return String(value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase()
+        .trim();
+    }
+
+    function handleGuestSearchInput(value) {
+      guestSearchTerm = value || '';
+      renderGuests(true);
+    }
+
+    function clearGuestSearch() {
+      guestSearchTerm = '';
+      renderGuests();
+      setTimeout(() => document.getElementById('guestGridSearchInput')?.focus(), 0);
+    }
+
+    function renderGuests(keepSearchFocus = false) {
       const container = document.getElementById('guestsTableContainer');
-      const search = document.getElementById('searchInput')?.value.trim().toLowerCase() || '';
+      const search = normalizeSearchTerm(guestSearchTerm);
       const statusFilter = document.getElementById('statusFilter')?.value || '';
       const messageFilter = document.getElementById('messageFilter')?.value || '';
 
@@ -2403,120 +2845,179 @@
           messageValue === 'na_fila' ? 'Enviada' : messageValue
         ];
 
-        return values.filter(Boolean).some(value => String(value).toLowerCase().includes(search));
+        return values.filter(Boolean).some(value => normalizeSearchTerm(value).includes(search));
+      }).sort((a, b) => {
+        const nameA = normalizeSortText(a.guest_name);
+        const nameB = normalizeSortText(b.guest_name);
+        const result = nameA.localeCompare(nameB, 'pt-BR', { sensitivity: 'base' });
+        return guestSortDirection === 'asc' ? result : -result;
       });
 
+      const totalText = `${filtered.length} de ${guests.length} convidados`;
+      const searchValue = escapeHTML(guestSearchTerm || '');
+      const clearSearchButton = guestSearchTerm
+        ? `<button class="guest-search-clear" type="button" onclick="clearGuestSearch()" title="Limpar busca">×</button>`
+        : '';
+
       container.innerHTML = `
-    <table>
-      <thead>
-        <tr>
-          <th>Ações</th>
-          <th>
-            <div class="th-filter">
-              <span>Status</span>
-              <select id="statusFilter" onchange="renderGuests()">
-                <option value="" ${statusFilter === '' ? 'selected' : ''}>Todos</option>
-                <option value="pendente" ${statusFilter === 'pendente' ? 'selected' : ''}>Pendente</option>
-                <option value="confirmado" ${statusFilter === 'confirmado' ? 'selected' : ''}>Confirmado</option>
-                <option value="nao_comparecera" ${statusFilter === 'nao_comparecera' ? 'selected' : ''}>Não comparecerá</option>
-              </select>
-            </div>
-          </th>
-          <th>
-            <div class="th-filter">
-              <span>Mensagem</span>
-              <select id="messageFilter" onchange="renderGuests()">
-                <option value="" ${messageFilter === '' ? 'selected' : ''}>Todas</option>
-                <option value="na_fila" ${messageFilter === 'na_fila' ? 'selected' : ''}>Enviada</option>
-                <option value="enviada" ${messageFilter === 'enviada' ? 'selected' : ''}>Enviada</option>
-                <option value="nao_enviada" ${messageFilter === 'nao_enviada' ? 'selected' : ''}>Não enviada</option>
-                <option value="erro" ${messageFilter === 'erro' ? 'selected' : ''}>Com erro</option>
-              </select>
-            </div>
-          </th>
-          <th>Convidado</th>
-          <th>Grupo</th>
-          <th>WhatsApp</th>
-          <th>Confirmado em</th>
-          <th>Erro</th>
-        </tr>
-      </thead>
+        <div class="guest-grid-toolbar clean">
+          <div class="guest-grid-title">
+            <strong>Lista de convidados</strong>
+            <span>${totalText}</span>
+          </div>
 
-      <tbody>
-        ${filtered.length === 0 ? `
-          <tr>
-            <td colspan="8">
-              <div class="empty-state">Nenhum convidado encontrado.</div>
-            </td>
-          </tr>
-        ` : filtered.map(guest => `
-          <tr>
-            <td>
-              <div class="table-actions">
-                <button
-                  class="btn-secondary action-copy"
-                  onclick="copyConfirmationLink('${guest.id}')">
-                  Copiar
-                </button>
+          <div class="guest-search-box">
+            <input
+              id="guestGridSearchInput"
+              type="text"
+              value="${searchValue}"
+              placeholder="Buscar por convidado, grupo ou WhatsApp..."
+              autocomplete="off"
+              oninput="handleGuestSearchInput(this.value)" />
+            ${clearSearchButton}
+          </div>
 
-                <button
-                  id="sendBtn-${guest.id}"
-                  class="btn-success action-send"
-                  onclick="sendSingleGuestWithLoading('${guest.id}')">
-                  Enviar
-                </button>
+          <button class="btn-warning guest-main-action" type="button" onclick="sendNextPending()">
+            Próximo pendente →
+          </button>
+        </div>
 
-                <button
-                  class="btn-dark action-sent"
-                  onclick="markMessageSent('${guest.id}')"
-                  ${guest.message_sent ? 'disabled' : ''}>
-                  Enviado
-                </button>
+        <div class="guest-table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th class="col-actions">
+                  <div class="table-head-cell">
+                    <span class="table-head-title">Ações</span>
+                  </div>
+                </th>
 
-                <button
-                  class="btn-warning action-edit"
-                  onclick="editGuest('${guest.id}')">
-                  Alterar
-                </button>
+                <th class="col-status">
+                  <div class="table-head-cell">
+                    <span class="table-head-title">Status</span>
+                    <select class="table-head-filter" id="statusFilter" onchange="renderGuests()">
+                      <option value="" ${statusFilter === '' ? 'selected' : ''}>Todos</option>
+                      <option value="pendente" ${statusFilter === 'pendente' ? 'selected' : ''}>Pendente</option>
+                      <option value="confirmado" ${statusFilter === 'confirmado' ? 'selected' : ''}>Confirmado</option>
+                      <option value="nao_comparecera" ${statusFilter === 'nao_comparecera' ? 'selected' : ''}>Não comparecerá</option>
+                    </select>
+                  </div>
+                </th>
 
-                <button
-                  class="btn-danger action-delete"
-                  onclick="deleteGuest('${guest.id}')">
-                  Remover
-                </button>
-              </div>
-            </td>
+                <th class="col-message">
+                  <div class="table-head-cell">
+                    <span class="table-head-title">Mensagem</span>
+                    <select class="table-head-filter" id="messageFilter" onchange="renderGuests()">
+                      <option value="" ${messageFilter === '' ? 'selected' : ''}>Todas</option>
+                      <option value="enviada" ${messageFilter === 'enviada' ? 'selected' : ''}>Enviada</option>
+                      <option value="nao_enviada" ${messageFilter === 'nao_enviada' ? 'selected' : ''}>Não enviada</option>
+                      <option value="erro" ${messageFilter === 'erro' ? 'selected' : ''}>Com erro</option>
+                    </select>
+                  </div>
+                </th>
 
-            <td>
-              <select onchange="updateGuestStatus('${guest.id}', this.value)" style="min-width:170px;">
-                <option value="pendente" ${getGuestStatusValue(guest) === 'pendente' ? 'selected' : ''}>Pendente</option>
-                <option value="confirmado" ${getGuestStatusValue(guest) === 'confirmado' ? 'selected' : ''}>Confirmado</option>
-                <option value="nao_comparecera" ${getGuestStatusValue(guest) === 'nao_comparecera' ? 'selected' : ''}>Não comparecerá</option>
-              </select>
-              <div style="margin-top:8px;">
-                ${getGuestStatusBadge(guest)}
-              </div>
-            </td>
+                <th class="col-name">
+                  <div class="table-head-cell">
+                    <span class="table-head-title">
+                      Convidado
+                      <button class="table-sort-btn" type="button" onclick="toggleGuestNameSort()" title="Ordenar convidados">
+                        ${guestSortDirection === 'asc' ? '↑ A–Z' : '↓ Z–A'}
+                      </button>
+                    </span>
+                  </div>
+                </th>
 
-            <td>
-              ${getGuestMessageBadge(guest)}
-            </td>
+                <th class="col-group">
+                  <div class="table-head-cell">
+                    <span class="table-head-title">Grupo</span>
+                  </div>
+                </th>
 
-            <td>${escapeHTML(guest.guest_name)}</td>
-            <td>${escapeHTML(guest.group_name || '-')}</td>
-            <td>${escapeHTML(formatPhoneBR(guest.whatsapp) || '-')}</td>
-            <td>${formatDateTimeBR(guest.confirmed_at) || '-'}</td>
+                <th class="col-phone">
+                  <div class="table-head-cell">
+                    <span class="table-head-title">WhatsApp</span>
+                  </div>
+                </th>
 
-            <td>
-              ${guest.last_send_error
-          ? `<span class="badge badge-red">${escapeHTML(guest.last_send_error)}</span>`
-          : '-'}
-            </td>
-          </tr>
-        `).join('')}
-      </tbody>
-    </table>
-  `;
+                <th class="col-date">
+                  <div class="table-head-cell">
+                    <span class="table-head-title">Confirmado em</span>
+                  </div>
+                </th>
+
+                <th class="col-error">
+                  <div class="table-head-cell">
+                    <span class="table-head-title">Erro</span>
+                  </div>
+                </th>
+              </tr>
+            </thead>
+
+            <tbody>
+              ${filtered.length === 0 ? `
+                <tr>
+                  <td colspan="8">
+                    <div class="empty-state">Nenhum convidado encontrado.</div>
+                  </td>
+                </tr>
+              ` : filtered.map(guest => `
+                <tr>
+                  <td data-label="Ações">
+                    <div class="table-actions">
+                      <button class="btn-secondary action-copy" onclick="copyConfirmationLink('${guest.id}')">Copiar</button>
+                      <button id="sendBtn-${guest.id}" class="btn-success action-send" onclick="sendSingleGuestWithLoading('${guest.id}')">Enviar</button>
+                      <button class="btn-dark action-sent" onclick="markMessageSent('${guest.id}')" ${guest.message_sent ? 'disabled' : ''}>Enviado</button>
+                      <button class="btn-warning action-edit" onclick="editGuest('${guest.id}')">Alterar</button>
+                      <button class="btn-danger action-delete" onclick="deleteGuest('${guest.id}')">Remover</button>
+                    </div>
+                  </td>
+
+                  <td data-label="Status">
+                    <select onchange="updateGuestStatus('${guest.id}', this.value)" style="min-width:170px;">
+                      <option value="pendente" ${getGuestStatusValue(guest) === 'pendente' ? 'selected' : ''}>Pendente</option>
+                      <option value="confirmado" ${getGuestStatusValue(guest) === 'confirmado' ? 'selected' : ''}>Confirmado</option>
+                      <option value="nao_comparecera" ${getGuestStatusValue(guest) === 'nao_comparecera' ? 'selected' : ''}>Não comparecerá</option>
+                    </select>
+                    <div style="margin-top:8px;">${getGuestStatusBadge(guest)}</div>
+                  </td>
+
+                  <td data-label="Mensagem">${getGuestMessageBadge(guest)}</td>
+
+                  <td data-label="Convidado">
+                    <div class="guest-name-cell">
+                      <span class="guest-initial">${getGuestInitial(guest.guest_name)}</span>
+                      <span class="guest-main">
+                        <strong>${escapeHTML(guest.guest_name || '-')}</strong>
+                        <span>${escapeHTML(guest.group_name || 'Sem grupo')}</span>
+                      </span>
+                    </div>
+                  </td>
+
+                  <td data-label="Grupo">${escapeHTML(guest.group_name || '-')}</td>
+                  <td data-label="WhatsApp"><span class="guest-phone">${escapeHTML(formatPhoneBR(guest.whatsapp) || '-')}</span></td>
+                  <td data-label="Confirmado em">${formatDateTimeBR(guest.confirmed_at) || '-'}</td>
+
+                  <td data-label="Erro">
+                    ${guest.last_send_error
+                      ? `<span class="badge badge-red guest-error-text" title="${escapeHTML(guest.last_send_error)}">${escapeHTML(guest.last_send_error)}</span>`
+                      : '-'}
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+
+      if (keepSearchFocus) {
+        setTimeout(() => {
+          const input = document.getElementById('guestGridSearchInput');
+          if (!input) return;
+          input.focus();
+          const length = input.value.length;
+          input.setSelectionRange(length, length);
+        }, 0);
+      }
     }
 
     async function updateGuestStatus(guestId, status) {
