@@ -36,6 +36,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode/1.5.1/qrcode.min.js"></script>
 
   <style>
     :root {
@@ -1582,6 +1583,69 @@
       }
     }
 
+  
+    .qr-modal-backdrop {
+      position: fixed; inset: 0; z-index: 99999;
+      background: rgba(0,0,0,.72); backdrop-filter: blur(12px);
+      display: none; align-items: center; justify-content: center; padding: 18px;
+    }
+    .qr-modal-backdrop.active { display: flex; }
+    .qr-modal {
+      width: min(760px, 100%); max-height: 92vh; overflow: auto;
+      border-radius: 30px;
+      background: radial-gradient(circle at 90% 0%, rgba(216,168,79,.16), transparent 34%),
+                  linear-gradient(135deg, rgba(18,22,31,.98), rgba(9,11,16,.98));
+      border: 1px solid rgba(255,255,255,.10);
+      box-shadow: 0 40px 120px rgba(0,0,0,.58);
+      padding: 24px; color: var(--text);
+    }
+    .qr-modal-header {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      gap: 16px; margin-bottom: 18px; padding-bottom: 16px;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+    }
+    .qr-modal-header h2 { font-size: 28px; margin-bottom: 6px; letter-spacing: -.8px; }
+    .qr-modal-header p { color: var(--muted); font-size: 14px; line-height: 1.45; }
+    .qr-modal-close {
+      width: 44px; height: 44px; padding: 0; border-radius: 999px;
+      background: rgba(255,255,255,.075); border: 1px solid rgba(255,255,255,.10);
+      color: white; font-size: 22px; flex-shrink: 0;
+    }
+    .qr-modal-grid { display: grid; grid-template-columns: 260px minmax(0,1fr); gap: 20px; align-items: start; }
+    .qr-modal-canvas-box {
+      background: rgba(255,255,255,.045); border: 1px solid rgba(255,255,255,.08);
+      border-radius: 24px; padding: 18px; text-align: center;
+    }
+    .qr-modal-canvas-box canvas {
+      width: 210px !important; height: 210px !important;
+      background: #fff; padding: 10px; border-radius: 18px;
+      margin: 0 auto 14px; display: block;
+    }
+    .qr-code-copy {
+      font-weight: 950; font-size: 12px; word-break: break-all;
+      background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.09);
+      border-radius: 14px; padding: 11px; color: #dbe4ef; line-height: 1.35; margin-bottom: 12px;
+    }
+    .qr-modal-info { display: grid; gap: 10px; }
+    .qr-info-line {
+      border-radius: 16px; padding: 13px 14px;
+      background: rgba(255,255,255,.045); border: 1px solid rgba(255,255,255,.07);
+    }
+    .qr-info-line span {
+      display: block; color: var(--muted); font-size: 11px;
+      text-transform: uppercase; letter-spacing: .08em; font-weight: 950; margin-bottom: 5px;
+    }
+    .qr-info-line strong { display: block; color: var(--text); font-size: 15px; word-break: break-word; }
+    .qr-modal-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+    .qr-status-button { width: 100%; justify-content: center; }
+    .badge-blue { background: rgba(122,168,255,.12); color: var(--blue); border: 1px solid rgba(122,168,255,.18); }
+    @media(max-width:760px) {
+      .qr-modal { padding: 18px; border-radius: 24px; }
+      .qr-modal-grid { grid-template-columns: 1fr; }
+      .qr-modal-canvas-box canvas { width: 190px !important; height: 190px !important; }
+      .qr-modal-actions button { width: 100%; }
+    }
+
   </style>
 </head>
 
@@ -1663,6 +1727,22 @@
     </div>
 
     <div id="message" class="message"></div>
+
+    <div id="qrGuestModalBackdrop" class="qr-modal-backdrop" onclick="closeGuestQRCodeModal(event)">
+      <div class="qr-modal" onclick="event.stopPropagation()">
+        <div class="qr-modal-header">
+          <div>
+            <h2>QR Code do convidado</h2>
+            <p>Status, dados do convidado e QR Code vinculado neste evento.</p>
+          </div>
+          <button class="qr-modal-close" type="button" onclick="closeGuestQRCodeModal()">×</button>
+        </div>
+        <div id="qrGuestModalContent">
+          <div class="empty-state">Carregando QR Code...</div>
+        </div>
+      </div>
+    </div>
+
 
     <div class="card config-box" id="configBox">
       <h2 style="margin-bottom:18px;">Configurações</h2>
@@ -1986,6 +2066,7 @@
     let currentEventId = null;
     let currentEventData = null;
     let guests = [];
+    let accessCodes = [];
     let guestSortDirection = 'asc';
     let guestSearchTerm = '';
     let messageTemplates = [];
@@ -2475,6 +2556,181 @@
     }
 
 
+
+    async function loadAccessCodes() {
+      if (!supabaseClient || !currentEventId) {
+        accessCodes = [];
+        return;
+      }
+
+      let allCodes = [];
+      let from = 0;
+      const limit = 1000;
+
+      while (true) {
+        const { data, error } = await supabaseClient
+          .from('access_codes')
+          .select('*')
+          .eq('event_id', currentEventId)
+          .order('created_at', { ascending: true })
+          .range(from, from + limit - 1);
+
+        if (error) {
+          console.warn('Erro ao carregar QR Codes:', error);
+          accessCodes = [];
+          return;
+        }
+
+        if (!data || data.length === 0) break;
+
+        allCodes = allCodes.concat(data);
+
+        if (data.length < limit) break;
+        from += limit;
+      }
+
+      accessCodes = allCodes;
+    }
+
+    function normalizeComparablePhone(value) {
+      return String(value || '').replace(/\D/g, '').replace(/^55/, '').slice(-11);
+    }
+
+    function getGuestQRCode(guest) {
+      if (!guest) return null;
+
+      const guestId = String(guest.id || '');
+      const guestPhone = normalizeComparablePhone(guest.whatsapp);
+      const guestName = normalizeSearchTerm(guest.guest_name || '');
+
+      return accessCodes.find(code => {
+        if (code.source_guest_id && String(code.source_guest_id) === guestId) return true;
+        if (code.guest_id && String(code.guest_id) === guestId) return true;
+        if (code.event_guest_id && String(code.event_guest_id) === guestId) return true;
+
+        if (guestPhone) {
+          const codePhone = normalizeComparablePhone(code.customer_whatsapp);
+          if (codePhone && codePhone === guestPhone) return true;
+        }
+
+        if (guestName && code.customer_name) {
+          const codeName = normalizeSearchTerm(code.customer_name);
+          if (codeName && codeName === guestName) return true;
+        }
+
+        return false;
+      }) || null;
+    }
+
+    function getGuestQRCodeValue(guest) {
+      return getGuestQRCode(guest) ? 'gerado' : 'sem_qrcode';
+    }
+
+    function getGuestQRCodeBadge(guest) {
+      const code = getGuestQRCode(guest);
+
+      if (!code) return '<span class="badge badge-red">Sem QR Code</span>';
+      if (code.accessed === true) return '<span class="badge badge-green">QR usado</span>';
+
+      return '<span class="badge badge-blue">QR gerado</span>';
+    }
+
+    function getGuestsWithQRCodeCount() {
+      return guests.filter(guest => getGuestQRCode(guest)).length;
+    }
+
+    function getGuestsWithoutQRCodeCount() {
+      return guests.filter(guest => !getGuestQRCode(guest)).length;
+    }
+
+    function filterGuestsByQRCode(status) {
+      const select = document.getElementById('qrCodeFilter');
+      if (select) select.value = status;
+      renderGuests();
+    }
+
+    function openGuestQRCodeModal(guestId) {
+      const guest = guests.find(item => String(item.id) === String(guestId));
+      if (!guest) {
+        showMessage('Convidado não encontrado.', 'error');
+        return;
+      }
+
+      const code = getGuestQRCode(guest);
+      if (!code) {
+        showMessage('Este convidado ainda não possui QR Code vinculado.', 'warning');
+        return;
+      }
+
+      const content = document.getElementById('qrGuestModalContent');
+      const backdrop = document.getElementById('qrGuestModalBackdrop');
+      const statusBadge = code.accessed === true
+        ? '<span class="badge badge-green">Acesso utilizado</span>'
+        : '<span class="badge badge-yellow">Aguardando acesso</span>';
+
+      const ticketType = (code.ticket_type || 'mesa') === 'individual' ? 'Individual' : 'Mesa';
+
+      content.innerHTML = `
+        <div class="qr-modal-grid">
+          <div class="qr-modal-canvas-box">
+            <canvas id="guestQRCodeCanvas"></canvas>
+            <div class="qr-code-copy">${escapeHTML(code.qr_code || '-')}</div>
+            <button class="btn-secondary qr-status-button" onclick="copyQRCodeText('${escapeHTML(String(code.qr_code || ''))}')">
+              Copiar código
+            </button>
+          </div>
+
+          <div>
+            <div style="margin-bottom:14px;">${statusBadge}</div>
+
+            <div class="qr-modal-info">
+              <div class="qr-info-line"><span>Nome</span><strong>${escapeHTML(guest.guest_name || '-')}</strong></div>
+              <div class="qr-info-line"><span>Grupo</span><strong>${escapeHTML(guest.group_name || '-')}</strong></div>
+              <div class="qr-info-line"><span>WhatsApp</span><strong>${escapeHTML(formatPhoneBR(guest.whatsapp) || '-')}</strong></div>
+              <div class="qr-info-line"><span>Tipo</span><strong>${escapeHTML(ticketType)}</strong></div>
+              <div class="qr-info-line"><span>Mesa / Lugar</span><strong>Mesa ${escapeHTML(code.table_number || '-')} • Lugar ${escapeHTML(code.seat_number || '-')}</strong></div>
+              <div class="qr-info-line"><span>Status interno</span><strong>${escapeHTML(code.status || '-')}</strong></div>
+              <div class="qr-info-line"><span>Acessado em</span><strong>${formatDateTimeBR(code.accessed_at || code.used_at) || '-'}</strong></div>
+              <div class="qr-info-line"><span>ID QR Code</span><strong>${escapeHTML(code.id || '-')}</strong></div>
+            </div>
+
+            <div class="qr-modal-actions">
+              <button class="btn-primary" onclick="copyQRCodeText('${escapeHTML(String(code.qr_code || ''))}')">Copiar QR Code</button>
+              <button class="btn-secondary" onclick="closeGuestQRCodeModal()">Fechar</button>
+            </div>
+          </div>
+        </div>
+      `;
+
+      backdrop.classList.add('active');
+
+      setTimeout(() => {
+        const canvas = document.getElementById('guestQRCodeCanvas');
+        if (canvas && window.QRCode) {
+          QRCode.toCanvas(canvas, code.qr_code || '-', {
+            width: 240,
+            margin: 2,
+            errorCorrectionLevel: 'H'
+          });
+        }
+      }, 0);
+    }
+
+    function closeGuestQRCodeModal(event) {
+      if (event && event.target?.id !== 'qrGuestModalBackdrop') return;
+      document.getElementById('qrGuestModalBackdrop')?.classList.remove('active');
+    }
+
+    async function copyQRCodeText(value) {
+      try {
+        await navigator.clipboard.writeText(value || '');
+        showMessage('Código do QR Code copiado.', 'success');
+      } catch (error) {
+        showMessage('Não foi possível copiar o QR Code.', 'error');
+      }
+    }
+
+
     async function loadGuests() {
       if (!supabaseClient || !currentEventId) return;
 
@@ -2509,6 +2765,7 @@
       }
 
       guests = allGuests;
+      await loadAccessCodes();
       renderGuests();
       updateSummary();
     }
@@ -2827,6 +3084,7 @@
       const search = normalizeSearchTerm(guestSearchTerm);
       const statusFilter = document.getElementById('statusFilter')?.value || '';
       const messageFilter = document.getElementById('messageFilter')?.value || '';
+      const qrCodeFilter = document.getElementById('qrCodeFilter')?.value || '';
 
       const filtered = guests.filter(guest => {
         const statusValue = getGuestStatusValue(guest);
@@ -2834,6 +3092,7 @@
 
         if (statusFilter && statusValue !== statusFilter) return false;
         if (messageFilter && messageValue !== messageFilter) return false;
+        if (qrCodeFilter && getGuestQRCodeValue(guest) !== qrCodeFilter) return false;
 
         if (!search) return true;
 
@@ -2842,7 +3101,8 @@
           guest.group_name,
           guest.whatsapp,
           statusValue === 'nao_comparecera' ? 'Não comparecerá' : statusValue,
-          messageValue === 'na_fila' ? 'Enviada' : messageValue
+          messageValue === 'na_fila' ? 'Enviada' : messageValue,
+          getGuestQRCodeValue(guest) === 'gerado' ? 'QR gerado' : 'Sem QR Code'
         ];
 
         return values.filter(Boolean).some(value => normalizeSearchTerm(value).includes(search));
@@ -2863,7 +3123,7 @@
         <div class="guest-grid-toolbar clean">
           <div class="guest-grid-title">
             <strong>Lista de convidados</strong>
-            <span>${totalText}</span>
+            <span>${totalText} • ${getGuestsWithQRCodeCount()} com QR • ${getGuestsWithoutQRCodeCount()} sem QR</span>
           </div>
 
           <div class="guest-search-box">
@@ -2877,9 +3137,9 @@
             ${clearSearchButton}
           </div>
 
-          <button class="btn-warning guest-main-action" type="button" onclick="sendNextPending()">
-            Próximo pendente →
-          </button>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;">
+           
+          </div>
         </div>
 
         <div class="guest-table-wrap">
@@ -2912,6 +3172,17 @@
                       <option value="enviada" ${messageFilter === 'enviada' ? 'selected' : ''}>Enviada</option>
                       <option value="nao_enviada" ${messageFilter === 'nao_enviada' ? 'selected' : ''}>Não enviada</option>
                       <option value="erro" ${messageFilter === 'erro' ? 'selected' : ''}>Com erro</option>
+                    </select>
+                  </div>
+                </th>
+
+                <th class="col-message">
+                  <div class="table-head-cell">
+                    <span class="table-head-title">QR Code</span>
+                    <select class="table-head-filter" id="qrCodeFilter" onchange="renderGuests()">
+                      <option value="" ${qrCodeFilter === '' ? 'selected' : ''}>Todos</option>
+                      <option value="gerado" ${qrCodeFilter === 'gerado' ? 'selected' : ''}>Com QR Code</option>
+                      <option value="sem_qrcode" ${qrCodeFilter === 'sem_qrcode' ? 'selected' : ''}>Sem QR Code</option>
                     </select>
                   </div>
                 </th>
@@ -2956,7 +3227,7 @@
             <tbody>
               ${filtered.length === 0 ? `
                 <tr>
-                  <td colspan="8">
+                  <td colspan="9">
                     <div class="empty-state">Nenhum convidado encontrado.</div>
                   </td>
                 </tr>
@@ -2982,6 +3253,17 @@
                   </td>
 
                   <td data-label="Mensagem">${getGuestMessageBadge(guest)}</td>
+
+                  <td data-label="QR Code">
+                    <button
+                      type="button"
+                      class="${getGuestQRCode(guest) ? 'btn-secondary' : 'btn-danger'}"
+                      onclick="openGuestQRCodeModal('${guest.id}')"
+                      ${getGuestQRCode(guest) ? '' : 'disabled'}
+                      style="min-width:142px;">
+                      ${getGuestQRCodeBadge(guest)}
+                    </button>
+                  </td>
 
                   <td data-label="Convidado">
                     <div class="guest-name-cell">
@@ -4249,7 +4531,14 @@ ${BOT_WHATSAPP_BASE_URL}
         'Grupo': guest.group_name || '',
         'Telefone': formatPhoneBR(guest.whatsapp || ''),
         'Status': guest.confirmed ? 'Confirmado' : 'Pendente',
-        'Mensagem': guest.message_sent ? 'Enviada' : 'Não enviada'
+        'Mensagem': guest.message_sent ? 'Enviada' : 'Não enviada',
+        'QR Code Gerado': getGuestQRCode(guest) ? 'Sim' : 'Não',
+        'Código QR': getGuestQRCode(guest)?.qr_code || '',
+        'Tipo QR': getGuestQRCode(guest)?.ticket_type || '',
+        'Mesa': getGuestQRCode(guest)?.table_number || '',
+        'Lugar': getGuestQRCode(guest)?.seat_number || '',
+        'QR Utilizado': getGuestQRCode(guest)?.accessed ? 'Sim' : 'Não',
+        'Acessado Em': formatDateTimeBR(getGuestQRCode(guest)?.accessed_at || getGuestQRCode(guest)?.used_at) || ''
       }));
 
       const worksheet = XLSX.utils.json_to_sheet(rows);
@@ -4259,7 +4548,14 @@ ${BOT_WHATSAPP_BASE_URL}
         { wch: 24 }, // Grupo
         { wch: 20 }, // Telefone
         { wch: 16 }, // Status
-        { wch: 18 }  // Mensagem
+        { wch: 18 }, // Mensagem
+        { wch: 16 }, // QR Code Gerado
+        { wch: 34 }, // Código QR
+        { wch: 14 }, // Tipo QR
+        { wch: 10 }, // Mesa
+        { wch: 10 }, // Lugar
+        { wch: 14 }, // QR Utilizado
+        { wch: 22 }  // Acessado Em
       ];
 
       const workbook = XLSX.utils.book_new();

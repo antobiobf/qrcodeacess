@@ -839,6 +839,8 @@
         return;
       }
 
+      await enrichAccessCodeWithGuest(data);
+
       if (data.event_id !== currentEventId) {
         renderResult(null, 'invalid');
         showMessage('QR Code válido, mas pertence a outro evento.', 'error');
@@ -913,6 +915,8 @@
         return;
       }
 
+      await enrichAccessCodeWithGuest(data);
+
       clearResultOnly();
       document.getElementById('codeInput').value = '';
 
@@ -980,11 +984,100 @@
       `;
     }
 
+
+    async function enrichAccessCodeWithGuest(item) {
+      if (!item || !supabaseClient || !currentEventId) return item;
+
+      const guest = await findGuestForAccessCode(item);
+
+      if (guest) {
+        item.guest_group_name = guest.group_name || '';
+        item.guest_name_from_guest = guest.guest_name || '';
+        item.guest_whatsapp_from_guest = guest.whatsapp || '';
+      }
+
+      return item;
+    }
+
+    async function findGuestForAccessCode(item) {
+      if (!item || !supabaseClient || !currentEventId) return null;
+
+      if (item.source_guest_id) {
+        const { data, error } = await supabaseClient
+          .from('event_guests')
+          .select('id, guest_name, group_name, whatsapp')
+          .eq('id', item.source_guest_id)
+          .eq('event_id', currentEventId)
+          .maybeSingle();
+
+        if (!error && data) return data;
+      }
+
+      if (item.customer_whatsapp) {
+        const phone = normalizeComparablePhone(item.customer_whatsapp);
+
+        if (phone) {
+          const { data, error } = await supabaseClient
+            .from('event_guests')
+            .select('id, guest_name, group_name, whatsapp')
+            .eq('event_id', currentEventId);
+
+          if (!error && data?.length) {
+            const found = data.find(guest => normalizeComparablePhone(guest.whatsapp) === phone);
+            if (found) return found;
+          }
+        }
+      }
+
+      if (item.customer_name) {
+        const name = normalizeComparableText(item.customer_name);
+
+        if (name) {
+          const { data, error } = await supabaseClient
+            .from('event_guests')
+            .select('id, guest_name, group_name, whatsapp')
+            .eq('event_id', currentEventId);
+
+          if (!error && data?.length) {
+            const found = data.find(guest => normalizeComparableText(guest.guest_name) === name);
+            if (found) return found;
+          }
+        }
+      }
+
+      return null;
+    }
+
+    function getAccessGroupName(item) {
+      return item?.group_name || item?.guest_group_name || '';
+    }
+
+    function getAccessCustomerName(item) {
+      return item?.customer_name || item?.guest_name_from_guest || '';
+    }
+
+    function normalizeComparablePhone(value) {
+      return String(value || '')
+        .replace(/\D/g, '')
+        .replace(/^55/, '')
+        .slice(-11);
+    }
+
+    function normalizeComparableText(value) {
+      return String(value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-zA-Z0-9]/g, '')
+        .toLowerCase();
+    }
+
+
     function buildResultRows(item, isUsed) {
       const rows = [];
 
       addRow(rows, 'Evento', getEventName(item));
-      addRow(rows, 'Convidado', item.customer_name);
+      addRow(rows, 'Convidado', getAccessCustomerName(item));
+      addRow(rows, 'Grupo', getAccessGroupName(item));
       addRow(rows, 'Data do evento', formatDateBR(getEventDate(item)));
       addRow(rows, 'Hora do evento', getEventTime(item));
       addRow(rows, 'Local', getEventLocation(item));
@@ -1012,7 +1105,8 @@
       const lines = [];
 
       addLine(lines, 'Evento', getEventName(item));
-      addLine(lines, 'Convidado', item.customer_name);
+      addLine(lines, 'Convidado', getAccessCustomerName(item));
+      addLine(lines, 'Grupo', getAccessGroupName(item));
       addLine(lines, 'Mesa', item.table_number);
       addLine(lines, 'Lugar', item.seat_number);
       addLine(lines, 'Código', item.qr_code);

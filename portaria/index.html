@@ -231,8 +231,8 @@
       <p class="small-text">Lista dos últimos QR Codes baixados na portaria.</p>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Status</th><th>Nome</th><th>QR Code</th><th>Entrada</th><th>Mesa/Lugar</th><th>Contato</th></tr></thead>
-          <tbody id="recentAccessesBody"><tr><td colspan="6">Carregando...</td></tr></tbody>
+          <thead><tr><th>Status</th><th>Nome</th><th>Grupo</th><th>QR Code</th><th>Entrada</th><th>Mesa/Lugar</th><th>Contato</th></tr></thead>
+          <tbody id="recentAccessesBody"><tr><td colspan="7">Carregando...</td></tr></tbody>
         </table>
       </div>
     </div>
@@ -305,6 +305,7 @@
         if (mode === 'qr') results = await searchByQRCode(term);
         else if (mode === 'name') results = await searchByNameOrPhone(term);
         else results = mergeResults(await searchByQRCode(term), await searchByNameOrPhone(term));
+        results = await enrichResultsWithGuestGroup(results);
         currentResults = results;
         renderResults(results);
         showMessage(results.length ? `${results.length} resultado(s) encontrado(s).` : 'Nenhum convidado ou QR Code encontrado.', results.length ? 'success' : 'warning');
@@ -355,6 +356,121 @@
       return merged;
     }
 
+
+    async function enrichResultsWithGuestGroup(results) {
+      const enriched = [];
+
+      for (const item of results) {
+        const code = item.accessCode || null;
+
+        if (code && !item.guest) {
+          const guest = await findGuestByAccessCode(code);
+          enriched.push({ ...item, guest: guest || null });
+        } else {
+          enriched.push(item);
+        }
+      }
+
+      return enriched;
+    }
+
+    async function findGuestByAccessCode(code) {
+      if (!code || !supabaseClient || !currentEventId) return null;
+
+      if (code.source_guest_id) {
+        const { data, error } = await supabaseClient
+          .from('event_guests')
+          .select('id, guest_name, group_name, whatsapp, access, accessed_at, access_code_id')
+          .eq('event_id', currentEventId)
+          .eq('id', code.source_guest_id)
+          .maybeSingle();
+
+        if (!error && data) return data;
+      }
+
+      if (code.id) {
+        const { data, error } = await supabaseClient
+          .from('event_guests')
+          .select('id, guest_name, group_name, whatsapp, access, accessed_at, access_code_id')
+          .eq('event_id', currentEventId)
+          .eq('access_code_id', code.id)
+          .maybeSingle();
+
+        if (!error && data) return data;
+      }
+
+      if (code.customer_whatsapp) {
+        const cleanPhone = normalizePhoneForCompare(code.customer_whatsapp);
+
+        if (cleanPhone) {
+          const { data, error } = await supabaseClient
+            .from('event_guests')
+            .select('id, guest_name, group_name, whatsapp, access, accessed_at, access_code_id')
+            .eq('event_id', currentEventId);
+
+          if (!error && data?.length) {
+            const found = data.find(guest => normalizePhoneForCompare(guest.whatsapp) === cleanPhone);
+            if (found) return found;
+          }
+        }
+      }
+
+      if (code.customer_name) {
+        const cleanName = normalizeTextForCompare(code.customer_name);
+
+        if (cleanName) {
+          const { data, error } = await supabaseClient
+            .from('event_guests')
+            .select('id, guest_name, group_name, whatsapp, access, accessed_at, access_code_id')
+            .eq('event_id', currentEventId);
+
+          if (!error && data?.length) {
+            const found = data.find(guest => normalizeTextForCompare(guest.guest_name) === cleanName);
+            if (found) return found;
+          }
+        }
+      }
+
+      return null;
+    }
+
+    function getGroupLabel(item) {
+      const guest = item?.guest || null;
+      const code = item?.accessCode || item || null;
+
+      return (
+        guest?.group_name ||
+        code?.group_name ||
+        code?.guest_group_name ||
+        code?.customer_group_name ||
+        '-'
+      );
+    }
+
+    function normalizePhoneForCompare(value) {
+      return String(value || '').replace(/\D/g, '').replace(/^55/, '').slice(-11);
+    }
+
+    function normalizeTextForCompare(value) {
+      return String(value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-zA-Z0-9]/g, '')
+        .toLowerCase();
+    }
+
+    function buildConfirmAccessMessage(item) {
+      const code = item.accessCode;
+      return (
+        `Confirmar acesso?\n\n` +
+        `Nome: ${getResultName(item)}\n` +
+        `Grupo: ${getGroupLabel(item)}\n` +
+        `QR Code: ${code.qr_code}\n` +
+        `Local: ${getPlaceLabel(code)}`
+      );
+    }
+
+
     function renderResults(results) {
       const container = document.getElementById('resultContainer');
       if (!results.length) {
@@ -404,6 +520,7 @@
             <div class="result-meta">
               <div><strong>QR Code:</strong> ${escapeHTML(qr)}</div>
               <div><strong>Local:</strong> ${escapeHTML(place)}</div>
+              <div><strong>Grupo:</strong> ${escapeHTML(getGroupLabel(item))}</div>
               <div><strong>Contato:</strong> ${escapeHTML(contact)}</div>
               <div><strong>Entrada:</strong> ${entryDate || '-'}</div>
             </div>
@@ -456,7 +573,8 @@
       const ok = confirm(
         `Este convidado não possui QR Code vinculado.\n\n` +
         `Deseja criar um QR Code e confirmar o acesso agora?\n\n` +
-        `Nome: ${item.guest.guest_name || 'Convidado'}`
+        `Nome: ${item.guest.guest_name || 'Convidado'}\n` +
+        `Grupo: ${item.guest.group_name || '-'}`
       );
 
       if (!ok) {
@@ -481,6 +599,7 @@
         qr_code: generatedQRCode,
         customer_name: guest.guest_name || null,
         customer_whatsapp: guest.whatsapp || null,
+        group_name: guest.group_name || null,
         source_guest_id: guest.id,
         accessed: true,
         accessed_at: now,
@@ -504,6 +623,7 @@
             <h3>✅ Entrada confirmada</h3>
             <div class="result-meta">
               <div><strong>Nome:</strong> ${escapeHTML(guest.guest_name || 'Convidado')}</div>
+              <div><strong>Grupo:</strong> ${escapeHTML(guest.group_name || '-')}</div>
               <div><strong>QR Code criado:</strong> ${escapeHTML(createdCode.qr_code || generatedQRCode)}</div>
               <div><strong>Data/Hora:</strong> ${formatDateTimeBR(now)}</div>
               <div><strong>Operador:</strong> ${escapeHTML(operatorName)}</div>
@@ -532,6 +652,7 @@
       if (msg.includes('accessed_by') || msg.includes('schema cache') || msg.includes('Could not find')) {
         const fallbackPayload = { ...payload };
         delete fallbackPayload.accessed_by;
+        delete fallbackPayload.group_name;
 
         const retry = await supabaseClient
           .from('access_codes')
@@ -586,7 +707,7 @@
       if (!item?.accessCode) { showMessage('Este convidado não possui QR Code vinculado.', 'error'); return; }
       const code = item.accessCode; const name = getResultName(item);
       if (code.accessed === true) { showMessage('Este QR Code já foi utilizado.', 'warning'); return; }
-      const ok = confirm(`Confirmar acesso?\n\nNome: ${name}\nQR Code: ${code.qr_code}\nLocal: ${getPlaceLabel(code)}`);
+      const ok = confirm(buildConfirmAccessMessage(item));
       if (!ok) { showMessage('Acesso não confirmado.', 'info'); return; }
       await confirmAccessCode(code, item.guest || null);
     }
@@ -624,7 +745,7 @@
       showMessage(`Entrada confirmada para ${getPersonLabel(data)} às ${formatDateTimeBR(now)}.`, 'success');
       await loadSummary(); await loadRecentAccesses();
       document.getElementById('searchInput').value = '';
-      document.getElementById('resultContainer').innerHTML = `<div class="result-card"><h3>✅ Entrada confirmada</h3><div class="result-meta"><div><strong>Nome:</strong> ${escapeHTML(getPersonLabel(data))}</div><div><strong>QR Code:</strong> ${escapeHTML(data.qr_code || '-')}</div><div><strong>Local:</strong> ${escapeHTML(getPlaceLabel(data))}</div><div><strong>Data/Hora:</strong> ${formatDateTimeBR(now)}</div></div></div>`;
+      document.getElementById('resultContainer').innerHTML = `<div class="result-card"><h3>✅ Entrada confirmada</h3><div class="result-meta"><div><strong>Nome:</strong> ${escapeHTML(getPersonLabel(data))}</div><div><strong>Grupo:</strong> ${escapeHTML(getGroupLabel({ accessCode: data, guest }))}</div><div><strong>QR Code:</strong> ${escapeHTML(data.qr_code || '-')}</div><div><strong>Local:</strong> ${escapeHTML(getPlaceLabel(data))}</div><div><strong>Data/Hora:</strong> ${formatDateTimeBR(now)}</div></div></div>`;
       focusSearch();
     }
 
@@ -673,10 +794,10 @@
     async function loadRecentAccesses() {
       const tbody = document.getElementById('recentAccessesBody');
       const { data, error } = await supabaseClient.from('access_codes').select('*').eq('event_id', currentEventId).eq('accessed', true).order('accessed_at', { ascending: false }).limit(20);
-      if (error) { tbody.innerHTML = `<tr><td colspan="6">Erro ao carregar acessos: ${escapeHTML(error.message)}</td></tr>`; return; }
+      if (error) { tbody.innerHTML = `<tr><td colspan="7">Erro ao carregar acessos: ${escapeHTML(error.message)}</td></tr>`; return; }
       const rows = data || [];
-      if (!rows.length) { tbody.innerHTML = '<tr><td colspan="6">Nenhum acesso registrado.</td></tr>'; return; }
-      tbody.innerHTML = rows.map(item => `<tr><td><span class="badge badge-green">Acessou</span></td><td>${escapeHTML(getPersonLabel(item))}</td><td>${escapeHTML(item.qr_code || '-')}</td><td>${formatDateTimeBR(item.accessed_at || item.used_at) || '-'}</td><td>${escapeHTML(getPlaceLabel(item))}</td><td>${escapeHTML(getContactLabel({ accessCode: item }))}</td></tr>`).join('');
+      if (!rows.length) { tbody.innerHTML = '<tr><td colspan="7">Nenhum acesso registrado.</td></tr>'; return; }
+      tbody.innerHTML = rows.map(item => `<tr><td><span class="badge badge-green">Acessou</span></td><td>${escapeHTML(getPersonLabel(item))}</td><td>${escapeHTML(getGroupLabel({ accessCode: item }))}</td><td>${escapeHTML(item.qr_code || '-')}</td><td>${formatDateTimeBR(item.accessed_at || item.used_at) || '-'}</td><td>${escapeHTML(getPlaceLabel(item))}</td><td>${escapeHTML(getContactLabel({ accessCode: item }))}</td></tr>`).join('');
     }
 
     function getResultName(item) { if (item.guest?.guest_name) return item.guest.guest_name; if (item.accessCode) return getPersonLabel(item.accessCode); return 'Convidado'; }
