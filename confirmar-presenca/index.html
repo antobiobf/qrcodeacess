@@ -8,6 +8,31 @@
   <title>Confirmar Presença</title>
     <link href="../image/favicon.ico" rel="icon" type="image/x-icon" />
 
+  <!--
+    SQL RECOMENDADO PARA ESTA TELA
+
+    alter table public.events
+    add column if not exists generate_qrcode_on_confirm boolean not null default true,
+    add column if not exists allow_guest_companions boolean not null default true,
+    add column if not exists event_end_time time;
+
+    alter table public.event_guests
+    add column if not exists parent_guest_id uuid references public.event_guests(id) on delete set null,
+    add column if not exists is_companion boolean not null default false,
+    add column if not exists companion_of text;
+
+    alter table public.access_codes
+    add column if not exists source_guest_id uuid,
+    add column if not exists group_name text;
+
+    -- Recomendado para bloquear duplicidade exata quando o WhatsApp estiver salvo normalizado.
+    create unique index if not exists idx_event_guests_event_phone_unique_normalized
+    on public.event_guests (event_id, whatsapp)
+    where whatsapp is not null and whatsapp <> '';
+
+    notify pgrst, 'reload schema';
+  -->
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode/1.5.1/qrcode.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -304,6 +329,285 @@
       line-height: 1.5;
     }
 
+
+    .companions-card {
+      display: none;
+      margin-top: 18px;
+      background: #ffffff;
+      border-radius: 28px;
+      padding: 22px;
+      border: 1px solid #e5e7eb;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, .10);
+    }
+
+    .companions-card.active {
+      display: block;
+    }
+
+    .companions-card h2 {
+      font-size: 24px;
+      color: #0f172a;
+      margin-bottom: 8px;
+    }
+
+    .companions-card p {
+      color: #64748b;
+      line-height: 1.5;
+      margin-bottom: 16px;
+    }
+
+    .companion-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .field label {
+      font-size: 13px;
+      font-weight: 800;
+      color: #334155;
+    }
+
+    .field input {
+      width: 100%;
+      border: 1px solid #cbd5e1;
+      border-radius: 15px;
+      padding: 14px;
+      font-size: 15px;
+      outline: none;
+      font-weight: 700;
+      color: #0f172a;
+      background: #f8fafc;
+    }
+
+    .field input:focus {
+      border-color: #2563eb;
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, .12);
+      background: #fff;
+    }
+
+    .companion-found {
+      display: none;
+      margin: 10px 0 12px;
+      padding: 14px;
+      border-radius: 16px;
+      background: #fef3c7;
+      color: #92400e;
+      font-weight: 700;
+      line-height: 1.45;
+    }
+
+    .companion-found.active {
+      display: block;
+    }
+
+    .companions-list {
+      margin-top: 16px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .companion-item {
+      border: 1px solid #e2e8f0;
+      border-radius: 16px;
+      padding: 13px 14px;
+      background: #f8fafc;
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .companion-item strong {
+      display: block;
+      color: #0f172a;
+      font-size: 15px;
+      margin-bottom: 3px;
+    }
+
+    .companion-item span {
+      color: #64748b;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .qr-disabled-note {
+      margin-top: 18px;
+      padding: 16px;
+      border-radius: 18px;
+      background: #eff6ff;
+      color: #1e40af;
+      font-weight: 700;
+      line-height: 1.45;
+    }
+
+    .btn-download {
+      background: linear-gradient(135deg, #0f172a, #334155);
+      color: white;
+      box-shadow: 0 15px 40px rgba(15, 23, 42, .24);
+    }
+
+
+    .lookup-card {
+      display: none;
+      margin-top: 18px;
+      background: #ffffff;
+      border-radius: 24px;
+      padding: 20px;
+      border: 1px solid #e5e7eb;
+      box-shadow: 0 14px 32px rgba(0,0,0,.08);
+    }
+
+    .lookup-card.active {
+      display: block;
+    }
+
+    .lookup-card h2 {
+      font-size: 22px;
+      color: #0f172a;
+      margin-bottom: 8px;
+    }
+
+    .lookup-card p {
+      color: #64748b;
+      line-height: 1.5;
+      margin-bottom: 14px;
+    }
+
+    .lookup-grid {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: end;
+    }
+
+    .lookup-grid input {
+      width: 100%;
+      border: 1px solid #cbd5e1;
+      border-radius: 15px;
+      padding: 15px;
+      font-size: 15px;
+      outline: none;
+      font-weight: 700;
+      color: #0f172a;
+      background: #f8fafc;
+    }
+
+    .lookup-grid input:focus {
+      border-color: #2563eb;
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, .12);
+      background: #fff;
+    }
+
+
+    .register-new-guest-card {
+      display: none;
+      margin-top: 14px;
+      padding: 16px;
+      border-radius: 20px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+    }
+
+    .register-new-guest-card.active {
+      display: block;
+    }
+
+    .register-new-guest-card h3 {
+      font-size: 18px;
+      color: #0f172a;
+      margin-bottom: 8px;
+    }
+
+    .register-new-guest-card p {
+      color: #64748b;
+      line-height: 1.45;
+      margin-bottom: 12px;
+      font-size: 14px;
+    }
+
+    .register-new-guest-card input {
+      width: 100%;
+      border: 1px solid #cbd5e1;
+      border-radius: 15px;
+      padding: 15px;
+      font-size: 15px;
+      outline: none;
+      font-weight: 700;
+      color: #0f172a;
+      background: #ffffff;
+      margin-bottom: 12px;
+    }
+
+    .register-new-guest-card input:focus {
+      border-color: #2563eb;
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, .12);
+    }
+
+    @media(max-width:640px) {
+      .lookup-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+
+    .register-new-guest-card {
+      display: none;
+      margin-top: 14px;
+      padding: 16px;
+      border-radius: 20px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+    }
+
+    .register-new-guest-card.active {
+      display: block;
+    }
+
+    .register-new-guest-card h3 {
+      font-size: 18px;
+      color: #0f172a;
+      margin-bottom: 8px;
+    }
+
+    .register-new-guest-card p {
+      color: #64748b;
+      line-height: 1.45;
+      margin-bottom: 12px;
+      font-size: 14px;
+    }
+
+    .register-new-guest-card input {
+      width: 100%;
+      border: 1px solid #cbd5e1;
+      border-radius: 15px;
+      padding: 15px;
+      font-size: 15px;
+      outline: none;
+      font-weight: 700;
+      color: #0f172a;
+      background: #ffffff;
+      margin-bottom: 12px;
+    }
+
+    .register-new-guest-card input:focus {
+      border-color: #2563eb;
+      box-shadow: 0 0 0 4px rgba(37, 99, 235, .12);
+    }
+
+    @media(max-width: 640px) {
+      .companion-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
     @media(max-width: 640px) {
 
       body {
@@ -335,6 +639,81 @@
         height: 280px;
       }
     }
+  
+    #companionsCard {
+      margin-top: 20px;
+    }
+
+    #companionsCard.active {
+      display: block;
+    }
+
+  
+    .companions-table-card {
+      margin-top: 18px;
+      border: 1px solid #e2e8f0;
+      border-radius: 20px;
+      overflow: hidden;
+      background: #ffffff;
+    }
+
+    .companions-table-card h3 {
+      padding: 16px;
+      font-size: 18px;
+      color: #0f172a;
+      border-bottom: 1px solid #e2e8f0;
+      background: #f8fafc;
+    }
+
+    .companions-table-wrap {
+      overflow-x: auto;
+    }
+
+    .companions-table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 560px;
+      font-size: 14px;
+    }
+
+    .companions-table th,
+    .companions-table td {
+      padding: 13px 14px;
+      border-bottom: 1px solid #e2e8f0;
+      text-align: left;
+      color: #334155;
+      vertical-align: middle;
+    }
+
+    .companions-table th {
+      background: #f8fafc;
+      color: #64748b;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      font-weight: 900;
+    }
+
+    .companions-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 7px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .status-confirmed { background: #dcfce7; color: #166534; }
+    .status-pending { background: #fef3c7; color: #92400e; }
+    .status-qrcode { background: #dbeafe; color: #1d4ed8; }
+    .status-no-qrcode { background: #f1f5f9; color: #475569; }
+
   </style>
 </head>
 
@@ -370,6 +749,68 @@
       </button>
 
       <div id="message" class="message"></div>
+
+      <div class="lookup-card" id="lookupCard">
+        <h2>Localizar convite</h2>
+        <p>Informe o WhatsApp do convidado para localizar o convite e confirmar presença.</p>
+
+        <div class="lookup-grid">
+          <input id="lookupWhatsapp" type="text" placeholder="WhatsApp do convidado" oninput="this.value = formatPhoneInput(this.value)" />
+          <button class="btn-primary" type="button" onclick="findGuestByEventAndPhone()">Localizar convite</button>
+        </div>
+
+      </div>
+
+
+      <div class="companions-card" id="companionsCard">
+        <h2>Deseja adicionar um acompanhante?</h2>
+        <p>
+          Se sim, preencha os campos abaixo. O telefone é opcional.
+          Caso o telefone seja informado e já esteja cadastrado neste evento, o sistema vai carregar o nome
+          e não permitirá cadastrar novamente.
+        </p>
+
+        <div class="companion-grid">
+          <div class="field">
+            <label for="companionWhatsapp">Telefone do acompanhante <span style="font-weight:600;color:#64748b;">(opcional)</span></label>
+            <input id="companionWhatsapp" type="text" placeholder="Ex: (81) 99999-9999" oninput="this.value = formatPhoneInput(this.value)" onblur="findCompanionByPhone()" />
+          </div>
+
+          <div class="field">
+            <label for="companionName">Nome do acompanhante</label>
+            <input id="companionName" type="text" placeholder="Nome completo" />
+          </div>
+        </div>
+
+        <div id="companionFoundBox" class="companion-found"></div>
+
+        <button id="addCompanionButton" class="btn-primary" onclick="addCompanion()" type="button">
+          Cadastrar acompanhante
+        </button>
+
+        <div class="companions-table-card">
+          <h3>Acompanhantes cadastrados</h3>
+
+          <div class="companions-table-wrap">
+            <table class="companions-table">
+              <thead>
+                <tr>
+                  <th>Nome</th>
+                  <th>Telefone</th>
+                  <th>Status</th>
+                  <th>QR Code</th>
+                </tr>
+              </thead>
+              <tbody id="companionsTableBody">
+                <tr>
+                  <td colspan="4">Nenhum acompanhante cadastrado.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
     </div>
 
     <div class="card ticket-card" id="ticketCard">
@@ -394,9 +835,9 @@
 
       <div class="ticket-actions">
 
-        <!-- <button class="btn-primary" onclick="downloadTicketPDF()">
-          Baixar PDF
-        </button> -->
+        <button class="btn-download" onclick="downloadTicketPDF()">
+          Baixar PDF do QR Code
+        </button>
 
         <button class="btn-secondary" onclick="copyTicketCode()">
           Copiar código
@@ -412,8 +853,12 @@
 
     let supabaseClient = null;
     let guestId = null;
+    let eventId = null;
+    let eventDataOnly = null;
     let guestData = null;
     let accessCodeData = null;
+    let companionAlreadyExists = null;
+    let companions = [];
 
     const savedUrl =
       localStorage.getItem('supabase_url')
@@ -430,21 +875,221 @@
       const params = new URLSearchParams(window.location.search);
 
       guestId = params.get('guest_id');
+      eventId = params.get('event_id');
 
-      if (!guestId) {
+      const { createClient } = supabase;
+      supabaseClient = createClient(savedUrl, savedKey);
+
+      if (guestId) {
+        await loadGuest();
+        return;
+      }
+
+      if (eventId) {
+        await loadEventOnly(eventId);
+        return;
+      }
+
+      setError(
+        'Link inválido',
+        'O link enviado está incompleto. Use guest_id ou event_id.'
+      );
+    }
+
+
+    async function loadEventOnly(id) {
+      const { data, error } = await supabaseClient
+        .from('events')
+        .select(`
+          id,
+          name,
+          event_date,
+          event_time,
+          event_end_time,
+          location,
+          google_maps_link,
+          invitation_image_url,
+          generate_qrcode_on_confirm,
+          allow_guest_companions
+        `)
+        .eq('id', id)
+        .maybeSingle();
+
+      if (error || !data) {
         setError(
-          'Link inválido',
-          'O link enviado está incompleto.'
+          'Evento não encontrado',
+          error?.message || 'Não encontramos este evento.'
         );
         return;
       }
 
-      const { createClient } = supabase;
+      eventDataOnly = data;
 
-      supabaseClient = createClient(savedUrl, savedKey);
+      document.getElementById('statusIcon').textContent = '🎉';
+      document.getElementById('statusIcon').className = 'icon';
+      document.getElementById('title').textContent = data.name || 'Confirmar presença';
+      document.getElementById('subtitle').textContent = 'Localize seu convite pelo WhatsApp para confirmar presença.';
 
-      await loadGuest();
+      const rows = [
+        ['Evento', data.name],
+        ['Data', formatDateBR(data.event_date)],
+        ['Início', formatTime(data.event_time)],
+        ['Fim', formatTime(data.event_end_time)],
+        ['Local', data.location]
+      ].filter(r => r[1]);
+
+      document.getElementById('detailsBox').style.display = 'block';
+      document.getElementById('detailsBox').innerHTML =
+        rows.map(([label, value]) => `
+          <div class="detail-row">
+            <div class="detail-label">${escapeHTML(label)}</div>
+            <div class="detail-value">${escapeHTML(value)}</div>
+          </div>
+        `).join('');
+
+      renderInviteImageFromEvent(data);
+      renderGoogleMapsFromEvent(data);
+
+      document.getElementById('confirmButton').style.display = 'none';
+      document.getElementById('lookupCard').classList.add('active');
     }
+
+    async function findGuestByEventAndPhone() {
+      const input = document.getElementById('lookupWhatsapp');
+      const phone = normalizePhone(input.value);
+      input.value = formatPhoneInput(phone);
+
+      if (!phone || phone.length < 10) {
+        showMessage('Informe um WhatsApp válido para localizar o convite.', 'error');
+        return;
+      }
+
+      showMessage('Localizando convite...', 'success');
+
+      const { data, error } = await supabaseClient
+        .from('event_guests')
+        .select(`
+          *,
+          events (
+            id,
+            name,
+            event_date,
+            event_time,
+            event_end_time,
+            location,
+            google_maps_link,
+            invitation_image_url,
+            generate_qrcode_on_confirm,
+            allow_guest_companions
+          )
+        `)
+        .eq('event_id', eventId);
+
+      if (error) {
+        showMessage('Erro ao localizar convite: ' + error.message, 'error');
+        return;
+      }
+
+      const found = (data || []).find(item => phonesAreEqual(item.whatsapp, phone));
+
+      if (!found) {
+        showMessage('Não encontramos convite com este WhatsApp neste evento.', 'error');
+        return;
+      }
+
+      await loadFoundGuestIntoPage(found);
+      showMessage('Convite localizado.', 'success');
+    }
+
+    async function loadFoundGuestIntoPage(found) {
+      guestId = found.id;
+      guestData = found;
+
+      document.getElementById('lookupCard')?.classList.remove('active');
+      document.getElementById('confirmButton').style.display = 'block';
+
+      accessCodeData = null;
+
+      if (found.access_code_id) {
+        await loadAccessCode(found.access_code_id);
+      } else if (found.confirmed === true) {
+        await loadAccessCodeByGuest(found.id);
+      }
+
+      if (found.confirmed === true && !accessCodeData && found.events?.generate_qrcode_on_confirm !== false) {
+        await createAccessCode();
+      }
+
+      await loadCompanions();
+      renderGuest();
+    }
+
+    function renderInviteImageFromEvent(event) {
+      const container = document.getElementById('inviteContainer');
+      const imageUrl = event?.invitation_image_url;
+
+      if (!imageUrl) {
+        container.style.display = 'none';
+        return;
+      }
+
+      container.style.display = 'block';
+      container.innerHTML = `
+        <div class="invite-image-card">
+          <img src="${escapeHTML(imageUrl)}" alt="Convite do evento" />
+        </div>
+      `;
+    }
+
+    function renderGoogleMapsFromEvent(event) {
+      const container = document.getElementById('mapsContainer');
+      const mapsLink = event?.google_maps_link;
+
+      if (!mapsLink) {
+        container.style.display = 'none';
+        container.innerHTML = '';
+        return;
+      }
+
+      let embedUrl = '';
+
+      try {
+        if (mapsLink.includes('/embed?')) {
+          embedUrl = mapsLink;
+        } else {
+          const encoded = encodeURIComponent(event.location || mapsLink);
+          embedUrl = `https://www.google.com/maps?q=${encoded}&output=embed`;
+        }
+      } catch {
+        const encoded = encodeURIComponent(event.location || '');
+        embedUrl = `https://www.google.com/maps?q=${encoded}&output=embed`;
+      }
+
+      container.style.display = 'block';
+      container.innerHTML = `
+        <div class="maps-card">
+          <div class="maps-header">
+            <h3>📍 Como chegar</h3>
+            <p>${escapeHTML(event.location || '')}</p>
+          </div>
+
+          <iframe
+            class="maps-frame"
+            loading="lazy"
+            allowfullscreen
+            referrerpolicy="no-referrer-when-downgrade"
+            src="${embedUrl}">
+          </iframe>
+
+          <div class="maps-actions">
+            <button class="btn-primary" onclick="window.open('${escapeHTML(mapsLink)}', '_blank')">
+              Abrir rota no Google Maps
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
 
     async function loadGuest() {
 
@@ -457,9 +1102,12 @@
             name,
             event_date,
             event_time,
+            event_end_time,
             location,
             google_maps_link,
-            invitation_image_url
+            invitation_image_url,
+            generate_qrcode_on_confirm,
+            allow_guest_companions
           )
         `)
         .eq('id', guestId)
@@ -477,8 +1125,15 @@
 
       if (data.access_code_id) {
         await loadAccessCode(data.access_code_id);
+      } else if (data.confirmed === true) {
+        await loadAccessCodeByGuest(data.id);
       }
 
+      if (data.confirmed === true && !accessCodeData && data.events?.generate_qrcode_on_confirm !== false) {
+        await createAccessCode();
+      }
+
+      await loadCompanions();
       renderGuest();
     }
 
@@ -493,7 +1148,22 @@
       accessCodeData = data || null;
     }
 
+
+    async function loadAccessCodeByGuest(id) {
+      const { data } = await supabaseClient
+        .from('access_codes')
+        .select('*')
+        .eq('source_guest_id', id)
+        .eq('event_id', guestData.event_id)
+        .maybeSingle();
+
+      accessCodeData = data || null;
+    }
+
+
     function renderGuest() {
+
+      document.getElementById('lookupCard')?.classList.remove('active');
 
       const isConfirmed = guestData.confirmed === true;
       const event = guestData.events || {};
@@ -511,15 +1181,16 @@
 
       document.getElementById('subtitle').textContent =
         isConfirmed
-          ? 'Seu ingresso individual já está disponível abaixo.'
-          : 'Confirme sua presença no evento e gere seu QR Code individual.';
+          ? (accessCodeData ? 'Seu ingresso individual já está disponível abaixo.' : 'Sua presença está confirmada.')
+          : (shouldGenerateQRCode() ? 'Confirme sua presença no evento e gere seu QR Code individual.' : 'Confirme sua presença no evento.');
 
-                // ['Grupo', guestData.group_name],
       const rows = [
         ['Convidado', guestData.guest_name],
+        ['Grupo', guestData.group_name],
         ['Evento', event.name],
         ['Data', formatDateBR(event.event_date)],
-        ['Hora', formatTime(event.event_time)],
+        ['Início', formatTime(event.event_time)],
+        ['Fim', formatTime(event.event_end_time)],
         ['Local', event.location]
       ].filter(r => r[1]);
 
@@ -536,6 +1207,8 @@
       renderInviteImage();
       renderGoogleMaps();
 
+      renderCompanionsArea();
+
       const button = document.getElementById('confirmButton');
 
       button.disabled = isConfirmed;
@@ -547,6 +1220,15 @@
 
       if (isConfirmed && accessCodeData) {
         renderTicket();
+      }
+
+      if (isConfirmed && !accessCodeData && !shouldGenerateQRCode()) {
+        document.getElementById('ticketCard').classList.remove('active');
+        document.getElementById('usedAlertContainer').innerHTML = `
+          <div class="qr-disabled-note">
+            Presença confirmada. Este evento não está configurado para gerar QR Code automático.
+          </div>
+        `;
       }
     }
 
@@ -667,9 +1349,12 @@
             name,
             event_date,
             event_time,
+            event_end_time,
             location,
             google_maps_link,
-            invitation_image_url
+            invitation_image_url,
+            generate_qrcode_on_confirm,
+            allow_guest_companions
           )
         `)
         .maybeSingle();
@@ -685,12 +1370,23 @@
 
       guestData = data;
 
-      await createAccessCode();
+      if (shouldGenerateQRCode()) {
+        if (!accessCodeData) {
+          await createAccessCode();
+        }
+      } else {
+        accessCodeData = null;
+      }
 
+      await loadCompanions();
       renderGuest();
 
       showMessage(
-        'Presença confirmada com sucesso.',
+        allowCompanions()
+          ? 'Presença confirmada. Agora você pode adicionar acompanhante, se desejar.'
+          : (shouldGenerateQRCode()
+            ? 'Presença confirmada com sucesso. Seu QR Code está disponível abaixo.'
+            : 'Presença confirmada com sucesso.'),
         'success'
       );
     }
@@ -709,17 +1405,36 @@
         qr_code: code,
         customer_name: guestData.guest_name,
         customer_whatsapp: guestData.whatsapp,
+        group_name: guestData.group_name || 'Acompanhantes',
         source_guest_id: guestData.id,
         accessed: false,
         status: 'pending',
         ticket_type: 'individual'
       };
 
-      const { data, error } = await supabaseClient
+      let { data, error } = await supabaseClient
         .from('access_codes')
         .insert(payload)
         .select('*')
         .maybeSingle();
+
+      if (error && (
+        String(error.message || '').includes('group_name') ||
+        String(error.message || '').includes('schema cache') ||
+        String(error.message || '').includes('Could not find')
+      )) {
+        const fallbackPayload = { ...payload };
+        delete fallbackPayload.group_name;
+
+        const retry = await supabaseClient
+          .from('access_codes')
+          .insert(fallbackPayload)
+          .select('*')
+          .maybeSingle();
+
+        data = retry.data;
+        error = retry.error;
+      }
 
       if (error) {
         showMessage(error.message, 'error');
@@ -759,13 +1474,15 @@
 
       document.getElementById('ticketEventMeta')
         .textContent =
-        `${formatDateBR(event.event_date)} • ${formatTime(event.event_time)} • ${event.location || ''}`;
+        `${formatDateBR(event.event_date)} • ${formatTime(event.event_time)} às ${formatTime(event.event_end_time)} • ${event.location || ''}`;
 
       document.getElementById('ticketCodeText')
         .textContent = accessCodeData.qr_code;
 
       document.getElementById('ticketGuestName')
-        .textContent = guestData.guest_name;
+        .textContent = guestData.group_name
+          ? `${guestData.guest_name} • ${guestData.group_name}`
+          : guestData.guest_name;
 
       QRCode.toCanvas(
         document.getElementById('qrCanvas'),
@@ -829,47 +1546,105 @@
 
     async function downloadTicketPDF() {
 
-      const canvas =
-        document.getElementById('qrCanvas');
+      if (!accessCodeData) {
+        showMessage('QR Code ainda não foi gerado.', 'error');
+        return;
+      }
 
+      const canvas = document.getElementById('qrCanvas');
       const image = canvas.toDataURL('image/png');
-
+      const event = guestData.events || {};
       const { jsPDF } = window.jspdf;
 
       const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
-        format: [80, 120]
+        format: [90, 145]
       });
 
-      pdf.setFontSize(16);
+      pdf.setFillColor(15, 23, 42);
+      pdf.rect(0, 0, 90, 145, 'F');
 
-      pdf.text(
-        guestData.events.name || 'Evento',
-        40,
-        12,
-        { align: 'center' }
-      );
+      pdf.setFillColor(255, 255, 255);
+      pdf.roundedRect(7, 7, 76, 131, 5, 5, 'F');
 
+      pdf.setTextColor(15, 23, 42);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(14);
+      pdf.text(event.name || 'Evento', 45, 18, {
+        align: 'center',
+        maxWidth: 68
+      });
+
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(9);
+      pdf.setTextColor(71, 85, 105);
+      pdf.text(`Data: ${formatDateBR(event.event_date) || '-'}`, 45, 28, { align: 'center' });
+      pdf.text(`Horário: ${formatTime(event.event_time) || '-'} às ${formatTime(event.event_end_time) || '-'}`, 45, 34, { align: 'center' });
+      pdf.text(`Local: ${event.location || '-'}`, 45, 40, { align: 'center', maxWidth: 70 });
+
+      pdf.addImage(image, 'PNG', 20, 48, 50, 50);
+
+      pdf.setFillColor(241, 245, 249);
+      pdf.roundedRect(13, 103, 64, 15, 3, 3, 'F');
+
+      pdf.setFont('courier', 'bold');
+      pdf.setTextColor(15, 23, 42);
+      pdf.setFontSize(8);
+      pdf.text(String(accessCodeData.qr_code || '-'), 45, 112, {
+        align: 'center',
+        maxWidth: 58
+      });
+
+      pdf.setFont('helvetica', 'bold');
       pdf.setFontSize(10);
+      pdf.text(guestData.guest_name || 'Convidado', 45, 124, {
+        align: 'center',
+        maxWidth: 70
+      });
 
-      pdf.text(
-        formatDateBR(guestData.events.event_date),
-        40,
-        18,
-        { align: 'center' }
-      );
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(8);
+      pdf.setTextColor(100, 116, 139);
+      if (guestData.group_name) {
+        pdf.text(`Grupo: ${guestData.group_name}`, 45, 130, {
+          align: 'center',
+          maxWidth: 70
+        });
+      }
 
-      pdf.addImage(image, 'PNG', 17, 26, 46, 46);
+      const filename = `${safeFileName(event.name || 'evento')}-${safeFileName(guestData.guest_name || 'convidado')}-qrcode.pdf`;
+      const blob = pdf.output('blob');
+      const file = new File([blob], filename, { type: 'application/pdf' });
 
-      pdf.text(
-        accessCodeData.qr_code,
-        40,
-        80,
-        { align: 'center' }
-      );
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({
+            files: [file],
+            title: 'QR Code do evento',
+            text: `${event.name || 'Evento'} - ${guestData.guest_name || 'Convidado'}`
+          });
+          return;
+        } catch (error) {
+          if (error.name === 'AbortError') return;
+        }
+      }
 
-      pdf.save('ingresso.pdf');
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+      if (isIOS) {
+        const url = URL.createObjectURL(blob);
+        const newWindow = window.open(url, '_blank');
+
+        if (!newWindow) {
+          pdf.save(filename);
+        }
+
+        setTimeout(() => URL.revokeObjectURL(url), 120000);
+        return;
+      }
+
+      pdf.save(filename);
     }
 
     async function copyTicketCode() {
@@ -883,6 +1658,312 @@
         'success'
       );
     }
+
+
+
+    function normalizePhone(phone) {
+      if (!phone) return '';
+
+      let value = String(phone).replace(/\D/g, '');
+
+      if (value.startsWith('55')) {
+        value = value.substring(2);
+      }
+
+      return value.slice(0, 11);
+    }
+
+    function formatPhoneInput(phone) {
+      const value = normalizePhone(phone);
+
+      if (!value) return '';
+
+      if (value.length <= 2) {
+        return value;
+      }
+
+      if (value.length <= 10) {
+        return value.replace(/^(\d{2})(\d{0,4})(\d{0,4}).*/, function(_, ddd, p1, p2) {
+          return `(${ddd}) ${p1}${p2 ? '-' + p2 : ''}`.trim();
+        });
+      }
+
+      return value.replace(/^(\d{2})(\d{0,5})(\d{0,4}).*/, function(_, ddd, p1, p2) {
+        return `(${ddd}) ${p1}${p2 ? '-' + p2 : ''}`.trim();
+      });
+    }
+
+    function phonesAreEqual(a, b) {
+      return normalizePhone(a) === normalizePhone(b);
+    }
+
+
+    function shouldGenerateQRCode() {
+      const event = guestData?.events || {};
+      return event.generate_qrcode_on_confirm !== false;
+    }
+
+    function allowCompanions() {
+      const event = guestData?.events || {};
+      return event.allow_guest_companions === true;
+    }
+
+    function renderCompanionsArea() {
+      const card = document.getElementById('companionsCard');
+
+      if (!card) return;
+
+      const isConfirmed = guestData?.confirmed === true;
+
+      if (!isConfirmed || !allowCompanions()) {
+        card.classList.remove('active');
+        return;
+      }
+
+      card.classList.add('active');
+      renderCompanionsList();
+    }
+
+    function showCompanionForm() {
+      const box = document.getElementById('companionFormBox');
+      if (box) box.style.display = 'block';
+    }
+
+    function hideCompanionForm(showMessageOnHide = true) {
+      const box = document.getElementById('companionFormBox');
+      if (box) box.style.display = 'none';
+
+      if (showMessageOnHide) {
+        showMessage('Presença confirmada. Cadastro de acompanhante finalizado.', 'success');
+      }
+    }
+
+    async function loadCompanions() {
+      if (!guestData?.id || !guestData?.event_id) {
+        companions = [];
+        return;
+      }
+
+      const { data, error } = await supabaseClient
+        .from('event_guests')
+        .select('*')
+        .eq('event_id', guestData.event_id)
+        .eq('parent_guest_id', guestData.id)
+        .order('guest_name', { ascending: true });
+
+      if (error) {
+        console.warn('Não foi possível carregar acompanhantes:', error);
+        companions = [];
+        return;
+      }
+
+      companions = data || [];
+    }
+
+    function renderCompanionsList() {
+      renderCompanionsGrid();
+    }
+
+    function renderCompanionsGrid() {
+      const tbody = document.getElementById('companionsTableBody');
+
+      if (!tbody) return;
+
+      if (!companions.length) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="4">Nenhum acompanhante cadastrado.</td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = companions.map(item => {
+        const statusLabel = item.confirmed ? 'Confirmado' : 'Pendente';
+        const statusClass = item.confirmed ? 'status-confirmed' : 'status-pending';
+        const qrLabel = item.access_code_id ? 'Gerado' : 'Não gerado';
+        const qrClass = item.access_code_id ? 'status-qrcode' : 'status-no-qrcode';
+
+        return `
+          <tr>
+            <td><strong>${escapeHTML(item.guest_name || '-')}</strong></td>
+            <td>${escapeHTML(item.whatsapp ? formatPhoneInput(item.whatsapp) : '-')}</td>
+            <td><span class="status-pill ${statusClass}">${statusLabel}</span></td>
+            <td><span class="status-pill ${qrClass}">${qrLabel}</span></td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    async function findCompanionByPhone() {
+      companionAlreadyExists = null;
+
+      const phoneInput = document.getElementById('companionWhatsapp');
+      const nameInput = document.getElementById('companionName');
+      const foundBox = document.getElementById('companionFoundBox');
+      const addButton = document.getElementById('addCompanionButton');
+
+      const cleanPhone = normalizePhone(phoneInput.value);
+      phoneInput.value = cleanPhone ? formatPhoneInput(cleanPhone) : '';
+
+      foundBox.classList.remove('active');
+      foundBox.textContent = '';
+      nameInput.disabled = false;
+      addButton.disabled = false;
+      addButton.textContent = 'Cadastrar acompanhante';
+
+      if (!cleanPhone) return;
+
+      if (cleanPhone.length < 10) {
+        showMessage('Telefone incompleto. Você pode deixar em branco ou informar um telefone válido.', 'error');
+        return;
+      }
+
+      const { data, error } = await supabaseClient
+        .from('event_guests')
+        .select('*')
+        .eq('event_id', guestData.event_id);
+
+      if (error) {
+        showMessage('Erro ao verificar acompanhante: ' + error.message, 'error');
+        return;
+      }
+
+      const existing = (data || []).find(item => phonesAreEqual(item.whatsapp, cleanPhone));
+
+      if (existing) {
+        companionAlreadyExists = existing;
+        nameInput.value = existing.guest_name || '';
+        nameInput.disabled = true;
+
+        foundBox.innerHTML = `
+          Este telefone já está cadastrado neste evento para <strong>${escapeHTML(existing.guest_name || 'convidado')}</strong>.
+          Não será permitido cadastrar novamente.
+        `;
+        foundBox.classList.add('active');
+
+        addButton.disabled = true;
+        addButton.textContent = 'Acompanhante já cadastrado';
+        return;
+      }
+
+      foundBox.innerHTML = 'Telefone não cadastrado. Informe o nome para adicionar o acompanhante.';
+      foundBox.classList.add('active');
+    }
+
+    async function addCompanion() {
+      if (!allowCompanions()) {
+        showMessage('Este evento não permite cadastro de acompanhantes.', 'error');
+        return;
+      }
+
+      if (guestData?.confirmed !== true) {
+        showMessage('Confirme sua presença antes de cadastrar acompanhantes.', 'error');
+        return;
+      }
+
+      const name = document.getElementById('companionName').value.trim();
+      const whatsapp = normalizePhone(document.getElementById('companionWhatsapp').value || '');
+
+      if (!name) {
+        showMessage('Informe o nome do acompanhante.', 'error');
+        return;
+      }
+
+      if (whatsapp) {
+        if (whatsapp.length < 10) {
+          showMessage('Telefone incompleto. Você pode deixar em branco ou informar um telefone válido.', 'error');
+          return;
+        }
+
+        await findCompanionByPhone();
+
+        if (companionAlreadyExists) {
+          showMessage('Este acompanhante já está cadastrado neste evento.', 'error');
+          return;
+        }
+      }
+
+      const button = document.getElementById('addCompanionButton');
+      button.disabled = true;
+      button.textContent = 'Cadastrando...';
+
+      const payload = {
+        event_id: guestData.event_id,
+        guest_name: name,
+        whatsapp: whatsapp || null,
+        group_name: guestData.group_name || 'Acompanhantes',
+        parent_guest_id: guestData.id,
+        is_companion: true,
+        companion_of: guestData.guest_name || null,
+        confirmed: false,
+        message_sent: false,
+        message_status: 'not_sent'
+      };
+
+      let { data, error } = await supabaseClient
+        .from('event_guests')
+        .insert(payload)
+        .select('*')
+        .maybeSingle();
+
+      if (error && (
+        String(error.message || '').includes('parent_guest_id') ||
+        String(error.message || '').includes('is_companion') ||
+        String(error.message || '').includes('companion_of') ||
+        String(error.message || '').includes('message_status') ||
+        String(error.message || '').includes('schema cache') ||
+        String(error.message || '').includes('Could not find')
+      )) {
+        const fallbackPayload = {
+          event_id: guestData.event_id,
+          guest_name: name,
+          whatsapp: whatsapp || null,
+          group_name: guestData.group_name || 'Acompanhantes',
+          confirmed: false
+        };
+
+        const retry = await supabaseClient
+          .from('event_guests')
+          .insert(fallbackPayload)
+          .select('*')
+          .maybeSingle();
+
+        data = retry.data;
+        error = retry.error;
+      }
+
+      button.disabled = false;
+      button.textContent = 'Cadastrar acompanhante';
+
+      if (error) {
+        showMessage('Erro ao cadastrar acompanhante: ' + error.message, 'error');
+        return;
+      }
+
+      companions.push(data);
+
+      document.getElementById('companionWhatsapp').value = '';
+      document.getElementById('companionName').value = '';
+      document.getElementById('companionName').disabled = false;
+      document.getElementById('companionFoundBox').classList.remove('active');
+      companionAlreadyExists = null;
+
+      renderCompanionsGrid();
+
+      showMessage('O cadastro realizado com sucesso. Entraremos em contato.', 'success');
+    }
+
+    function safeFileName(value) {
+      return String(value || 'arquivo')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-zA-Z0-9-_]+/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '')
+        .toLowerCase();
+    }
+
 
     function generateCode() {
 

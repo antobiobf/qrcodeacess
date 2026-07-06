@@ -8,13 +8,23 @@
   <title>Gestão de Convidados - Bot WhatsApp</title>
 
   <!--
+    REGRA QR CODE:
+    - Tela de convidados NÃO deve criar QR Code.
+    - QR Code só deve ser criado na tela de confirmação.
+    - QR Code criado deve iniciar com accessed = false, accessed_at = null, used_at = null.
+    - QR usado só deve aparecer quando a portaria confirmar acesso.
+
     Para controlar corretamente o envio, execute também:
 
     alter table public.event_guests
     add column if not exists status text default 'pendente',
     add column if not exists message_status text default 'not_sent',
     add column if not exists zapi_message_id text,
-    add column if not exists zapi_zaap_id text;
+    add column if not exists zapi_zaap_id text,
+    add column if not exists parent_guest_id uuid,
+    add column if not exists is_companion boolean not null default false,
+    add column if not exists companion_of text,
+    add column if not exists access_code_id uuid;
 
     -- Remover conceito antigo de fila/queued:
     update public.event_guests
@@ -26,6 +36,12 @@
     where message_status in ('queued', 'Na fila', 'na_fila');
 
     Para salvar o meio de envio por evento, execute no Supabase:
+
+    alter table public.access_codes
+    add column if not exists source_guest_id uuid,
+    add column if not exists accessed boolean not null default false,
+    add column if not exists accessed_at timestamptz,
+    add column if not exists used_at timestamptz;
 
     alter table public.events
     add column if not exists send_provider text default 'bot',
@@ -1646,6 +1662,59 @@
       .qr-modal-actions button { width: 100%; }
     }
 
+  
+    .guest-search-input-group {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .guest-search-input-group input {
+      height: 46px;
+      padding: 13px 16px 13px 44px;
+      border-radius: 999px;
+    }
+
+    .guest-search-input-group button {
+      height: 46px;
+      border-radius: 999px;
+      padding: 0 18px;
+      min-width: 104px;
+    }
+
+    .guest-linked-to {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 7px 10px;
+      border-radius: 999px;
+      background: rgba(122,168,255,.12);
+      color: var(--blue);
+      border: 1px solid rgba(122,168,255,.18);
+      font-size: 12px;
+      font-weight: 950;
+      max-width: 260px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .guest-linked-empty {
+      color: var(--muted);
+      font-weight: 850;
+    }
+
+    @media(max-width:980px) {
+      .guest-search-input-group {
+        grid-template-columns: 1fr;
+      }
+
+      .guest-search-input-group button {
+        width: 100%;
+      }
+    }
+
   </style>
 </head>
 
@@ -2600,23 +2669,27 @@
       if (!guest) return null;
 
       const guestId = String(guest.id || '');
-      const guestPhone = normalizeComparablePhone(guest.whatsapp);
-      const guestName = normalizeSearchTerm(guest.guest_name || '');
 
+      /*
+        IMPORTANTE:
+        A tela de convidados não cria QR Code e também não deve "adivinhar"
+        QR Code por nome ou telefone.
+
+        O vínculo precisa ser explícito:
+        - guest.access_code_id = access_codes.id
+        - access_codes.source_guest_id = guest.id
+        - access_codes.guest_id / event_guest_id = guest.id
+
+        Isso evita o caso de um convidado recém-criado aparecer com "QR usado"
+        por ter mesmo telefone/nome de outro QR Code antigo.
+      */
       return accessCodes.find(code => {
+        if (!code) return false;
+
+        if (guest.access_code_id && code.id && String(code.id) === String(guest.access_code_id)) return true;
         if (code.source_guest_id && String(code.source_guest_id) === guestId) return true;
         if (code.guest_id && String(code.guest_id) === guestId) return true;
         if (code.event_guest_id && String(code.event_guest_id) === guestId) return true;
-
-        if (guestPhone) {
-          const codePhone = normalizeComparablePhone(code.customer_whatsapp);
-          if (codePhone && codePhone === guestPhone) return true;
-        }
-
-        if (guestName && code.customer_name) {
-          const codeName = normalizeSearchTerm(code.customer_name);
-          if (codeName && codeName === guestName) return true;
-        }
 
         return false;
       }) || null;
@@ -2626,11 +2699,18 @@
       return getGuestQRCode(guest) ? 'gerado' : 'sem_qrcode';
     }
 
+
+    function isQRCodeUsed(code) {
+      if (!code) return false;
+      return code.accessed === true || Boolean(code.accessed_at) || Boolean(code.used_at);
+    }
+
+
     function getGuestQRCodeBadge(guest) {
       const code = getGuestQRCode(guest);
 
       if (!code) return '<span class="badge badge-red">Sem QR Code</span>';
-      if (code.accessed === true) return '<span class="badge badge-green">QR usado</span>';
+      if (isQRCodeUsed(code)) return '<span class="badge badge-green">QR usado</span>';
 
       return '<span class="badge badge-blue">QR gerado</span>';
     }
@@ -2664,7 +2744,7 @@
 
       const content = document.getElementById('qrGuestModalContent');
       const backdrop = document.getElementById('qrGuestModalBackdrop');
-      const statusBadge = code.accessed === true
+      const statusBadge = isQRCodeUsed(code)
         ? '<span class="badge badge-green">Acesso utilizado</span>'
         : '<span class="badge badge-yellow">Aguardando acesso</span>';
 
@@ -2689,7 +2769,7 @@
               <div class="qr-info-line"><span>WhatsApp</span><strong>${escapeHTML(formatPhoneBR(guest.whatsapp) || '-')}</strong></div>
               <div class="qr-info-line"><span>Tipo</span><strong>${escapeHTML(ticketType)}</strong></div>
               <div class="qr-info-line"><span>Mesa / Lugar</span><strong>Mesa ${escapeHTML(code.table_number || '-')} • Lugar ${escapeHTML(code.seat_number || '-')}</strong></div>
-              <div class="qr-info-line"><span>Status interno</span><strong>${escapeHTML(code.status || '-')}</strong></div>
+              <div class="qr-info-line"><span>Status do QR</span><strong>${isQRCodeUsed(code) ? 'Usado na portaria' : 'Gerado / aguardando acesso'}</strong></div>
               <div class="qr-info-line"><span>Acessado em</span><strong>${formatDateTimeBR(code.accessed_at || code.used_at) || '-'}</strong></div>
               <div class="qr-info-line"><span>ID QR Code</span><strong>${escapeHTML(code.id || '-')}</strong></div>
             </div>
@@ -2798,7 +2878,22 @@
           return;
         }
 
-        const { error } = await supabaseClient.from('event_guests').insert(guestsToInsert);
+        let { error } = await supabaseClient.from('event_guests').insert(guestsToInsert);
+
+        if (error && (
+          String(error.message || '').includes('access_code_id') ||
+          String(error.message || '').includes('schema cache') ||
+          String(error.message || '').includes('Could not find')
+        )) {
+          const fallbackGuests = guestsToInsert.map(item => {
+            const clean = { ...item };
+            delete clean.access_code_id;
+            return clean;
+          });
+
+          const retry = await supabaseClient.from('event_guests').insert(fallbackGuests);
+          error = retry.error;
+        }
 
         if (error) {
           showMessage('Erro ao importar convidados: ' + error.message, 'error');
@@ -2841,18 +2936,35 @@
       button.disabled = true;
       button.textContent = 'Adicionando...';
 
-      const { error } = await supabaseClient
+      let payload = {
+        event_id: currentEventId,
+        guest_name: guestName,
+        group_name: groupName || null,
+        whatsapp,
+        confirmed: false,
+        message_sent: false,
+        message_status: 'not_sent',
+        last_send_error: null,
+        access_code_id: null
+      };
+
+      let { error } = await supabaseClient
         .from('event_guests')
-        .insert({
-          event_id: currentEventId,
-          guest_name: guestName,
-          group_name: groupName || null,
-          whatsapp,
-          confirmed: false,
-          message_sent: false,
-          message_status: 'not_sent',
-          last_send_error: null
-        });
+        .insert(payload);
+
+      if (error && (
+        String(error.message || '').includes('access_code_id') ||
+        String(error.message || '').includes('schema cache') ||
+        String(error.message || '').includes('Could not find')
+      )) {
+        delete payload.access_code_id;
+
+        const retry = await supabaseClient
+          .from('event_guests')
+          .insert(payload);
+
+        error = retry.error;
+      }
 
       button.disabled = false;
       button.textContent = 'Adicionar convidado';
@@ -2939,7 +3051,8 @@
         whatsapp: normalizePhone(whatsapp),
         confirmed: false,
         message_sent: false,
-        last_send_error: null
+        last_send_error: null,
+        access_code_id: null
       };
     }
 
@@ -3069,15 +3182,57 @@
     }
 
     function handleGuestSearchInput(value) {
-      guestSearchTerm = value || '';
-      renderGuests(true);
+      // A busca não é executada ao digitar.
+      // Ela roda apenas no Enter ou no botão Buscar.
     }
 
     function clearGuestSearch() {
       guestSearchTerm = '';
+      const input = document.getElementById('guestGridSearchInput');
+      if (input) input.value = '';
       renderGuests();
       setTimeout(() => document.getElementById('guestGridSearchInput')?.focus(), 0);
     }
+
+
+    function getGuestLinkedTo(guest) {
+      if (!guest) return '';
+
+      if (guest.companion_of) {
+        return guest.companion_of;
+      }
+
+      if (guest.parent_guest_id) {
+        const parent = guests.find(item => String(item.id) === String(guest.parent_guest_id));
+        if (parent?.guest_name) return parent.guest_name;
+      }
+
+      return '';
+    }
+
+    function getGuestLinkedToLabel(guest) {
+      const linkedTo = getGuestLinkedTo(guest);
+
+      if (!linkedTo) {
+        return '<span class="guest-linked-empty">-</span>';
+      }
+
+      return `<span class="guest-linked-to" title="${escapeHTML(linkedTo)}">↳ ${escapeHTML(linkedTo)}</span>`;
+    }
+
+    function applyGuestSearch() {
+      const input = document.getElementById('guestGridSearchInput');
+      guestSearchTerm = input?.value || '';
+      renderGuests();
+    }
+
+    function handleGuestSearchKeydown(event) {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        applyGuestSearch();
+      }
+    }
+
 
     function renderGuests(keepSearchFocus = false) {
       const container = document.getElementById('guestsTableContainer');
@@ -3099,6 +3254,7 @@
         const values = [
           guest.guest_name,
           guest.group_name,
+          getGuestLinkedTo(guest),
           guest.whatsapp,
           statusValue === 'nao_comparecera' ? 'Não comparecerá' : statusValue,
           messageValue === 'na_fila' ? 'Enviada' : messageValue,
@@ -3127,13 +3283,16 @@
           </div>
 
           <div class="guest-search-box">
-            <input
-              id="guestGridSearchInput"
-              type="text"
-              value="${searchValue}"
-              placeholder="Buscar por convidado, grupo ou WhatsApp..."
-              autocomplete="off"
-              oninput="handleGuestSearchInput(this.value)" />
+            <div class="guest-search-input-group">
+              <input
+                id="guestGridSearchInput"
+                type="text"
+                value="${searchValue}"
+                placeholder="Buscar por convidado, grupo, vínculo ou WhatsApp..."
+                autocomplete="off"
+                onkeydown="handleGuestSearchKeydown(event)" />
+              <button class="btn-primary" type="button" onclick="applyGuestSearch()">Buscar</button>
+            </div>
             ${clearSearchButton}
           </div>
 
@@ -3204,6 +3363,12 @@
                   </div>
                 </th>
 
+                <th class="col-group">
+                  <div class="table-head-cell">
+                    <span class="table-head-title">Vinculado a</span>
+                  </div>
+                </th>
+
                 <th class="col-phone">
                   <div class="table-head-cell">
                     <span class="table-head-title">WhatsApp</span>
@@ -3227,7 +3392,7 @@
             <tbody>
               ${filtered.length === 0 ? `
                 <tr>
-                  <td colspan="9">
+                  <td colspan="10">
                     <div class="empty-state">Nenhum convidado encontrado.</div>
                   </td>
                 </tr>
@@ -3276,6 +3441,7 @@
                   </td>
 
                   <td data-label="Grupo">${escapeHTML(guest.group_name || '-')}</td>
+                  <td data-label="Vinculado a">${getGuestLinkedToLabel(guest)}</td>
                   <td data-label="WhatsApp"><span class="guest-phone">${escapeHTML(formatPhoneBR(guest.whatsapp) || '-')}</span></td>
                   <td data-label="Confirmado em">${formatDateTimeBR(guest.confirmed_at) || '-'}</td>
 
@@ -4529,6 +4695,7 @@ ${BOT_WHATSAPP_BASE_URL}
       const rows = guests.map(guest => ({
         'Nome': guest.guest_name || '',
         'Grupo': guest.group_name || '',
+        'Vinculado a': getGuestLinkedTo(guest) || '',
         'Telefone': formatPhoneBR(guest.whatsapp || ''),
         'Status': guest.confirmed ? 'Confirmado' : 'Pendente',
         'Mensagem': guest.message_sent ? 'Enviada' : 'Não enviada',
@@ -4537,7 +4704,7 @@ ${BOT_WHATSAPP_BASE_URL}
         'Tipo QR': getGuestQRCode(guest)?.ticket_type || '',
         'Mesa': getGuestQRCode(guest)?.table_number || '',
         'Lugar': getGuestQRCode(guest)?.seat_number || '',
-        'QR Utilizado': getGuestQRCode(guest)?.accessed ? 'Sim' : 'Não',
+        'QR Utilizado': isQRCodeUsed(getGuestQRCode(guest)) ? 'Sim' : 'Não',
         'Acessado Em': formatDateTimeBR(getGuestQRCode(guest)?.accessed_at || getGuestQRCode(guest)?.used_at) || ''
       }));
 
@@ -4546,6 +4713,7 @@ ${BOT_WHATSAPP_BASE_URL}
       worksheet['!cols'] = [
         { wch: 32 }, // Nome
         { wch: 24 }, // Grupo
+        { wch: 28 }, // Vinculado a
         { wch: 20 }, // Telefone
         { wch: 16 }, // Status
         { wch: 18 }, // Mensagem
