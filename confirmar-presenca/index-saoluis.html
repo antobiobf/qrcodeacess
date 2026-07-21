@@ -1,0 +1,1619 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>20 anos — Turma do Colégio São Luís</title>
+  <meta name="description" content="Página de interesse para o reencontro de 20 anos da turma do Colégio São Luís.">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  
+  <style>
+    :root {
+      --bg:#070912;
+      --surface:#101522;
+      --surface-2:#151b2a;
+      --border:rgba(255,255,255,.09);
+      --text:#f7f8fb;
+      --muted:#9aa6ba;
+      --gold:#f1b951;
+      --gold-2:#ffd986;
+      --blue:#668cff;
+      --green:#72d49b;
+      --red:#ff8188;
+      --shadow:0 28px 90px rgba(0,0,0,.42);
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    html{scroll-behavior:smooth}
+    body{
+      font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+      color:var(--text);
+      background:
+        radial-gradient(circle at 88% 5%,rgba(102,140,255,.16),transparent 30%),
+        radial-gradient(circle at 12% 12%,rgba(241,185,81,.14),transparent 28%),
+        linear-gradient(145deg,#05070c,#0c1020 52%,#070911);
+      min-height:100vh;
+      overflow-x:hidden;
+    }
+    body:before{
+      content:"";position:fixed;inset:0;pointer-events:none;z-index:-1;
+      background:linear-gradient(90deg,rgba(255,255,255,.018) 1px,transparent 1px),
+      linear-gradient(rgba(255,255,255,.015) 1px,transparent 1px);
+      background-size:60px 60px;
+    }
+    img{display:block;width:100%}
+    button,input{font:inherit}
+    button{cursor:pointer}
+    .container{width:min(1180px,calc(100% - 30px));margin:auto}
+    .glass{background:rgba(16,21,34,.84);border:1px solid var(--border);box-shadow:var(--shadow);backdrop-filter:blur(18px)}
+    .nav{
+      position:sticky;top:0;z-index:50;border-bottom:1px solid var(--border);
+      background:rgba(7,9,18,.76);backdrop-filter:blur(18px)
+    }
+    .nav-inner{height:76px;display:flex;align-items:center;justify-content:space-between;gap:18px}
+    .brand{display:flex;align-items:center;gap:12px;font-weight:900;letter-spacing:.05em}
+    .brand-mark{width:42px;height:42px;border-radius:14px;display:grid;place-items:center;color:#15100a;background:linear-gradient(135deg,var(--gold-2),var(--gold));box-shadow:0 14px 35px rgba(241,185,81,.22)}
+    .nav-links{display:flex;gap:8px;align-items:center}
+    .nav-links a{text-decoration:none;color:var(--muted);font-weight:800;padding:10px 13px;border-radius:12px}
+    .nav-links a:hover{background:rgba(255,255,255,.06);color:#fff}
+    .hero{padding:58px 0 30px}
+    .hero-card{position:relative;overflow:hidden;border-radius:34px;min-height:610px;display:grid;align-items:end}
+    .hero-card:before{
+      content:"";position:absolute;inset:0;
+      background:
+        linear-gradient(90deg,rgba(4,7,14,.96) 0%,rgba(4,7,14,.78) 45%,rgba(4,7,14,.2) 100%),
+        linear-gradient(0deg,rgba(4,7,14,.85),transparent 52%),
+        url("assets/turma/turma-01.webp") center/cover;
+    }
+    .hero-content{position:relative;z-index:2;padding:58px;max-width:760px}
+    .eyebrow{display:inline-flex;align-items:center;gap:8px;padding:9px 14px;border:1px solid rgba(241,185,81,.25);background:rgba(241,185,81,.10);border-radius:999px;color:var(--gold-2);font-weight:900;font-size:13px;margin-bottom:20px}
+    h1{font-size:clamp(44px,7vw,84px);line-height:.95;letter-spacing:-.055em;margin-bottom:20px}
+    .hero-text{font-size:clamp(17px,2.2vw,22px);line-height:1.55;color:#d8deea;max-width:700px}
+    .hero-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:28px}
+    .btn{border:0;border-radius:16px;padding:15px 20px;font-weight:900;display:inline-flex;align-items:center;justify-content:center;gap:9px;text-decoration:none;transition:.2s}
+    .btn:hover{transform:translateY(-2px)}
+    .btn-primary{background:linear-gradient(135deg,var(--gold-2),var(--gold));color:#15100a;box-shadow:0 18px 40px rgba(241,185,81,.2)}
+    .btn-secondary{background:rgba(255,255,255,.08);color:#fff;border:1px solid var(--border)}
+    .section{padding:42px 0}
+    .section-head{display:flex;justify-content:space-between;gap:18px;align-items:end;margin-bottom:22px}
+    .section-head h2{font-size:clamp(30px,4vw,48px);letter-spacing:-.04em}
+    .section-head p{color:var(--muted);line-height:1.55;max-width:650px}
+    .info-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+    .info-card{padding:24px;border-radius:24px}
+    .info-icon{font-size:28px;margin-bottom:14px}
+    .info-card h3{margin-bottom:8px;font-size:19px}
+    .info-card p{color:var(--muted);line-height:1.5}
+    .gallery{columns:4 240px;column-gap:14px}
+    .gallery-item{border:0;background:none;border-radius:18px;overflow:hidden;margin:0 0 14px;width:100%;break-inside:avoid;box-shadow:0 15px 34px rgba(0,0,0,.22)}
+    .gallery-item img{transition:.35s;min-height:160px;object-fit:cover}
+    .gallery-item:hover img{transform:scale(1.045)}
+    .venue-layout{display:grid;grid-template-columns:1.05fr .95fr;gap:18px}
+    .venue-copy{padding:34px;border-radius:28px}
+    .venue-copy h2{font-size:40px;letter-spacing:-.04em;margin-bottom:14px}
+    .venue-copy p{color:var(--muted);font-size:17px;line-height:1.65;margin-bottom:18px}
+    .venue-pills{display:flex;flex-wrap:wrap;gap:9px}
+    .pill{padding:10px 12px;border-radius:999px;background:rgba(255,255,255,.06);border:1px solid var(--border);font-weight:850;color:#dfe5ef}
+    .venue-gallery{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .venue-shot{border:0;background:none;border-radius:20px;overflow:hidden;min-height:210px}
+    .venue-shot:first-child{grid-column:1/-1;min-height:300px}
+    .venue-shot img{height:100%;object-fit:cover;transition:.3s}
+    .venue-shot:hover img{transform:scale(1.035)}
+    .pricing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+    .price-card{padding:28px;border-radius:25px;position:relative;overflow:hidden}
+    .price-card.featured{border-color:rgba(241,185,81,.4);background:linear-gradient(145deg,rgba(241,185,81,.14),rgba(16,21,34,.9))}
+    .price-number{font-size:48px;font-weight:950;letter-spacing:-.05em;color:var(--gold-2);margin:13px 0}
+    .price-card p{color:var(--muted);line-height:1.5}
+    .note-box{margin-top:16px;padding:20px;border-radius:20px;background:rgba(114,212,155,.09);border:1px solid rgba(114,212,155,.2);color:#c9f5d8;line-height:1.55}
+    .progress-panel{padding:26px;border-radius:26px;margin-top:18px}
+    .progress-row{display:flex;justify-content:space-between;gap:14px;align-items:end;margin-bottom:12px}
+    .progress-value{font-size:32px;font-weight:950;color:var(--gold-2)}
+    .progress-track{height:14px;background:rgba(255,255,255,.08);border-radius:999px;overflow:hidden}
+    .progress-fill{height:100%;width:0%;background:linear-gradient(90deg,var(--blue),var(--gold));border-radius:inherit;transition:.5s}
+    .timeline{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+    .timeline-step{padding:22px;border-radius:22px}
+    .timeline-step strong{display:block;color:var(--gold-2);font-size:26px;margin-bottom:10px}
+    .timeline-step p{color:var(--muted);line-height:1.5}
+    .form-card{padding:30px;border-radius:30px}
+    .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    .field{display:flex;flex-direction:column;gap:8px}
+    .field.full{grid-column:1/-1}
+    label{font-weight:850;color:#dfe5ef;font-size:14px}
+    input{
+      width:100%;padding:15px 16px;border:1px solid var(--border);border-radius:14px;
+      background:rgba(255,255,255,.055);color:#fff;outline:none;font-weight:750
+    }
+    input:focus{border-color:rgba(241,185,81,.55);box-shadow:0 0 0 4px rgba(241,185,81,.1)}
+    .choice-row{display:flex;gap:10px;flex-wrap:wrap}
+    .choice{flex:1;min-width:160px;border:1px solid var(--border);background:rgba(255,255,255,.05);color:#fff;padding:15px;border-radius:16px;font-weight:900}
+    .choice.active{background:rgba(114,212,155,.12);border-color:rgba(114,212,155,.35);color:#bff2d0}
+    .companion-panel{display:none;margin-top:20px;padding:22px;border-radius:22px;background:rgba(255,255,255,.035);border:1px solid var(--border)}
+    .companion-panel.active{display:block}
+    .companion-list{display:grid;gap:10px;margin-top:16px}
+    .companion-item{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;padding:14px;border-radius:16px;background:rgba(255,255,255,.045);border:1px solid var(--border)}
+    .companion-item span{color:var(--muted);font-size:13px}
+    .badge{padding:7px 10px;border-radius:999px;font-weight:900;font-size:12px;background:rgba(241,185,81,.12);color:var(--gold-2)}
+    .message{display:none;margin-top:16px;padding:14px 16px;border-radius:15px;font-weight:850}
+    .message.success{display:block;background:rgba(114,212,155,.12);color:#aff1c5;border:1px solid rgba(114,212,155,.2)}
+    .message.error{display:block;background:rgba(255,129,136,.12);color:#ffb4b9;border:1px solid rgba(255,129,136,.2)}
+    .message.info{display:block;background:rgba(102,140,255,.12);color:#bfcaff;border:1px solid rgba(102,140,255,.2)}
+    .important{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    .important-card{padding:24px;border-radius:23px}
+    .important-card h3{margin-bottom:9px}
+    .important-card p{color:var(--muted);line-height:1.55}
+    .lightbox{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;padding:25px;background:rgba(0,0,0,.9);backdrop-filter:blur(10px)}
+    .lightbox.active{display:flex}
+    .lightbox img{max-height:88vh;max-width:min(1000px,92vw);width:auto;border-radius:20px;box-shadow:0 30px 100px #000}
+    .lightbox-close,.lightbox-nav{position:absolute;border:0;background:rgba(255,255,255,.12);color:white;border-radius:14px;width:48px;height:48px;font-size:23px}
+    .lightbox-close{right:22px;top:22px}
+    .lightbox-prev{left:22px;top:50%} .lightbox-next{right:22px;top:50%}
+    footer{padding:50px 0 70px;text-align:center;color:var(--muted)}
+    @media(max-width:900px){
+      .nav-links{display:none}
+      .hero{padding-top:24px}
+      .hero-card{min-height:560px}
+      .hero-content{padding:32px}
+      .info-grid,.pricing-grid,.timeline{grid-template-columns:1fr 1fr}
+      .venue-layout{grid-template-columns:1fr}
+    }
+    @media(max-width:620px){
+      .container{width:min(100% - 20px,1180px)}
+      .nav-inner{height:66px}
+      .hero-card{min-height:650px}
+      .hero-card:before{background:linear-gradient(0deg,rgba(4,7,14,.98),rgba(4,7,14,.35)),url("assets/local/downtown-04.webp") center/cover}
+      .hero-content{padding:24px}
+      .hero-actions,.hero-actions .btn{width:100%}
+      .section{padding:30px 0}
+      .section-head{align-items:start;flex-direction:column}
+      .info-grid,.pricing-grid,.timeline,.form-grid,.important{grid-template-columns:1fr}
+      .venue-gallery{grid-template-columns:1fr}
+      .venue-shot:first-child{grid-column:auto}
+      .gallery{columns:2 140px}
+      .price-number{font-size:40px}
+    }
+  
+    .venue-side {
+      display: grid;
+      gap: 16px;
+    }
+
+    .event-map-card {
+      padding: 18px;
+      border-radius: 24px;
+      overflow: hidden;
+    }
+
+    .event-map-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 14px;
+      align-items: flex-start;
+      margin-bottom: 14px;
+    }
+
+    .event-map-header h3 {
+      font-size: 22px;
+      color: var(--text);
+      margin-top: 4px;
+    }
+
+    .event-map-frame-container {
+      overflow: hidden;
+      min-height: 360px;
+      border-radius: 18px;
+      background: rgba(255,255,255,.05);
+      border: 1px solid var(--border);
+    }
+
+    .event-map-frame {
+      width: 100%;
+      height: 360px;
+      border: 0;
+      display: block;
+    }
+
+    .event-map-actions {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 14px;
+    }
+
+    .event-map-empty {
+      min-height: 360px;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      text-align: center;
+      color: var(--muted);
+      font-weight: 800;
+    }
+
+    @media(max-width:620px) {
+      .event-map-frame,
+      .event-map-frame-container {
+        min-height: 300px;
+        height: 300px;
+      }
+
+      .event-map-actions .btn {
+        width: 100%;
+      }
+    }
+
+  
+    .simple-flow-card {
+      padding: 22px;
+      border-radius: 24px;
+      background: rgba(255,255,255,.025);
+      border: 1px solid var(--border);
+    }
+
+    .guest-details-panel {
+      display: none;
+      margin-top: 18px;
+      padding-top: 18px;
+      border-top: 1px solid var(--border);
+    }
+
+    .guest-details-panel.active {
+      display: block;
+    }
+
+    .field-help {
+      color: var(--muted);
+      line-height: 1.45;
+      font-weight: 700;
+      margin-top: 2px;
+    }
+
+    .interest-simple {
+      margin-top: 18px;
+    }
+
+    .interest-simple > p {
+      font-weight: 900;
+      margin-bottom: 12px;
+    }
+
+    #companionCount {
+      max-width: 220px;
+    }
+
+  
+    .companion-registration-card {
+      display: none;
+      margin-top: 22px;
+      padding: 26px;
+      border-radius: 28px;
+      background: rgba(255,255,255,.035);
+      border: 1px solid var(--border);
+    }
+
+    .companion-registration-card.active {
+      display: block;
+    }
+
+    .companion-registration-head h3 {
+      font-size: clamp(25px, 3vw, 36px);
+      letter-spacing: -.03em;
+      margin-bottom: 10px;
+    }
+
+    .companion-registration-head p {
+      color: var(--muted);
+      line-height: 1.6;
+      max-width: 900px;
+      margin-bottom: 18px;
+    }
+
+    .companion-register-button {
+      width: 100%;
+      margin-top: 16px;
+    }
+
+    .companions-table-card {
+      margin-top: 24px;
+      overflow: hidden;
+      border-radius: 22px;
+      background: rgba(255,255,255,.025);
+      border: 1px solid var(--border);
+    }
+
+    .companions-table-card > h3 {
+      padding: 18px 20px;
+      font-size: 21px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .companions-table-wrap {
+      overflow-x: auto;
+    }
+
+    .companions-table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 650px;
+    }
+
+    .companions-table th,
+    .companions-table td {
+      padding: 15px 18px;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .companions-table th {
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+    }
+
+    .companions-table td {
+      color: #e7ebf2;
+    }
+
+    .companions-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 7px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .status-interested {
+      background: rgba(114,212,155,.12);
+      color: #bff2d0;
+      border: 1px solid rgba(114,212,155,.2);
+    }
+
+    .status-pending {
+      background: rgba(241,185,81,.12);
+      color: var(--gold-2);
+      border: 1px solid rgba(241,185,81,.2);
+    }
+
+    .status-qrcode {
+      background: rgba(102,140,255,.13);
+      color: #c5d0ff;
+      border: 1px solid rgba(102,140,255,.2);
+    }
+
+    .status-no-qrcode {
+      background: rgba(255,255,255,.06);
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+
+  </style>
+</head>
+<body>
+  <nav class="nav">
+    <div class="container nav-inner">
+      <div class="brand"><span class="brand-mark">20</span><span>São Luís • Reencontro</span></div>
+      <div class="nav-links">
+        <a href="#historia">Nossa história</a>
+        <a href="#local">O local</a>
+        <a href="#valores">Valores</a>
+        <a href="#confirmar">Participar</a>
+      </div>
+    </div>
+  </nav>
+
+  <main>
+    <section class="hero">
+      <div class="container">
+        <article class="hero-card glass">
+          <div class="hero-content">
+            <span class="eyebrow">🎓 20 anos depois</span>
+            <h1>Tem história que merece um reencontro.</h1>
+            <p class="hero-text">Depois de 20 anos, chegou a hora de matar a saudade, colocar a conversa em dia e criar novas histórias juntos.</p>
+            <div class="hero-actions">
+              <a class="btn btn-primary" href="#confirmar">Tenho interesse em participar</a>
+              <a class="btn btn-secondary" href="#historia">Rever nossas fotos</a>
+            </div>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container info-grid">
+        <article class="info-card glass"><div class="info-icon">🤝</div><h3>Primeiro, demonstre interesse</h3><p>Nesta etapa queremos entender quantas pessoas pretendem participar.</p></article>
+        <article class="info-card glass"><div class="info-icon">👥</div><h3>Acompanhantes são bem-vindos</h3><p>Você poderá cadastrar quantos acompanhantes precisar.</p></article>
+        <article class="info-card glass"><div class="info-icon">🎟️</div><h3>QR Code só após pagamento</h3><p>Nenhum ingresso será gerado agora. O acesso será enviado pelo WhatsApp depois.</p></article>
+      </div>
+    </section>
+
+    <section class="section" id="historia">
+      <div class="container">
+        <header class="section-head">
+          <div><span class="eyebrow">Nossa história</span><h2>Algumas memórias da turma</h2></div>
+          <p>Fotos de uma época que passou rápido, mas deixou histórias que a gente ainda conta até hoje.</p>
+        </header>
+        <div class="gallery"><button class="gallery-item" type="button" onclick="openLightbox(0)">
+          <img src="assets/turma/turma-01.webp" alt="Memória da turma 1" loading="lazy">
+        </button>
+<button class="gallery-item" type="button" onclick="openLightbox(1)">
+          <img src="assets/turma/turma-02.webp" alt="Memória da turma 2" loading="lazy">
+        </button>
+<button class="gallery-item" type="button" onclick="openLightbox(2)">
+          <img src="assets/turma/turma-03.webp" alt="Memória da turma 3" loading="lazy">
+        </button>
+<button class="gallery-item" type="button" onclick="openLightbox(3)">
+          <img src="assets/turma/turma-04.webp" alt="Memória da turma 4" loading="lazy">
+        </button>
+<button class="gallery-item" type="button" onclick="openLightbox(4)">
+          <img src="assets/turma/turma-05.webp" alt="Memória da turma 5" loading="lazy">
+        </button>
+<button class="gallery-item" type="button" onclick="openLightbox(5)">
+          <img src="assets/turma/turma-06.webp" alt="Memória da turma 6" loading="lazy">
+        </button>
+<button class="gallery-item" type="button" onclick="openLightbox(6)">
+          <img src="assets/turma/turma-07.webp" alt="Memória da turma 7" loading="lazy">
+        </button>
+<button class="gallery-item" type="button" onclick="openLightbox(7)">
+          <img src="assets/turma/turma-08.webp" alt="Memória da turma 8" loading="lazy">
+        </button>
+<button class="gallery-item" type="button" onclick="openLightbox(8)">
+          <img src="assets/turma/turma-09.webp" alt="Memória da turma 9" loading="lazy">
+        </button>
+<button class="gallery-item" type="button" onclick="openLightbox(9)">
+          <img src="assets/turma/turma-10.webp" alt="Memória da turma 10" loading="lazy">
+        </button>
+<button class="gallery-item" type="button" onclick="openLightbox(10)">
+          <img src="assets/turma/turma-11.webp" alt="Memória da turma 11" loading="lazy">
+        </button>
+<button class="gallery-item" type="button" onclick="openLightbox(11)">
+          <img src="assets/turma/turma-12.webp" alt="Memória da turma 12" loading="lazy">
+        </button>
+<button class="gallery-item" type="button" onclick="openLightbox(12)">
+          <img src="assets/turma/turma-13.webp" alt="Memória da turma 13" loading="lazy">
+        </button>
+<button class="gallery-item" type="button" onclick="openLightbox(13)">
+          <img src="assets/turma/turma-14.webp" alt="Memória da turma 14" loading="lazy">
+        </button>
+<button class="gallery-item" type="button" onclick="openLightbox(14)">
+          <img src="assets/turma/turma-15.webp" alt="Memória da turma 15" loading="lazy">
+        </button>
+<button class="gallery-item" type="button" onclick="openLightbox(15)">
+          <img src="assets/turma/turma-16.webp" alt="Memória da turma 16" loading="lazy">
+        </button>
+<button class="gallery-item" type="button" onclick="openLightbox(16)">
+          <img src="assets/turma/turma-17.webp" alt="Memória da turma 17" loading="lazy">
+        </button>
+<button class="gallery-item" type="button" onclick="openLightbox(17)">
+          <img src="assets/turma/turma-18.webp" alt="Memória da turma 18" loading="lazy">
+        </button>
+<button class="gallery-item" type="button" onclick="openLightbox(18)">
+          <img src="assets/turma/turma-19.webp" alt="Memória da turma 19" loading="lazy">
+        </button>
+<button class="gallery-item" type="button" onclick="openLightbox(19)">
+          <img src="assets/turma/turma-20.webp" alt="Memória da turma 20" loading="lazy">
+        </button>
+<button class="gallery-item" type="button" onclick="openLightbox(20)">
+          <img src="assets/turma/turma-21.webp" alt="Memória da turma 21" loading="lazy">
+        </button>
+<button class="gallery-item" type="button" onclick="openLightbox(21)">
+          <img src="assets/turma/turma-22.webp" alt="Memória da turma 22" loading="lazy">
+        </button>
+<button class="gallery-item" type="button" onclick="openLightbox(22)">
+          <img src="assets/turma/turma-23.webp" alt="Memória da turma 23" loading="lazy">
+        </button>
+<button class="gallery-item" type="button" onclick="openLightbox(23)">
+          <img src="assets/turma/turma-24.webp" alt="Memória da turma 24" loading="lazy">
+        </button>
+<button class="gallery-item" type="button" onclick="openLightbox(24)">
+          <img src="assets/turma/turma-25.webp" alt="Memória da turma 25" loading="lazy">
+        </button>
+<button class="gallery-item" type="button" onclick="openLightbox(25)">
+          <img src="assets/turma/turma-26.webp" alt="Memória da turma 26" loading="lazy">
+        </button>
+<button class="gallery-item" type="button" onclick="openLightbox(26)">
+          <img src="assets/turma/turma-27.webp" alt="Memória da turma 27" loading="lazy">
+        </button>
+<button class="gallery-item" type="button" onclick="openLightbox(27)">
+          <img src="assets/turma/turma-28.webp" alt="Memória da turma 28" loading="lazy">
+        </button>
+<button class="gallery-item" type="button" onclick="openLightbox(28)">
+          <img src="assets/turma/turma-29.webp" alt="Memória da turma 29" loading="lazy">
+        </button>
+<button class="gallery-item" type="button" onclick="openLightbox(29)">
+          <img src="assets/turma/turma-30.webp" alt="Memória da turma 30" loading="lazy">
+        </button>
+<button class="gallery-item" type="button" onclick="openLightbox(30)">
+          <img src="assets/turma/turma-31.webp" alt="Memória da turma 31" loading="lazy">
+        </button>
+<button class="gallery-item" type="button" onclick="openLightbox(31)">
+          <img src="assets/turma/turma-32.webp" alt="Memória da turma 32" loading="lazy">
+        </button>
+<button class="gallery-item" type="button" onclick="openLightbox(32)">
+          <img src="assets/turma/turma-33.webp" alt="Memória da turma 33" loading="lazy">
+        </button>
+<button class="gallery-item" type="button" onclick="openLightbox(33)">
+          <img src="assets/turma/turma-34.webp" alt="Memória da turma 34" loading="lazy">
+        </button>
+<button class="gallery-item" type="button" onclick="openLightbox(34)">
+          <img src="assets/turma/turma-35.webp" alt="Memória da turma 35" loading="lazy">
+        </button>
+<button class="gallery-item" type="button" onclick="openLightbox(35)">
+          <img src="assets/turma/turma-36.webp" alt="Memória da turma 36" loading="lazy">
+        </button></div>
+      </div>
+    </section>
+
+    <section class="section" id="local">
+      <div class="container venue-layout">
+        <article class="venue-copy glass">
+          <span class="eyebrow">O nosso ponto de encontro</span>
+          <h2 id="venueTitle">Local do evento</h2>
+
+          <p>
+            Um espaço descontraído, climatizado e com estrutura completa para receber a turma com conforto.
+            O ambiente reúne bar amplo, palco, pista, mesas e áreas de convivência — perfeito para conversar,
+            reencontrar os amigos e aproveitar a noite.
+          </p>
+
+          <p>
+            A consumação no dia será livre: cada participante pagará diretamente o que consumir.
+          </p>
+
+          <div class="venue-pills">
+            <span class="pill">🍻 Bar completo</span>
+            <span class="pill">🎶 Palco e música</span>
+            <span class="pill">❄️ Climatizado</span>
+            <span class="pill">🎱 Área de convivência</span>
+          </div>
+
+<br>
+          <div id="eventMapCard" class="">
+            <div class="event-map-header">
+              <div>
+                <span class="eyebrow">Como chegar</span>
+                <h3 id="eventMapLocation">Local do evento</h3>
+              </div>
+            </div>
+
+            <div id="eventMapFrameContainer" class="event-map-frame-container">
+              <div class="event-map-empty">Carregando mapa...</div>
+            </div>
+
+            <div class="event-map-actions">
+              <button
+                id="openEventMapButton"
+                class="btn btn-primary"
+                type="button"
+                onclick="openEventMap()"
+              >
+                📍 Abrir rota no Google Maps
+              </button>
+            </div>
+          </div>
+        </article>
+
+        <div class="venue-side">
+          <div class="venue-gallery">
+            <button class="venue-shot" type="button" onclick="openVenueLightbox(0)">
+              <img src="assets/local/downtown-01.webp" alt="Foto do local 1" loading="lazy">
+            </button>
+
+            <button class="venue-shot" type="button" onclick="openVenueLightbox(1)">
+              <img src="assets/local/downtown-02.webp" alt="Foto do local 2" loading="lazy">
+            </button>
+
+            <button class="venue-shot" type="button" onclick="openVenueLightbox(2)">
+              <img src="assets/local/downtown-03.webp" alt="Foto do local 3" loading="lazy">
+            </button>
+
+            <button class="venue-shot" type="button" onclick="openVenueLightbox(3)">
+              <img src="assets/local/downtown-04.webp" alt="Foto do local 4" loading="lazy">
+            </button>
+
+            <button class="venue-shot" type="button" onclick="openVenueLightbox(4)">
+              <img src="assets/local/downtown-05.webp" alt="Foto do local 5" loading="lazy">
+            </button>
+          </div>
+
+          
+        </div>
+      </div>
+    </section>
+
+
+    <section class="section" id="valores">
+      <div class="container">
+        <header class="section-head">
+          <div><span class="eyebrow">Formação do valor</span><h2>Quanto mais gente, menor o valor</h2></div>
+          <p>O custo será dividido entre os participantes. O valor final dependerá do número de confirmações.</p>
+        </header>
+        <div class="pricing-grid">
+          <article class="price-card glass"><span class="badge">50 confirmados</span><div class="price-number">R$ 270</div><p>Valor estimado por pessoa com 50 participantes.</p></article>
+          <article class="price-card glass featured"><span class="badge">150 confirmados</span><div class="price-number">R$ 95</div><p>Uma faixa mais acessível, dividindo os custos entre mais colegas.</p></article>
+          <article class="price-card glass"><span class="badge">200 confirmados</span><div class="price-number">R$ 70,00</div><p>Melhor cenário de divisão do investimento por pessoa.</p></article>
+        </div>
+        <div class="note-box"><strong>Transparência:</strong> caso exista algum excedente financeiro, todo o valor será revertido em consumação coletiva no dia do evento.</div>
+
+        <div class="progress-panel glass">
+          <div class="progress-row"><div><strong>Interesse registrado</strong><p style="color:var(--muted);margin-top:5px">Atualizado automaticamente a partir dos interesses registrados</p></div><div class="progress-value" id="interestCount">0</div></div>
+          <div class="progress-track"><div class="progress-fill" id="interestProgress"></div></div>
+          <p id="priceProjection" style="color:var(--muted);margin-top:12px">Aguardando os primeiros registros.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container">
+        <header class="section-head"><div><span class="eyebrow">Como vai funcionar</span><h2>Um processo simples</h2></div></header>
+        <div class="timeline">
+          <article class="timeline-step glass"><strong>01</strong><p>Você informa seu interesse e pode cadastrar acompanhantes.</p></article>
+          <article class="timeline-step glass"><strong>02</strong><p>Fechamos a quantidade final e definimos o valor por pessoa.</p></article>
+          <article class="timeline-step glass"><strong>03</strong><p>Enviamos as instruções de pagamento pelo WhatsApp.</p></article>
+          <article class="timeline-step glass"><strong>04</strong><p>Após o pagamento, cada participante recebe seu QR Code.</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="confirmar">
+      <div class="container">
+        <article class="form-card glass">
+          <header class="section-head">
+            <div><span class="eyebrow">Vamos nessa?</span><h2>Registre seu interesse</h2></div>
+            <p>Informe seu WhatsApp para localizar o cadastro. Caso o telefone ainda não exista, você poderá informar seu nome e registrar o interesse.</p>
+          </header>
+
+          <div id="eventSummary" class="message info"></div>
+
+          <div class="simple-flow-card">
+            <div class="form-grid">
+              <div class="field">
+                <label for="guestPhone">Seu WhatsApp</label>
+                <input
+                  id="guestPhone"
+                  type="tel"
+                  placeholder="(81) 99999-9999"
+                  oninput="this.value=formatPhone(this.value)"
+                  onkeydown="if(event.key==='Enter'){event.preventDefault();locateGuest();}"
+                >
+              </div>
+
+              <div class="field" style="align-self:end">
+                <button class="btn btn-primary" type="button" onclick="locateGuest()">
+                  Localizar cadastro
+                </button>
+              </div>
+            </div>
+
+            <div id="guestStatusBox" class="message"></div>
+
+            <div id="guestDetailsPanel" class="guest-details-panel">
+              <div class="form-grid">
+                <div class="field full">
+                  <label for="guestName">Seu nome completo</label>
+                  <input id="guestName" type="text" placeholder="Nome completo">
+                </div>
+              </div>
+
+              <div class="interest-simple">
+                <p>Você tem interesse em participar do reencontro?</p>
+
+                <div class="choice-row">
+                  <button
+                    id="choiceYes"
+                    class="choice"
+                    type="button"
+                    onclick="setInterest(true)"
+                  >
+                    ✅ Sim, quero participar
+                  </button>
+
+                  <button
+                    id="choiceNo"
+                    class="choice"
+                    type="button"
+                    onclick="setInterest(false)"
+                  >
+                    Ainda não posso confirmar
+                  </button>
+                </div>
+              </div>
+
+              <div style="margin-top:20px">
+                <button
+                  id="saveInterestButton"
+                  class="btn btn-primary"
+                  type="button"
+                  onclick="saveInterest()"
+                  disabled
+                >
+                  Registrar interesse
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div id="formMessage" class="message"></div>
+
+          <section id="companionPanel" class="companion-registration-card">
+            <div class="companion-registration-head">
+              <div>
+                <span class="eyebrow">Acompanhantes</span>
+                <h3>Deseja adicionar um acompanhante?</h3>
+                <p>
+                  Se sim, preencha os campos abaixo. O telefone é opcional.
+                  Caso o telefone seja informado e já esteja cadastrado neste evento,
+                  o sistema carregará o nome e não permitirá cadastrar novamente.
+                </p>
+              </div>
+            </div>
+
+            <div class="form-grid">
+              <div class="field">
+                <label for="companionPhone">Telefone do acompanhante (opcional)</label>
+                <input
+                  id="companionPhone"
+                  type="tel"
+                  placeholder="Ex: (81) 99999-9999"
+                  oninput="this.value=formatPhone(this.value)"
+                  onblur="checkCompanionPhone()"
+                >
+              </div>
+
+              <div class="field">
+                <label for="companionName">Nome do acompanhante</label>
+                <input id="companionName" type="text" placeholder="Nome completo">
+              </div>
+            </div>
+
+            <div id="companionStatus" class="message"></div>
+
+            <button
+              id="addCompanionButton"
+              class="btn btn-primary companion-register-button"
+              type="button"
+              onclick="addCompanion()"
+            >
+              Cadastrar acompanhante
+            </button>
+
+            <div class="companions-table-card">
+              <h3>Acompanhantes cadastrados</h3>
+
+              <div class="companions-table-wrap">
+                <table class="companions-table">
+                  <thead>
+                    <tr>
+                      <th>Nome</th>
+                      <th>Telefone</th>
+                      <th>Vinculado a</th>
+                      <th>Status</th>
+                      <th>QR Code</th>
+                    </tr>
+                  </thead>
+                  <tbody id="companionsTableBody">
+                    <tr>
+                      <td colspan="5">Nenhum acompanhante cadastrado.</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </section>
+        </article>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container important">
+        <article class="important-card glass"><h3>🎟️ Sem QR Code nesta etapa</h3><p>O QR Code será enviado individualmente pelo WhatsApp somente depois que o pagamento for confirmado.</p></article>
+        <article class="important-card glass"><h3>🍻 Consumação livre</h3><p>No dia do evento, cada participante será responsável pelo próprio consumo no bar.</p></article>
+      </div>
+    </section>
+  </main>
+
+  <footer><div class="container">20 anos de história. Uma noite para reencontrar quem fez parte dela.</div></footer>
+
+  <div class="lightbox" id="lightbox" onclick="if(event.target===this)closeLightbox()">
+    <button class="lightbox-close" onclick="closeLightbox()">×</button>
+    <button class="lightbox-nav lightbox-prev" onclick="changeLightbox(-1)">‹</button>
+    <img id="lightboxImage" alt="Foto ampliada">
+    <button class="lightbox-nav lightbox-next" onclick="changeLightbox(1)">›</button>
+  </div>
+
+<script>
+  const SUPABASE_URL = localStorage.getItem('supabase_url') || 'https://pfyctxoikdrephjogdtm.supabase.co';
+  const SUPABASE_KEY = localStorage.getItem('supabase_key') || 'sb_publishable_h_5hK_HTT-XJ4WUoOGzkGg_tqkBDLjv';
+  const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  const params = new URLSearchParams(location.search);
+  const eventId = params.get('event_id');
+  let guestId = params.get('guest_id');
+  let eventData = null;
+  let guestData = null;
+  let companions = [];
+  let companionAlreadyExists = null;
+  let interestChoice = null;
+  let currentLightboxSet = [];
+  let currentLightboxIndex = 0;
+
+  const galleryImages = ["assets/turma/turma-01.webp", "assets/turma/turma-02.webp", "assets/turma/turma-03.webp", "assets/turma/turma-04.webp", "assets/turma/turma-05.webp", "assets/turma/turma-06.webp", "assets/turma/turma-07.webp", "assets/turma/turma-08.webp", "assets/turma/turma-09.webp", "assets/turma/turma-10.webp", "assets/turma/turma-11.webp", "assets/turma/turma-12.webp", "assets/turma/turma-13.webp", "assets/turma/turma-14.webp", "assets/turma/turma-15.webp", "assets/turma/turma-16.webp", "assets/turma/turma-17.webp", "assets/turma/turma-18.webp", "assets/turma/turma-19.webp", "assets/turma/turma-20.webp", "assets/turma/turma-21.webp", "assets/turma/turma-22.webp", "assets/turma/turma-23.webp", "assets/turma/turma-24.webp", "assets/turma/turma-25.webp", "assets/turma/turma-26.webp", "assets/turma/turma-27.webp", "assets/turma/turma-28.webp", "assets/turma/turma-29.webp", "assets/turma/turma-30.webp", "assets/turma/turma-31.webp", "assets/turma/turma-32.webp", "assets/turma/turma-33.webp", "assets/turma/turma-34.webp", "assets/turma/turma-35.webp", "assets/turma/turma-36.webp"];
+  const venueImages = ["assets/local/downtown-01.webp", "assets/local/downtown-02.webp", "assets/local/downtown-03.webp", "assets/local/downtown-04.webp", "assets/local/downtown-05.webp"];
+
+  document.addEventListener('DOMContentLoaded', init);
+
+  async function init() {
+    if (!eventId) {
+      showMessage('formMessage','O link precisa conter o event_id do evento.','error');
+      return;
+    }
+    await loadEvent();
+    await refreshInterestCount();
+    startInterestRealtime();
+
+    // Garante atualização mesmo quando o Realtime estiver bloqueado pelo RLS.
+    window.setInterval(refreshInterestCount, 15000);
+
+    if (guestId) {
+      await loadGuestById(guestId);
+    }
+  }
+
+  async function loadEvent() {
+    const {data,error} = await supabaseClient.from('events').select('*').eq('id',eventId).maybeSingle();
+    if (error || !data) {
+      showMessage('formMessage','Não foi possível carregar o evento: '+(error?.message||'evento não encontrado'),'error');
+      return;
+    }
+    eventData=data;
+    const summary=[];
+    if(data.event_date) summary.push(formatDateBR(data.event_date));
+    if(data.event_time) summary.push(formatTime(data.event_time));
+    if(data.location) summary.push(data.location);
+    const box=document.getElementById('eventSummary');
+    box.textContent=(data.name||'Reencontro da turma')+(summary.length?' • '+summary.join(' • '):'');
+    box.className='message info';
+
+    renderEventMap(data);
+  }
+
+
+  function renderEventMap(event) {
+    const title = document.getElementById('venueTitle');
+    const locationLabel = document.getElementById('eventMapLocation');
+    const container = document.getElementById('eventMapFrameContainer');
+    const button = document.getElementById('openEventMapButton');
+
+    const location = String(event?.location || '').trim();
+    const mapsLink = String(event?.google_maps_link || '').trim();
+
+    if (title) {
+      title.textContent = location || 'Local do evento';
+    }
+
+    if (locationLabel) {
+      locationLabel.textContent = location || 'Local ainda não informado';
+    }
+
+    if (!container) return;
+
+    const embedUrl = buildGoogleMapsEmbedUrl(mapsLink, location);
+
+    if (!embedUrl) {
+      container.innerHTML = `
+        <div class="event-map-empty">
+          O endereço ou link do Google Maps ainda não foi cadastrado neste evento.
+        </div>
+      `;
+
+      if (button) {
+        button.style.display = 'none';
+      }
+
+      return;
+    }
+
+    container.innerHTML = `
+      <iframe
+        class="event-map-frame"
+        src="${escapeHTML(embedUrl)}"
+        loading="lazy"
+        allowfullscreen
+        referrerpolicy="no-referrer-when-downgrade"
+        title="Mapa do local do evento"
+      ></iframe>
+    `;
+
+    if (button) {
+      button.style.display = 'inline-flex';
+    }
+  }
+
+  function buildGoogleMapsEmbedUrl(mapsLink, location) {
+    if (mapsLink) {
+      if (mapsLink.includes('/maps/embed') || mapsLink.includes('output=embed')) {
+        return mapsLink;
+      }
+
+      // Links curtos ou links comuns do Google Maps não podem ser usados
+      // diretamente no iframe. O mapa é montado a partir do local cadastrado.
+      if (location) {
+        return `https://www.google.com/maps?q=${encodeURIComponent(location)}&output=embed`;
+      }
+
+      return `https://www.google.com/maps?q=${encodeURIComponent(mapsLink)}&output=embed`;
+    }
+
+    if (location) {
+      return `https://www.google.com/maps?q=${encodeURIComponent(location)}&output=embed`;
+    }
+
+    return '';
+  }
+
+  function openEventMap() {
+    const location = String(eventData?.location || '').trim();
+    const mapsLink = String(eventData?.google_maps_link || '').trim();
+
+    let destination = mapsLink;
+
+    if (!destination && location) {
+      destination =
+        'https://www.google.com/maps/search/?api=1&query=' +
+        encodeURIComponent(location);
+    }
+
+    if (!destination) {
+      showMessage(
+        'formMessage',
+        'O mapa ainda não foi cadastrado neste evento.',
+        'error'
+      );
+      return;
+    }
+
+    window.open(destination, '_blank', 'noopener,noreferrer');
+  }
+
+  async function loadGuestById(id) {
+    const {data,error}=await supabaseClient
+      .from('event_guests')
+      .select('*')
+      .eq('id',id)
+      .eq('event_id',eventId)
+      .maybeSingle();
+
+    if(error || !data) return;
+
+    guestData=data;
+    guestId=data.id;
+
+    document.getElementById('guestPhone').value=formatPhone(data.whatsapp||'');
+    document.getElementById('guestName').value=data.guest_name||'';
+    document.getElementById('guestDetailsPanel').classList.add('active');
+
+    hydrateInterest(data.interest_status);
+    await loadCompanions();
+
+    showMessage(
+      'guestStatusBox',
+      'Cadastro localizado. Confira seus dados e atualize seu interesse.',
+      'success'
+    );
+  }
+
+  async function locateGuest() {
+    const phone=normalizePhone(document.getElementById('guestPhone').value);
+
+    if(phone.length<10) {
+      showMessage('guestStatusBox','Informe um WhatsApp válido.','error');
+      return;
+    }
+
+    const {data,error}=await supabaseClient
+      .from('event_guests')
+      .select('*')
+      .eq('event_id',eventId);
+
+    if(error) {
+      showMessage('guestStatusBox','Erro ao localizar cadastro: '+error.message,'error');
+      return;
+    }
+
+    const found=(data||[]).find(item=>phonesEqual(item.whatsapp,phone));
+
+    document.getElementById('guestDetailsPanel').classList.add('active');
+
+    if(found) {
+      guestData=found;
+      guestId=found.id;
+
+      document.getElementById('guestName').value=found.guest_name||'';
+      hydrateInterest(found.interest_status);
+      await loadCompanions();
+
+      showMessage(
+        'guestStatusBox',
+        'Cadastro localizado. As informações foram carregadas.',
+        'success'
+      );
+    } else {
+      guestData=null;
+      guestId=null;
+
+      document.getElementById('guestName').value='';
+      companions=[];
+      renderCompanionsGrid();
+
+      hydrateInterest(null);
+
+      showMessage(
+        'guestStatusBox',
+        'WhatsApp não cadastrado. Informe seu nome e a quantidade de acompanhantes.',
+        'info'
+      );
+    }
+  }
+
+  function setInterest(value) {
+    interestChoice=value;
+    document.getElementById('choiceYes').classList.toggle('active',value===true);
+    document.getElementById('choiceNo').classList.toggle('active',value===false);
+    document.getElementById('saveInterestButton').disabled=false;
+
+    const companionPanel=document.getElementById('companionPanel');
+    const canShow=value===true && Boolean(guestId) && eventData?.allow_guest_companions!==false;
+    companionPanel?.classList.toggle('active',canShow);
+  }
+
+  function hydrateInterest(status) {
+    if(status==='interessado'||status==='confirmado'||status==='sim') setInterest(true);
+    else if(status==='nao_interessado'||status==='não'||status==='nao') setInterest(false);
+    else {
+      interestChoice=null;
+      document.getElementById('choiceYes').classList.remove('active');
+      document.getElementById('choiceNo').classList.remove('active');
+      document.getElementById('saveInterestButton').disabled=true;
+      document.getElementById('companionPanel')?.classList.remove('active');
+    }
+  }
+
+  async function saveInterest() {
+    if(interestChoice===null) {
+      showMessage('formMessage','Informe se você tem interesse em participar.','error');
+      return;
+    }
+
+    const name=document.getElementById('guestName').value.trim();
+    const phone=normalizePhone(document.getElementById('guestPhone').value);
+
+    if(!name) {
+      showMessage('formMessage','Informe seu nome completo.','error');
+      return;
+    }
+
+    if(phone.length<10) {
+      showMessage('formMessage','Informe um WhatsApp válido.','error');
+      return;
+    }
+
+    const button=document.getElementById('saveInterestButton');
+    button.disabled=true;
+    button.textContent='Salvando...';
+
+    const payload={
+      event_id:eventId,
+      guest_name:name,
+      whatsapp:phone,
+      interest_status:interestChoice?'interessado':'nao_interessado',
+      interest_confirmed_at:new Date().toISOString(),
+      confirmed:interestChoice===true,
+      access_code_id:null
+    };
+
+    let data,error;
+
+    if(guestId) {
+      const result=await supabaseClient
+        .from('event_guests')
+        .update(payload)
+        .eq('id',guestId)
+        .select('*')
+        .maybeSingle();
+
+      data=result.data;
+      error=result.error;
+    } else {
+      const result=await supabaseClient
+        .from('event_guests')
+        .insert(payload)
+        .select('*')
+        .maybeSingle();
+
+      data=result.data;
+      error=result.error;
+    }
+
+    if(error && (
+      String(error.message||'').includes('interest_status') ||
+      String(error.message||'').includes('interest_confirmed_at') ||
+      String(error.message||'').includes('access_code_id') ||
+      String(error.message||'').includes('schema cache') ||
+      String(error.message||'').includes('Could not find')
+    )) {
+      const fallback={
+        event_id:eventId,
+        guest_name:name,
+        whatsapp:phone,
+        confirmed:interestChoice===true
+      };
+
+      const result=guestId
+        ? await supabaseClient
+            .from('event_guests')
+            .update(fallback)
+            .eq('id',guestId)
+            .select('*')
+            .maybeSingle()
+        : await supabaseClient
+            .from('event_guests')
+            .insert(fallback)
+            .select('*')
+            .maybeSingle();
+
+      data=result.data;
+      error=result.error;
+    }
+
+    button.disabled=false;
+    button.textContent='Registrar interesse';
+
+    if(error) {
+      showMessage('formMessage','Erro ao registrar interesse: '+error.message,'error');
+      return;
+    }
+
+    guestData=data;
+    guestId=data.id;
+
+    await loadCompanions();
+    await refreshInterestCount();
+
+    document.getElementById('companionPanel')?.classList.toggle(
+      'active',
+      interestChoice===true && eventData?.allow_guest_companions!==false
+    );
+
+    showMessage(
+      'formMessage',
+      interestChoice
+        ? 'Interesse registrado com sucesso. Agora você pode cadastrar acompanhantes, se desejar.'
+        : 'Resposta registrada. Obrigado por nos avisar.',
+      'success'
+    );
+  }
+
+  async function checkCompanionPhone() {
+    companionAlreadyExists=null;
+
+    const phoneInput=document.getElementById('companionPhone');
+    const nameInput=document.getElementById('companionName');
+    const button=document.getElementById('addCompanionButton');
+    const phone=normalizePhone(phoneInput.value);
+
+    phoneInput.value=phone ? formatPhone(phone) : '';
+    nameInput.disabled=false;
+    button.disabled=false;
+    button.textContent='Cadastrar acompanhante';
+    clearMessage('companionStatus');
+
+    if(!phone) return;
+
+    if(phone.length<10) {
+      showMessage(
+        'companionStatus',
+        'Telefone incompleto. Você pode deixar o campo em branco ou informar um telefone válido.',
+        'error'
+      );
+      return;
+    }
+
+    const {data,error}=await supabaseClient
+      .from('event_guests')
+      .select('*')
+      .eq('event_id',eventId);
+
+    if(error) {
+      showMessage('companionStatus','Erro ao verificar telefone: '+error.message,'error');
+      return;
+    }
+
+    const found=(data||[]).find(item=>phonesEqual(item.whatsapp,phone));
+
+    if(found) {
+      companionAlreadyExists=found;
+      nameInput.value=found.guest_name||'';
+      nameInput.disabled=true;
+      button.disabled=true;
+      button.textContent='Acompanhante já cadastrado';
+
+      showMessage(
+        'companionStatus',
+        'Este telefone já está cadastrado para '+(found.guest_name||'outro convidado')+'.',
+        'info'
+      );
+    } else {
+      showMessage(
+        'companionStatus',
+        'Telefone disponível. Informe o nome do acompanhante.',
+        'success'
+      );
+    }
+  }
+
+  async function addCompanion() {
+    if(!guestId) {
+      showMessage('companionStatus','Registre primeiro o seu interesse.','error');
+      return;
+    }
+
+    if(eventData?.allow_guest_companions===false) {
+      showMessage('companionStatus','Este evento não permite acompanhantes.','error');
+      return;
+    }
+
+    const name=document.getElementById('companionName').value.trim();
+    const phone=normalizePhone(document.getElementById('companionPhone').value||'');
+
+    if(!name) {
+      showMessage('companionStatus','Informe o nome do acompanhante.','error');
+      return;
+    }
+
+    if(phone) {
+      if(phone.length<10) {
+        showMessage(
+          'companionStatus',
+          'Telefone incompleto. Você pode deixar o campo em branco ou informar um telefone válido.',
+          'error'
+        );
+        return;
+      }
+
+      await checkCompanionPhone();
+
+      if(companionAlreadyExists) {
+        showMessage(
+          'companionStatus',
+          'Este acompanhante já está cadastrado neste evento.',
+          'error'
+        );
+        return;
+      }
+    }
+
+    const button=document.getElementById('addCompanionButton');
+    button.disabled=true;
+    button.textContent='Cadastrando...';
+
+    const mainGuestName =
+      guestData?.guest_name ||
+      document.getElementById('guestName').value.trim();
+
+    if (!guestId || !mainGuestName) {
+      showMessage(
+        'companionStatus',
+        'Não foi possível identificar o convidado principal. Localize ou registre o interesse novamente.',
+        'error'
+      );
+      return;
+    }
+
+    const payload={
+      event_id:eventId,
+      guest_name:name,
+      whatsapp:phone||null,
+      companion_of:mainGuestName,
+      group_name:'Acompanhantes',
+      interest_status:'interessado',
+      interest_confirmed_at:new Date().toISOString(),
+      confirmed:true,
+      access_code_id:null
+    };
+
+    let {data,error}=await supabaseClient
+      .from('event_guests')
+      .insert(payload)
+      .select('*')
+      .maybeSingle();
+
+    if(error && (
+      String(error.message||'').includes('interest_status') ||
+      String(error.message||'').includes('interest_confirmed_at') ||
+      String(error.message||'').includes('access_code_id') ||
+      String(error.message||'').includes('schema cache') ||
+      String(error.message||'').includes('Could not find')
+    )) {
+      const fallback={
+        event_id:eventId,
+        guest_name:name,
+        whatsapp:phone||null,
+        companion_of:mainGuestName,
+        group_name:'Acompanhantes',
+        confirmed:true
+      };
+
+      const retry=await supabaseClient
+        .from('event_guests')
+        .insert(fallback)
+        .select('*')
+        .maybeSingle();
+
+      data=retry.data;
+      error=retry.error;
+    }
+
+
+
+    button.disabled=false;
+    button.textContent='Cadastrar acompanhante';
+
+    if(error) {
+      showMessage('companionStatus','Erro ao cadastrar acompanhante: '+error.message,'error');
+      return;
+    }
+
+    companions.push(data);
+
+    document.getElementById('companionPhone').value='';
+    document.getElementById('companionName').value='';
+    document.getElementById('companionName').disabled=false;
+    companionAlreadyExists=null;
+
+    renderCompanionsGrid();
+    await refreshInterestCount();
+
+    showMessage(
+      'companionStatus',
+      'Acompanhante cadastrado e vinculado a ' + mainGuestName + '. Entraremos em contato.',
+      'success'
+    );
+  }
+
+  async function loadCompanions() {
+    if(!guestId || !guestData?.guest_name) {
+      companions=[];
+      renderCompanionsGrid();
+      return;
+    }
+
+    const {data,error}=await supabaseClient
+      .from('event_guests')
+      .select('*')
+      .eq('event_id',eventId)
+      .eq('companion_of',guestData.guest_name)
+      .order('guest_name',{ascending:true});
+
+    if(error) {
+      console.error('Erro ao carregar acompanhantes:',error);
+      companions=[];
+      renderCompanionsGrid();
+      showMessage(
+        'companionStatus',
+        'Não foi possível carregar os acompanhantes vinculados: '+error.message,
+        'error'
+      );
+      return;
+    }
+
+    companions=data||[];
+    renderCompanionsGrid();
+  }
+
+  function renderCompanionsGrid() {
+    const tbody=document.getElementById('companionsTableBody');
+    if(!tbody) return;
+
+    if(!companions.length) {
+      tbody.innerHTML='<tr><td colspan="5">Nenhum acompanhante cadastrado.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML=companions.map(item=>{
+      const status=['interessado','confirmado','sim'].includes(item.interest_status)
+        ? '<span class="status-pill status-interested">Interesse registrado</span>'
+        : '<span class="status-pill status-pending">Pendente</span>';
+
+      const qr=item.access_code_id
+        ? '<span class="status-pill status-qrcode">Gerado</span>'
+        : '<span class="status-pill status-no-qrcode">Não gerado</span>';
+
+      return `
+        <tr>
+          <td><strong>${escapeHTML(item.guest_name||'-')}</strong></td>
+          <td>${item.whatsapp ? escapeHTML(formatPhone(item.whatsapp)) : '-'}</td>
+          <td>${escapeHTML(item.companion_of || guestData?.guest_name || '-')}</td>
+          <td>${status}</td>
+          <td>${qr}</td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  async function refreshInterestCount() {
+    const counter = document.getElementById('interestCount');
+    const progress = document.getElementById('interestProgress');
+    const projection = document.getElementById('priceProjection');
+
+    let count = 0;
+    let loaded = false;
+
+    /*
+      Primeiro usamos uma RPC SECURITY DEFINER.
+      Isso evita o problema em que a página pública recebe zero registros
+      porque o RLS bloqueia o SELECT direto em event_guests.
+    */
+    try {
+      const { data: rpcCount, error: rpcError } = await supabaseClient.rpc(
+        'get_event_interest_count',
+        { p_event_id: eventId }
+      );
+
+      if (!rpcError && rpcCount !== null && rpcCount !== undefined) {
+        count = Number(rpcCount) || 0;
+        loaded = true;
+      } else if (rpcError) {
+        console.warn(
+          'RPC get_event_interest_count indisponível. Usando consulta direta:',
+          rpcError
+        );
+      }
+    } catch (rpcException) {
+      console.warn('Falha ao executar RPC do contador:', rpcException);
+    }
+
+    /*
+      Fallback para ambientes onde a função SQL ainda não foi executada.
+      Conta todos os registros, exceto quem recusou explicitamente.
+    */
+    if (!loaded) {
+      try {
+        const { data, error } = await supabaseClient
+          .from('event_guests')
+          .select('*')
+          .eq('event_id', eventId);
+
+        if (error) {
+          console.error('Erro ao atualizar contador:', error);
+
+          if (projection) {
+            projection.textContent =
+              'Não foi possível atualizar o total. Execute a função SQL do contador indicada no início do arquivo.';
+          }
+
+          return;
+        }
+
+        const declinedStatuses = [
+          'nao_interessado',
+          'não interessado',
+          'nao',
+          'não',
+          'recusado',
+          'cancelado',
+          'declined'
+        ];
+
+        count = (data || []).filter(item => {
+          const interestStatus = String(item.interest_status || '')
+            .trim()
+            .toLowerCase();
+
+          const generalStatus = String(item.status || '')
+            .trim()
+            .toLowerCase();
+
+          return (
+            !declinedStatuses.includes(interestStatus) &&
+            !declinedStatuses.includes(generalStatus)
+          );
+        }).length;
+
+        loaded = true;
+      } catch (error) {
+        console.error('Falha inesperada no contador:', error);
+
+        if (projection) {
+          projection.textContent =
+            'Não foi possível atualizar o total agora.';
+        }
+
+        return;
+      }
+    }
+
+    if (counter) {
+      counter.textContent = String(count);
+    }
+
+    if (progress) {
+      progress.style.width = Math.min(100, (count / 200) * 100) + '%';
+    }
+
+    if (!projection) return;
+
+    if (count >= 200) {
+      projection.textContent =
+        'Com 200 ou mais participantes, o valor estimado é R$ 70,00 por pessoa.';
+    } else if (count >= 150) {
+      projection.textContent =
+        'Faixa atual estimada: R$ 95,00 por pessoa. Faltam ' +
+        (200 - count) +
+        ' pessoas para chegar a R$ 70,00.';
+    } else if (count >= 50) {
+      projection.textContent =
+        'Faixa atual estimada: R$ 270,00 por pessoa. Faltam ' +
+        (150 - count) +
+        ' pessoas para chegar a R$ 95,00.';
+    } else if (count > 0) {
+      projection.textContent =
+        count +
+        (count === 1
+          ? ' pessoa registrou interesse. Falta '
+          : ' pessoas registraram interesse. Faltam ') +
+        (50 - count) +
+        ' para atingir a primeira faixa de 50 participantes.';
+    } else {
+      projection.textContent = 'Aguardando os primeiros registros.';
+    }
+  }
+
+  function startInterestRealtime() {
+    if(!eventId || !supabaseClient?.channel) return;
+
+    supabaseClient
+      .channel('event-guests-counter-'+eventId)
+      .on(
+        'postgres_changes',
+        {
+          event:'*',
+          schema:'public',
+          table:'event_guests',
+          filter:'event_id=eq.'+eventId
+        },
+        async payload=>{
+          console.log('Atualização recebida no contador:',payload.eventType);
+          await refreshInterestCount();
+
+          if(guestId) {
+            await loadCompanions();
+          }
+        }
+      )
+      .subscribe(status=>{
+        console.log('Realtime do contador:',status);
+      });
+  }
+
+  function openLightbox(index){currentLightboxSet=galleryImages;showLightbox(index)}
+  function openVenueLightbox(index){currentLightboxSet=venueImages;showLightbox(index)}
+  function showLightbox(index){currentLightboxIndex=index;document.getElementById('lightboxImage').src=currentLightboxSet[index];document.getElementById('lightbox').classList.add('active')}
+  function closeLightbox(){document.getElementById('lightbox').classList.remove('active')}
+  function changeLightbox(delta){currentLightboxIndex=(currentLightboxIndex+delta+currentLightboxSet.length)%currentLightboxSet.length;document.getElementById('lightboxImage').src=currentLightboxSet[currentLightboxIndex]}
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')closeLightbox();if(document.getElementById('lightbox').classList.contains('active')){if(e.key==='ArrowLeft')changeLightbox(-1);if(e.key==='ArrowRight')changeLightbox(1)}});
+
+  function normalizePhone(v){let p=String(v||'').replace(/\D/g,'').replace(/^55/,'');return p.slice(0,11)}
+  function formatPhone(v){let p=normalizePhone(v);if(p.length>10)return p.replace(/^(\d{2})(\d{5})(\d{4}).*/,'($1) $2-$3');if(p.length>6)return p.replace(/^(\d{2})(\d{4})(\d{0,4}).*/,'($1) $2-$3');if(p.length>2)return p.replace(/^(\d{2})(\d{0,5})/,'($1) $2');return p}
+  function phonesEqual(a,b){return normalizePhone(a)===normalizePhone(b)}
+  function formatDateBR(v){if(!v)return'';const p=String(v).split('-');return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:v}
+  function formatTime(v){return v?String(v).slice(0,5):''}
+  function escapeHTML(v){return String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]))}
+  function showMessage(id,text,type){const el=document.getElementById(id);if(!el)return;el.textContent=text;el.className='message '+type}
+  function clearMessage(id){const el=document.getElementById(id);if(el){el.textContent='';el.className='message'}}
+</script>
+</body>
+</html>
