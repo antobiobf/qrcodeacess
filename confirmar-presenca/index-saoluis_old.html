@@ -994,313 +994,6 @@
       color: var(--muted);
       border: 1px solid var(--border);
     }
-  
-    /* ===== Modernização geral ===== */
-    :root {
-      --radius-xl: 34px;
-      --radius-lg: 26px;
-      --radius-md: 18px;
-      --surface-soft: rgba(255,255,255,.045);
-      --surface-strong: rgba(15,20,32,.94);
-      --glow-gold: 0 0 0 1px rgba(241,185,81,.12), 0 24px 70px rgba(241,185,81,.08);
-    }
-
-    body {
-      background:
-        radial-gradient(circle at 15% 8%, rgba(241,185,81,.12), transparent 28%),
-        radial-gradient(circle at 85% 12%, rgba(102,140,255,.14), transparent 30%),
-        linear-gradient(145deg,#05070c 0%,#0a0e19 42%,#070912 100%);
-    }
-
-    .section { padding: 58px 0; }
-    .section-head { margin-bottom: 28px; }
-    .section-head h2 { line-height: 1.02; }
-
-    .glass {
-      background:
-        linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,0)),
-        rgba(16,21,34,.88);
-      border: 1px solid rgba(255,255,255,.09);
-      box-shadow: 0 24px 80px rgba(0,0,0,.34);
-    }
-
-    .nav { box-shadow: 0 12px 40px rgba(0,0,0,.18); }
-
-    .hero-card {
-      border: 1px solid rgba(255,255,255,.1);
-      box-shadow: 0 35px 110px rgba(0,0,0,.46);
-    }
-
-    .hero-content { max-width: 820px; }
-    .hero-content h1 { text-wrap: balance; }
-    .hero-text { max-width: 760px; }
-
-    .info-card,
-    .timeline-step,
-    .important-card {
-      transition: transform .25s ease, border-color .25s ease, background .25s ease;
-    }
-
-    .info-card:hover,
-    .timeline-step:hover,
-    .important-card:hover {
-      transform: translateY(-4px);
-      border-color: rgba(241,185,81,.22);
-      background: rgba(19,25,39,.94);
-    }
-
-    .pricing-grid {
-      display: flex;
-      justify-content: center;
-      align-items: stretch;
-    }
-
-    .price-card {
-      width: min(640px,100%);
-      text-align: center;
-      padding: 44px 36px;
-      border-radius: 30px;
-      box-shadow: var(--glow-gold);
-    }
-
-    .price-card .badge {
-      display: inline-flex;
-      margin-bottom: 8px;
-    }
-
-    .price-card .price-number {
-      font-size: clamp(52px,7vw,76px);
-      margin: 18px 0 8px;
-    }
-
-    .price-card p {
-      max-width: 470px;
-      margin: 0 auto;
-      font-size: 16px;
-      line-height: 1.7;
-    }
-
-    .progress-panel {
-      border: 1px solid rgba(255,255,255,.08);
-      overflow: hidden;
-      position: relative;
-    }
-
-    .progress-panel:before {
-      content:"";
-      position:absolute;
-      inset:0;
-      pointer-events:none;
-      background: radial-gradient(circle at 85% 15%, rgba(241,185,81,.09), transparent 28%);
-    }
-
-    .progress-track { height: 16px; }
-
-    .progress-fill {
-      box-shadow: 0 0 22px rgba(241,185,81,.3);
-    }
-
-    .form-card {
-      box-shadow: 0 34px 100px rgba(0,0,0,.42);
-    }
-
-    .simple-flow-card,
-    .companion-registration-card {
-      background: rgba(255,255,255,.028);
-    }
-
-    /* ===== Line-up ===== */
-    .lineup-section {
-      position: relative;
-      overflow: hidden;
-    }
-
-    .lineup-section:before {
-      content:"";
-      position:absolute;
-      inset:0;
-      pointer-events:none;
-      background:
-        radial-gradient(circle at 18% 20%, rgba(241,185,81,.10), transparent 28%),
-        radial-gradient(circle at 82% 80%, rgba(102,140,255,.10), transparent 26%);
-    }
-
-    .lineup-wrap {
-      position: relative;
-      z-index: 1;
-    }
-
-    .lineup-hero {
-      display:grid;
-      grid-template-columns: .8fr 1.2fr;
-      gap: 18px;
-      align-items: stretch;
-    }
-
-    .lineup-intro {
-      padding: 34px;
-      border-radius: 30px;
-      display:flex;
-      flex-direction:column;
-      justify-content:space-between;
-      min-height: 100%;
-    }
-
-    .lineup-intro h2 {
-      font-size: clamp(34px,5vw,58px);
-      line-height: .98;
-      letter-spacing: -.045em;
-      margin: 6px 0 16px;
-    }
-
-    .lineup-intro p {
-      color: var(--muted);
-      line-height: 1.65;
-      font-size: 17px;
-    }
-
-    .lineup-summary {
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      margin-top:24px;
-    }
-
-    .lineup-summary span {
-      padding:10px 12px;
-      border-radius:999px;
-      border:1px solid var(--border);
-      background:rgba(255,255,255,.05);
-      color:#e5e9f2;
-      font-weight:850;
-      font-size:13px;
-    }
-
-    .lineup-board {
-      padding: 20px;
-      border-radius: 30px;
-      display:grid;
-      gap: 12px;
-    }
-
-    .lineup-item {
-      display:grid;
-      grid-template-columns: 120px 1fr auto;
-      align-items:center;
-      gap: 18px;
-      padding: 20px;
-      border-radius: 22px;
-      background: rgba(255,255,255,.035);
-      border: 1px solid rgba(255,255,255,.07);
-      transition: transform .22s ease, border-color .22s ease, background .22s ease;
-      position:relative;
-      overflow:hidden;
-    }
-
-    .lineup-item:before {
-      content:"";
-      position:absolute;
-      left:0;
-      top:0;
-      bottom:0;
-      width:4px;
-      background:linear-gradient(180deg,var(--gold-2),var(--gold));
-      opacity:.75;
-    }
-
-    .lineup-item:hover {
-      transform: translateX(4px);
-      border-color: rgba(241,185,81,.24);
-      background: rgba(255,255,255,.055);
-    }
-
-    .lineup-time {
-      font-size: 15px;
-      font-weight: 950;
-      color: var(--gold-2);
-      letter-spacing: .02em;
-    }
-
-    .lineup-name { min-width:0; }
-
-    .lineup-name strong {
-      display:block;
-      font-size: clamp(18px,2.2vw,24px);
-      margin-bottom: 5px;
-      letter-spacing: -.02em;
-    }
-
-    .lineup-name span {
-      color: var(--muted);
-      font-size: 14px;
-      line-height:1.4;
-    }
-
-    .lineup-type {
-      padding: 8px 11px;
-      border-radius: 999px;
-      background: rgba(102,140,255,.11);
-      color: #c8d2ff;
-      border: 1px solid rgba(102,140,255,.2);
-      font-size: 12px;
-      font-weight: 900;
-      white-space: nowrap;
-    }
-
-    .lineup-item.headliner {
-      background:
-        radial-gradient(circle at 92% 20%, rgba(241,185,81,.12), transparent 30%),
-        rgba(255,255,255,.045);
-      border-color: rgba(241,185,81,.24);
-    }
-
-    .lineup-item.headliner .lineup-type {
-      background: rgba(241,185,81,.12);
-      color: var(--gold-2);
-      border-color: rgba(241,185,81,.2);
-    }
-
-    .lineup-footer {
-      margin-top: 14px;
-      padding: 16px 18px;
-      border-radius: 18px;
-      background: rgba(114,212,155,.08);
-      border: 1px solid rgba(114,212,155,.18);
-      color: #c9f5d8;
-      font-weight: 800;
-      line-height:1.5;
-      text-align:center;
-    }
-
-    @media(max-width:900px) {
-      .lineup-hero { grid-template-columns: 1fr; }
-    }
-
-    @media(max-width:620px) {
-      .section { padding: 40px 0; }
-
-      .lineup-intro,
-      .lineup-board {
-        padding: 20px;
-        border-radius: 24px;
-      }
-
-      .lineup-item {
-        grid-template-columns: 1fr;
-        gap: 8px;
-        padding: 18px;
-      }
-
-      .lineup-type { justify-self:start; }
-      .price-card { padding: 34px 22px; }
-    }
-
-  
-    .venue-consumption-highlight {display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:start;margin:22px 0;padding:18px;border-radius:20px;background:linear-gradient(135deg,rgba(241,185,81,.12),rgba(255,255,255,.035));border:1px solid rgba(241,185,81,.22);box-shadow:0 16px 40px rgba(0,0,0,.18)}
-    .venue-consumption-icon {width:44px;height:44px;display:grid;place-items:center;border-radius:14px;background:rgba(241,185,81,.14);font-size:23px}
-    .venue-consumption-highlight strong {display:block;color:var(--gold-2);font-size:17px;margin-bottom:5px}
-    .venue-consumption-highlight p {margin:0;color:#d8deea;line-height:1.55;font-size:15px}
-
   </style>
 </head>
 
@@ -1311,7 +1004,6 @@
       <div class="nav-links">
         <a href="#historia">Nossa história</a>
         <a href="#local">O local</a>
-        <a href="#lineup">Line-up</a>
         <a href="#valores">Valores</a>
         <a href="#confirmar">Participar</a>
       </div>
@@ -1346,7 +1038,7 @@
         <article class="info-card glass">
           <div class="info-icon">👥</div>
           <h3>Acompanhantes são bem-vindos</h3>
-          <p>Você poderá cadastrar 1 acompanhante.</p>
+          <p>Você poderá cadastrar quantos acompanhantes precisar.</p>
         </article>
         <article class="info-card glass">
           <div class="info-icon">🎟️</div>
@@ -1369,13 +1061,9 @@
             reencontrar os amigos e aproveitar a noite.
           </p>
 
-          <div class="venue-consumption-highlight">
-            <span class="venue-consumption-icon">🍻</span>
-            <div>
-              <strong>Consumação individual</strong>
-              <p>A consumação no dia será livre: cada participante pagará diretamente o que consumir.</p>
-            </div>
-          </div>
+          <p>
+            A consumação no dia será livre: cada participante pagará diretamente o que consumir.
+          </p>
 
           <div class="venue-pills">
             <span class="pill">🍻 Bar completo</span>
@@ -1434,102 +1122,31 @@
     </section>
 
 
-
-    <section class="section lineup-section" id="lineup">
-      <div class="container lineup-wrap">
-        <div class="lineup-hero">
-          <article class="lineup-intro glass">
-            <div>
-              <span class="eyebrow">🎶 A trilha sonora do reencontro</span>
-              <h2>Uma noite para cantar, dançar e lembrar.</h2>
-              <p>
-                A programação foi pensada para começar leve, ganhar energia ao longo da noite
-                e terminar com a pista cheia. E quem fecha essa festa é ninguém menos que o nosso
-                querido <strong>Bobinho</strong>, trazendo aquela memória afetiva que faz parte da
-                história da turma. Um line-up que mistura DJ, samba e show ao vivo para acompanhar
-                cada momento do reencontro!
-              </p>
-            </div>
-
-            <div class="lineup-summary">
-              <span>🎧 2 momentos de DJ</span>
-              <span>🥁 Samba ao vivo</span>
-              <span>🎤 Show principal</span>
-              <span>🕺 6 horas de festa</span>
-            </div>
-          </article>
-
-          <div class="lineup-board glass">
-            <article class="lineup-item">
-              <div class="lineup-time">19:00 — 20:00</div>
-              <div class="lineup-name">
-                <strong>DJ • Warm-up</strong>
-                <span>Chegada da turma, reencontros e o clima começando a esquentar.</span>
-              </div>
-              <!-- <span class="lineup-type">Abertura</span> -->
-            </article>
-
-            <article class="lineup-item">
-              <div class="lineup-time">20:00 — 22:00</div>
-              <div class="lineup-name">
-                <strong>Sambarrasta</strong>
-                <span>Duas horas de samba para colocar todo mundo no clima.</span>
-              </div>
-              <!-- <span class="lineup-type">Ao vivo</span> -->
-            </article>
-
-            <article class="lineup-item headliner">
-              <div class="lineup-time">22:00 — 00:00</div>
-              <div class="lineup-name">
-                <strong>Bobinho • Rafa Furtado & Banda Papaninfa</strong>
-                <span>Um reencontro com memória afetiva: Bobinho de volta ao palco para fechar a noite com a turma.</span>
-              </div>
-              <!-- <span class="lineup-type">Show principal</span> -->
-            </article>
-
-            <article class="lineup-item">
-              <div class="lineup-time">00:00 — 01:00</div>
-              <div class="lineup-name">
-                <strong>DJ • After</strong>
-                <span>Mais uma hora de música para fechar a noite do jeito certo.</span>
-              </div>
-              <!-- <span class="lineup-type">Encerramento</span> -->
-            </article>
-
-            <div class="lineup-footer">
-              Horários sujeitos a pequenos ajustes de produção, mantendo a programação completa da noite.
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-
     <section class="section" id="valores">
       <div class="container">
         <header class="section-head">
-          <div><span class="eyebrow">Valor do reencontro</span>
-            <h2>Um valor único para viver essa noite.</h2>
+          <div><span class="eyebrow">Formação do valor</span>
+            <h2>Valor do reencontro</h2>
           </div>
           <!-- <p>O custo será dividido entre os participantes. O valor final dependerá do número de confirmações.</p>
       -->
         </header>
         <div class="pricing-grid">
-          <article class="price-card glass featured">
-            <span class="badge">Meta: 120 participantes</span>
-            <div class="price-number">R$ 120,00</div>
+
+          <article class="price-card glass featured"><span class="badge">150 confirmados</span>
+            <div class="price-number">R$ 120</div>
             <p>
-              Valor único por participante. O evento será confirmado quando atingirmos
-              pelo menos <strong>120 pessoas</strong>, considerando convidados e acompanhantes.
+              Valor fixo por participante, válido para todos os convidados após a confirmação do evento.
             </p>
           </article>
+
         </div>
         <div class="note-box"><strong>Transparência:</strong> caso exista algum excedente financeiro, todo o valor será
           revertido em consumação coletiva no dia do evento.</div>
 
         <div class="progress-panel glass">
           <div class="progress-row">
-            <div><strong>Participantes interessados</strong>
+            <div><strong>Interesse registrado</strong>
               <p style="color:var(--muted);margin-top:5px">Atualizado automaticamente a partir dos interesses
                 registrados</p>
             </div>
@@ -1552,14 +1169,14 @@
         </header>
         <div class="timeline">
           <article class="timeline-step glass"><strong>01</strong>
-            <p>Você informa seu interesse e pode cadastrar 1 acompanhante.</p>
+            <p>Você informa seu interesse e pode cadastrar acompanhantes.</p>
           </article>
        
           <article class="timeline-step glass"><strong>02</strong>
-            <p>Assim que atingirmos o quórum mínimo de 120 participantes e o evento for confirmado, enviaremos pelo WhatsApp todas as instruções para o pagamento.</p>
+            <p>Enviamos as instruções de pagamento pelo WhatsApp.</p>
           </article>
           <article class="timeline-step glass"><strong>03</strong>
-            <p>Após a confirmação do pagamento, cada participante receberá um QR Code individual, que deverá ser apresentado na entrada da festa para acesso ao evento.</p>
+            <p>Após o pagamento, cada participante recebe seu QR Code.</p>
           </article>
         </div>
       </div>
@@ -1572,7 +1189,8 @@
             <div><span class="eyebrow">Vamos nessa?</span>
               <h2>Registre seu interesse</h2>
             </div>
-            <p>Informe seu WhatsApp para localizar o cadastro.</p>
+            <p>Informe seu WhatsApp para localizar o cadastro. Caso o telefone ainda não exista, você poderá informar
+              seu nome e registrar o interesse.</p>
           </header>
 
           <div id="eventSummary" class="message info"></div>
@@ -1631,10 +1249,9 @@
             <div class="companion-registration-head">
               <div>
                 <span class="eyebrow">Acompanhantes</span>
-                <h3>Deseja adicionar 1 acompanhante?</h3>
+                <h3>Deseja adicionar um acompanhante?</h3>
                 <p>
                   Se sim, preencha os campos abaixo. O telefone é opcional.
-                  Este convite permite o cadastro de apenas 1 acompanhante.
                   Caso o telefone seja informado e já esteja cadastrado neste evento,
                   o sistema carregará o nome e não permitirá cadastrar novamente.
                 </p>
@@ -2259,11 +1876,6 @@
     }
 
     async function addCompanion() {
-      if (companions.length >= 1) {
-        showMessage('companionStatus','Este convite permite o cadastro de apenas 1 acompanhante.','error');
-        return;
-      }
-
       if (!guestId) {
         showMessage('companionStatus', 'Registre primeiro o seu interesse.', 'error');
         return;
@@ -2383,7 +1995,6 @@
       companionAlreadyExists = null;
 
       renderCompanionsGrid();
-      updateCompanionFormState();
       await refreshInterestCount();
 
       showMessage(
@@ -2421,18 +2032,6 @@
 
       companions = data || [];
       renderCompanionsGrid();
-      updateCompanionFormState();
-    }
-
-    function updateCompanionFormState() {
-      const button = document.getElementById('addCompanionButton');
-      const phoneInput = document.getElementById('companionPhone');
-      const nameInput = document.getElementById('companionName');
-      const hasCompanion = companions.length >= 1;
-      if (button) { button.disabled = hasCompanion; button.textContent = hasCompanion ? 'Acompanhante já cadastrado' : 'Cadastrar acompanhante'; }
-      if (phoneInput) phoneInput.disabled = hasCompanion;
-      if (nameInput) nameInput.disabled = hasCompanion;
-      if (hasCompanion) showMessage('companionStatus','Você já cadastrou 1 acompanhante para este convite.','info');
     }
 
     function renderCompanionsGrid() {
@@ -2562,25 +2161,34 @@
       }
 
       if (progress) {
-        progress.style.width = Math.min(100, (count / 120) * 100) + '%';
+        progress.style.width = Math.min(100, (count / 200) * 100) + '%';
       }
 
       if (!projection) return;
 
-      if (count >= 120) {
+      if (count >= 200) {
         projection.textContent =
-          '🎉 Meta alcançada! O reencontro já pode ser confirmado. Em breve enviaremos as instruções para pagamento.';
+          'Com 200 ou mais participantes, o valor estimado é R$ 70,00 por pessoa.';
+      } else if (count >= 150) {
+        projection.textContent =
+          'Faixa atual estimada: R$ 95,00 por pessoa. Faltam ' +
+          (200 - count) +
+          ' pessoas para chegar a R$ 70,00.';
+      } else if (count >= 50) {
+        projection.textContent =
+          'Faixa atual estimada: R$ 270,00 por pessoa. Faltam ' +
+          (150 - count) +
+          ' pessoas para chegar a R$ 95,00.';
       } else if (count > 0) {
         projection.textContent =
           count +
           (count === 1
             ? ' pessoa registrou interesse. Falta '
             : ' pessoas registraram interesse. Faltam ') +
-          (120 - count) +
-          ' para atingirmos a meta de 120 participantes.';
+          (50 - count) +
+          ' para atingir a primeira faixa de 50 participantes.';
       } else {
-        projection.textContent =
-          'Aguardando os primeiros registros. Precisamos de 120 participantes para confirmar o evento.';
+        projection.textContent = 'Aguardando os primeiros registros.';
       }
     }
 

@@ -1295,12 +1295,6 @@
       .price-card { padding: 34px 22px; }
     }
 
-  
-    .venue-consumption-highlight {display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:start;margin:22px 0;padding:18px;border-radius:20px;background:linear-gradient(135deg,rgba(241,185,81,.12),rgba(255,255,255,.035));border:1px solid rgba(241,185,81,.22);box-shadow:0 16px 40px rgba(0,0,0,.18)}
-    .venue-consumption-icon {width:44px;height:44px;display:grid;place-items:center;border-radius:14px;background:rgba(241,185,81,.14);font-size:23px}
-    .venue-consumption-highlight strong {display:block;color:var(--gold-2);font-size:17px;margin-bottom:5px}
-    .venue-consumption-highlight p {margin:0;color:#d8deea;line-height:1.55;font-size:15px}
-
   </style>
 </head>
 
@@ -1346,7 +1340,7 @@
         <article class="info-card glass">
           <div class="info-icon">👥</div>
           <h3>Acompanhantes são bem-vindos</h3>
-          <p>Você poderá cadastrar 1 acompanhante.</p>
+          <p>Você poderá cadastrar quantos acompanhantes precisar.</p>
         </article>
         <article class="info-card glass">
           <div class="info-icon">🎟️</div>
@@ -1369,13 +1363,9 @@
             reencontrar os amigos e aproveitar a noite.
           </p>
 
-          <div class="venue-consumption-highlight">
-            <span class="venue-consumption-icon">🍻</span>
-            <div>
-              <strong>Consumação individual</strong>
-              <p>A consumação no dia será livre: cada participante pagará diretamente o que consumir.</p>
-            </div>
-          </div>
+          <p>
+            A consumação no dia será livre: cada participante pagará diretamente o que consumir.
+          </p>
 
           <div class="venue-pills">
             <span class="pill">🍻 Bar completo</span>
@@ -1444,18 +1434,17 @@
               <h2>Uma noite para cantar, dançar e lembrar.</h2>
               <p>
                 A programação foi pensada para começar leve, ganhar energia ao longo da noite
-                e terminar com a pista cheia. E quem fecha essa festa é ninguém menos que o nosso
-                querido <strong>Bobinho</strong>, trazendo aquela memória afetiva que faz parte da
-                história da turma. Um line-up que mistura DJ, samba e show ao vivo para acompanhar
-                cada momento do reencontro!
+                e terminar com a pista cheia. Um line-up que mistura DJ, samba e show ao vivo
+                para acompanhar cada momento do reencontro.
               </p>
             </div>
 
             <div class="lineup-summary">
               <span>🎧 2 momentos de DJ</span>
               <span>🥁 Samba ao vivo</span>
-              <span>🎤 Show principal</span>
-              <span>🕺 6 horas de festa</span>
+              <span>🥁 Pop rock com muitas lembranças</span>
+              <!-- <span>🎤 Show principal</span> -->
+              <!-- <span>🕺 6 horas de festa</span> -->
             </div>
           </article>
 
@@ -1481,8 +1470,8 @@
             <article class="lineup-item headliner">
               <div class="lineup-time">22:00 — 00:00</div>
               <div class="lineup-name">
-                <strong>Bobinho • Rafa Furtado & Banda Papaninfa</strong>
-                <span>Um reencontro com memória afetiva: Bobinho de volta ao palco para fechar a noite com a turma.</span>
+                <strong>Rafa Furtado & Banda Papaninfa</strong>
+                <span>O show da noite, com banda completa e repertório para cantar junto.</span>
               </div>
               <!-- <span class="lineup-type">Show principal</span> -->
             </article>
@@ -1496,9 +1485,9 @@
               <!-- <span class="lineup-type">Encerramento</span> -->
             </article>
 
-            <div class="lineup-footer">
+            <!-- <div class="lineup-footer">
               Horários sujeitos a pequenos ajustes de produção, mantendo a programação completa da noite.
-            </div>
+            </div> -->
           </div>
         </div>
       </div>
@@ -1552,14 +1541,14 @@
         </header>
         <div class="timeline">
           <article class="timeline-step glass"><strong>01</strong>
-            <p>Você informa seu interesse e pode cadastrar 1 acompanhante.</p>
+            <p>Você informa seu interesse e pode cadastrar acompanhantes.</p>
           </article>
        
           <article class="timeline-step glass"><strong>02</strong>
-            <p>Assim que atingirmos o quórum mínimo de 120 participantes e o evento for confirmado, enviaremos pelo WhatsApp todas as instruções para o pagamento.</p>
+            <p>Enviamos as instruções de pagamento pelo WhatsApp.</p>
           </article>
           <article class="timeline-step glass"><strong>03</strong>
-            <p>Após a confirmação do pagamento, cada participante receberá um QR Code individual, que deverá ser apresentado na entrada da festa para acesso ao evento.</p>
+            <p>Após o pagamento, cada participante recebe seu QR Code.</p>
           </article>
         </div>
       </div>
@@ -1572,7 +1561,8 @@
             <div><span class="eyebrow">Vamos nessa?</span>
               <h2>Registre seu interesse</h2>
             </div>
-            <p>Informe seu WhatsApp para localizar o cadastro.</p>
+            <p>Informe seu WhatsApp para localizar o cadastro. Caso o telefone ainda não exista, você poderá informar
+              seu nome e registrar o interesse.</p>
           </header>
 
           <div id="eventSummary" class="message info"></div>
@@ -1631,10 +1621,9 @@
             <div class="companion-registration-head">
               <div>
                 <span class="eyebrow">Acompanhantes</span>
-                <h3>Deseja adicionar 1 acompanhante?</h3>
+                <h3>Deseja adicionar um acompanhante?</h3>
                 <p>
                   Se sim, preencha os campos abaixo. O telefone é opcional.
-                  Este convite permite o cadastro de apenas 1 acompanhante.
                   Caso o telefone seja informado e já esteja cadastrado neste evento,
                   o sistema carregará o nome e não permitirá cadastrar novamente.
                 </p>
@@ -2259,11 +2248,6 @@
     }
 
     async function addCompanion() {
-      if (companions.length >= 1) {
-        showMessage('companionStatus','Este convite permite o cadastro de apenas 1 acompanhante.','error');
-        return;
-      }
-
       if (!guestId) {
         showMessage('companionStatus', 'Registre primeiro o seu interesse.', 'error');
         return;
@@ -2383,7 +2367,6 @@
       companionAlreadyExists = null;
 
       renderCompanionsGrid();
-      updateCompanionFormState();
       await refreshInterestCount();
 
       showMessage(
@@ -2421,18 +2404,6 @@
 
       companions = data || [];
       renderCompanionsGrid();
-      updateCompanionFormState();
-    }
-
-    function updateCompanionFormState() {
-      const button = document.getElementById('addCompanionButton');
-      const phoneInput = document.getElementById('companionPhone');
-      const nameInput = document.getElementById('companionName');
-      const hasCompanion = companions.length >= 1;
-      if (button) { button.disabled = hasCompanion; button.textContent = hasCompanion ? 'Acompanhante já cadastrado' : 'Cadastrar acompanhante'; }
-      if (phoneInput) phoneInput.disabled = hasCompanion;
-      if (nameInput) nameInput.disabled = hasCompanion;
-      if (hasCompanion) showMessage('companionStatus','Você já cadastrou 1 acompanhante para este convite.','info');
     }
 
     function renderCompanionsGrid() {
