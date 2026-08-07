@@ -1,0 +1,1447 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Editar eventos</title>
+  <link href="../image/favicon.ico" rel="icon" type="image/x-icon" />
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: Inter, Arial, sans-serif;
+    }
+
+    :root {
+      --bg: #070a12;
+      --surface: #101522;
+      --surface-2: #181e2c;
+      --surface-3: #222938;
+      --line: rgba(255,255,255,.09);
+      --text: #f7f8fb;
+      --muted: #9ba7bb;
+      --gold: #f1b951;
+      --gold-2: #ffd779;
+      --blue: #668cff;
+      --green: #72d49b;
+      --red: #ff8585;
+      --warning: #f7c86a;
+      --shadow: 0 28px 90px rgba(0,0,0,.36);
+    }
+
+    body {
+      min-height: 100vh;
+      padding: 24px;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 10% 0%, rgba(241,185,81,.12), transparent 28%),
+        radial-gradient(circle at 90% 8%, rgba(102,140,255,.14), transparent 30%),
+        linear-gradient(145deg, #05070c, #0a0e18 52%, #070912);
+    }
+
+    button,
+    input,
+    select,
+    textarea {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    .page {
+      width: min(1500px, 100%);
+      margin: 0 auto;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 18px;
+      margin-bottom: 24px;
+      padding: 18px 22px;
+      border-radius: 24px;
+      background: rgba(16,21,34,.9);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(18px);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-mark {
+      width: 44px;
+      height: 44px;
+      display: grid;
+      place-items: center;
+      border-radius: 15px;
+      background: rgba(241,185,81,.12);
+      border: 1px solid rgba(241,185,81,.28);
+      color: var(--gold-2);
+      font-weight: 950;
+      font-size: 20px;
+    }
+
+    .brand strong {
+      display: block;
+      font-size: 18px;
+    }
+
+    .brand span {
+      display: block;
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .top-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      border: 0;
+      border-radius: 15px;
+      padding: 13px 17px;
+      font-weight: 900;
+      transition: .2s ease;
+    }
+
+    .btn:hover:not(:disabled) {
+      transform: translateY(-2px);
+    }
+
+    .btn:disabled {
+      opacity: .5;
+      cursor: not-allowed;
+    }
+
+    .btn-primary {
+      color: #111827;
+      background: linear-gradient(135deg, var(--gold-2), var(--gold));
+      box-shadow: 0 15px 34px rgba(241,185,81,.2);
+    }
+
+    .btn-secondary {
+      color: var(--text);
+      background: var(--surface-3);
+      border: 1px solid var(--line);
+    }
+
+    .btn-danger {
+      color: #ffd1d1;
+      background: rgba(255,133,133,.11);
+      border: 1px solid rgba(255,133,133,.2);
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 390px minmax(0, 1fr);
+      gap: 20px;
+      align-items: start;
+    }
+
+    .panel {
+      border-radius: 28px;
+      background: rgba(16,21,34,.92);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      backdrop-filter: blur(18px);
+    }
+
+    .panel-head {
+      padding: 22px;
+      border-bottom: 1px solid var(--line);
+      background:
+        radial-gradient(circle at 100% 0%, rgba(241,185,81,.09), transparent 32%),
+        rgba(255,255,255,.01);
+    }
+
+    .panel-head h1,
+    .panel-head h2 {
+      font-size: 24px;
+      letter-spacing: -.03em;
+    }
+
+    .panel-head p {
+      margin-top: 7px;
+      color: var(--muted);
+      line-height: 1.45;
+      font-size: 14px;
+    }
+
+    .list-tools {
+      padding: 16px;
+      display: grid;
+      gap: 10px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .search-group {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+    }
+
+    input,
+    select,
+    textarea {
+      width: 100%;
+      color: var(--text);
+      background: var(--surface-2);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 14px;
+      outline: none;
+      transition: .2s ease;
+    }
+
+    input:focus,
+    select:focus,
+    textarea:focus {
+      border-color: rgba(241,185,81,.55);
+      box-shadow: 0 0 0 4px rgba(241,185,81,.09);
+    }
+
+    input::placeholder,
+    textarea::placeholder {
+      color: #758196;
+    }
+
+    .event-list {
+      max-height: calc(100vh - 230px);
+      overflow: auto;
+      padding: 10px;
+    }
+
+    .event-card {
+      width: 100%;
+      text-align: left;
+      padding: 16px;
+      margin-bottom: 9px;
+      border-radius: 18px;
+      border: 1px solid transparent;
+      color: var(--text);
+      background: transparent;
+      transition: .2s ease;
+    }
+
+    .event-card:hover,
+    .event-card.active {
+      background: rgba(255,255,255,.045);
+      border-color: rgba(241,185,81,.22);
+    }
+
+    .event-card.active {
+      box-shadow: inset 4px 0 0 var(--gold);
+    }
+
+    .event-card strong {
+      display: block;
+      font-size: 16px;
+      margin-bottom: 8px;
+    }
+
+    .event-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 750;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 9px;
+      border-radius: 999px;
+      color: #dfe6f2;
+      background: rgba(255,255,255,.055);
+      border: 1px solid var(--line);
+    }
+
+    .empty {
+      padding: 34px 20px;
+      text-align: center;
+      color: var(--muted);
+      line-height: 1.6;
+    }
+
+    .editor {
+      min-height: 660px;
+    }
+
+    .editor-placeholder {
+      min-height: 660px;
+      display: grid;
+      place-items: center;
+      padding: 30px;
+      text-align: center;
+      color: var(--muted);
+    }
+
+    .editor-placeholder strong {
+      display: block;
+      color: var(--text);
+      font-size: 22px;
+      margin-bottom: 8px;
+    }
+
+    .editor-form {
+      display: none;
+    }
+
+    .editor-form.active {
+      display: block;
+    }
+
+    .form-content {
+      padding: 22px;
+      display: grid;
+      gap: 18px;
+    }
+
+    .section-card {
+      padding: 20px;
+      border-radius: 22px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.025);
+    }
+
+    .section-card h3 {
+      font-size: 18px;
+      margin-bottom: 5px;
+    }
+
+    .section-card > p {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+      margin-bottom: 16px;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0,1fr));
+      gap: 14px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .field.full {
+      grid-column: 1 / -1;
+    }
+
+    .field label {
+      font-size: 13px;
+      color: #d5dcea;
+      font-weight: 850;
+    }
+
+    .field small {
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
+    .switch-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 15px;
+      border-radius: 17px;
+      background: var(--surface-2);
+      border: 1px solid var(--line);
+    }
+
+    .switch-copy strong {
+      display: block;
+      margin-bottom: 5px;
+    }
+
+    .switch-copy span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .switch {
+      position: relative;
+      width: 54px;
+      min-width: 54px;
+      height: 30px;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      inset: 0;
+      border-radius: 999px;
+      background: #394151;
+      transition: .2s;
+    }
+
+    .slider:before {
+      content: "";
+      position: absolute;
+      width: 22px;
+      height: 22px;
+      left: 4px;
+      top: 4px;
+      border-radius: 50%;
+      background: white;
+      transition: .2s;
+    }
+
+    .switch input:checked + .slider {
+      background: linear-gradient(135deg, var(--gold-2), var(--gold));
+    }
+
+    .switch input:checked + .slider:before {
+      transform: translateX(24px);
+    }
+
+    .preview-image {
+      display: none;
+      margin-top: 12px;
+      border-radius: 18px;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      background: var(--surface-2);
+    }
+
+    .preview-image.active {
+      display: block;
+    }
+
+    .preview-image img {
+      width: 100%;
+      max-height: 320px;
+      object-fit: cover;
+      display: block;
+    }
+
+    .sticky-actions {
+      position: sticky;
+      bottom: 0;
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      padding: 18px 22px;
+      background: rgba(10,14,24,.96);
+      border-top: 1px solid var(--line);
+      backdrop-filter: blur(16px);
+    }
+
+    .message {
+      display: none;
+      padding: 15px 17px;
+      margin: 0 22px 18px;
+      border-radius: 16px;
+      font-weight: 750;
+      line-height: 1.45;
+      font-size: 14px;
+    }
+
+    .message.success {
+      display: block;
+      color: #c8f5d9;
+      background: rgba(114,212,155,.1);
+      border: 1px solid rgba(114,212,155,.2);
+    }
+
+    .message.error {
+      display: block;
+      color: #ffc7c7;
+      background: rgba(255,133,133,.1);
+      border: 1px solid rgba(255,133,133,.2);
+    }
+
+    .message.info {
+      display: block;
+      color: #c9d4ff;
+      background: rgba(102,140,255,.1);
+      border: 1px solid rgba(102,140,255,.2);
+    }
+
+    .overlay {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 999;
+      background: rgba(5,7,12,.78);
+      backdrop-filter: blur(10px);
+    }
+
+    .overlay.active {
+      display: flex;
+    }
+
+    .progress {
+      width: min(460px,100%);
+      padding: 28px;
+      text-align: center;
+      border-radius: 26px;
+      color: #111827;
+      background: white;
+      box-shadow: 0 35px 100px rgba(0,0,0,.4);
+    }
+
+    .spinner {
+      width: 48px;
+      height: 48px;
+      margin: 0 auto 17px;
+      border-radius: 50%;
+      border: 4px solid #fde7ba;
+      border-top-color: #e6a52d;
+      animation: spin .75s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @media (max-width: 980px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .event-list {
+        max-height: 380px;
+      }
+    }
+
+    @media (max-width: 640px) {
+      body {
+        padding: 10px;
+      }
+
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .top-actions,
+      .top-actions .btn {
+        width: 100%;
+      }
+
+      .form-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .field.full {
+        grid-column: auto;
+      }
+
+      .sticky-actions {
+        flex-direction: column-reverse;
+      }
+
+      .sticky-actions .btn {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="page">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">E</div>
+        <div>
+          <strong>Editar eventos</strong>
+          <span>Atualize informações, regras, pagamentos e integrações.</span>
+        </div>
+      </div>
+
+      <div class="top-actions">
+        <button class="btn btn-secondary" type="button" onclick="reloadEvents()">
+          Atualizar lista
+        </button>
+        <button class="btn btn-primary" type="button" onclick="goToNewEvent()">
+          + Novo evento
+        </button>
+      </div>
+    </header>
+
+    <div class="layout">
+      <aside class="panel">
+        <div class="panel-head">
+          <h2>Eventos cadastrados</h2>
+          <p id="eventCount">Carregando eventos...</p>
+        </div>
+
+        <div class="list-tools">
+          <div class="search-group">
+            <input
+              id="searchInput"
+              type="search"
+              placeholder="Buscar evento ou local..."
+              onkeydown="if(event.key==='Enter'){event.preventDefault();applySearch();}"
+            >
+            <button class="btn btn-primary" type="button" onclick="applySearch()">Buscar</button>
+          </div>
+
+          <select id="dateFilter" onchange="applySearch()">
+            <option value="all">Todos os eventos</option>
+            <option value="upcoming">Próximos eventos</option>
+            <option value="past">Eventos anteriores</option>
+          </select>
+        </div>
+
+        <div id="eventList" class="event-list">
+          <div class="empty">Carregando...</div>
+        </div>
+      </aside>
+
+      <main class="panel editor">
+        <div id="editorPlaceholder" class="editor-placeholder">
+          <div>
+            <strong>Selecione um evento</strong>
+            Escolha um evento na lista para carregar e editar todas as informações.
+          </div>
+        </div>
+
+        <form id="eventForm" class="editor-form" onsubmit="saveEvent(event)">
+          <div class="panel-head">
+            <h1 id="editorTitle">Editar evento</h1>
+            <p id="editorSubtitle">Atualize os dados e clique em salvar alterações.</p>
+          </div>
+
+          <div class="form-content">
+            <section class="section-card">
+              <h3>Informações principais</h3>
+              <p>Dados usados no convite, confirmação, pagamento e QR Codes.</p>
+
+              <div class="form-grid">
+                <div class="field full">
+                  <label for="name">Nome do evento *</label>
+                  <input id="name" type="text" required>
+                </div>
+
+                <div class="field">
+                  <label for="eventDate">Data *</label>
+                  <input id="eventDate" type="date" required>
+                </div>
+
+                <div class="field">
+                  <label for="location">Local *</label>
+                  <input id="location" type="text" required>
+                </div>
+
+                <div class="field">
+                  <label for="eventTime">Hora de início</label>
+                  <input id="eventTime" type="time">
+                </div>
+
+                <div class="field">
+                  <label for="eventEndTime">Hora de término</label>
+                  <input id="eventEndTime" type="time">
+                </div>
+
+                <div class="field full">
+                  <label for="googleMapsLink">Link do Google Maps</label>
+                  <input id="googleMapsLink" type="url" placeholder="https://maps.google.com/...">
+                </div>
+              </div>
+            </section>
+
+            <section class="section-card">
+              <h3>Convite e capacidade</h3>
+              <p>Imagem pública, quantidade estimada e pacote comercial.</p>
+
+              <div class="form-grid">
+                <div class="field full">
+                  <label for="invitationImageUrl">URL da imagem do convite</label>
+                  <input
+                    id="invitationImageUrl"
+                    type="url"
+                    placeholder="https://..."
+                    oninput="renderInvitationPreview()"
+                  >
+                  <small>O campo invitation_image_path será preservado e não será alterado por esta tela.</small>
+
+                  <div id="invitationPreview" class="preview-image">
+                    <img id="invitationPreviewImage" alt="Prévia do convite">
+                  </div>
+                </div>
+
+                <div class="field">
+                  <label for="guestLimit">Limite de convidados</label>
+                  <input id="guestLimit" type="number" min="0" step="1">
+                </div>
+
+                <div class="field">
+                  <label for="packageName">Nome do pacote</label>
+                  <input id="packageName" type="text">
+                </div>
+
+                <div class="field">
+                  <label for="packageAmount">Valor do pacote</label>
+                  <input id="packageAmount" type="number" min="0" step="0.01">
+                </div>
+
+                <div class="field">
+                  <label for="pricePerGuest">Valor por convidado</label>
+                  <input id="pricePerGuest" type="number" min="0" step="0.01">
+                </div>
+              </div>
+            </section>
+
+            <section class="section-card">
+              <h3>Regras do evento</h3>
+              <p>Defina como o sistema deve tratar confirmação, acompanhantes e pagamento.</p>
+
+              <div class="form-grid">
+                <div class="switch-card">
+                  <div class="switch-copy">
+                    <strong>Gerar QR Code ao confirmar</strong>
+                    <span>Gera o QR Code automaticamente na confirmação de presença.</span>
+                  </div>
+                  <label class="switch">
+                    <input id="generateQrCodeOnConfirm" type="checkbox">
+                    <span class="slider"></span>
+                  </label>
+                </div>
+
+                <div class="switch-card">
+                  <div class="switch-copy">
+                    <strong>Permitir acompanhantes</strong>
+                    <span>Libera o cadastro de acompanhantes pelo convidado.</span>
+                  </div>
+                  <label class="switch">
+                    <input id="allowGuestCompanions" type="checkbox">
+                    <span class="slider"></span>
+                  </label>
+                </div>
+
+                <div class="switch-card">
+                  <div class="switch-copy">
+                    <strong>Pagamento obrigatório</strong>
+                    <span>Indica que o evento possui cobrança antes da liberação do ingresso.</span>
+                  </div>
+                  <label class="switch">
+                    <input id="paymentRequired" type="checkbox">
+                    <span class="slider"></span>
+                  </label>
+                </div>
+
+                <div class="field">
+                  <label for="paymentStatus">Status geral do pagamento</label>
+                  <select id="paymentStatus">
+                    <option value="">Não informado</option>
+                    <option value="pending">Pendente</option>
+                    <option value="active">Ativo</option>
+                    <option value="paid">Pago</option>
+                    <option value="cancelled">Cancelado</option>
+                  </select>
+                  <small>Use apenas valores aceitos pelo seu banco. Caso exista uma constraint diferente, ajuste as opções.</small>
+                </div>
+              </div>
+            </section>
+
+            <section class="section-card">
+              <h3>Dados do responsável</h3>
+              <p>Contato principal do evento.</p>
+
+              <div class="form-grid">
+                <div class="field">
+                  <label for="responsibleName">Nome</label>
+                  <input id="responsibleName" type="text">
+                </div>
+
+                <div class="field">
+                  <label for="responsibleWhatsapp">WhatsApp</label>
+                  <input id="responsibleWhatsapp" type="tel">
+                </div>
+
+                <div class="field full">
+                  <label for="responsibleEmail">E-mail</label>
+                  <input id="responsibleEmail" type="email">
+                </div>
+              </div>
+            </section>
+
+            <section class="section-card">
+              <h3>PIX do evento</h3>
+              <p>Informações exibidas na tela de pagamento.</p>
+
+              <div class="form-grid">
+                <div class="field">
+                  <label for="pixKey">Chave PIX</label>
+                  <input id="pixKey" type="text">
+                </div>
+
+                <div class="field">
+                  <label for="pixRecipientName">Favorecido</label>
+                  <input id="pixRecipientName" type="text">
+                </div>
+
+                <div class="field">
+                  <label for="pixRecipientCity">Cidade do favorecido</label>
+                  <input id="pixRecipientCity" type="text">
+                </div>
+
+                <div class="field full">
+                  <label for="pixCopyPaste">PIX Copia e Cola</label>
+                  <textarea id="pixCopyPaste" rows="5"></textarea>
+                </div>
+              </div>
+            </section>
+
+            <section class="section-card">
+              <h3>Integração de mensagens</h3>
+              <p>Configuração do provedor WhatsApp usado pelo evento.</p>
+
+              <div class="form-grid">
+                <div class="field">
+                  <label for="sendProvider">Provedor</label>
+                  <select id="sendProvider">
+                    <option value="">Não informado</option>
+                    <option value="zapi">Z-API</option>
+                    <option value="bot_whatsapp">Bot WhatsApp</option>
+                  </select>
+                </div>
+
+                <div class="field">
+                  <label for="zapiInstanceId">Z-API Instance ID</label>
+                  <input id="zapiInstanceId" type="text">
+                </div>
+
+                <div class="field">
+                  <label for="zapiInstanceToken">Z-API Instance Token</label>
+                  <input id="zapiInstanceToken" type="password">
+                </div>
+
+                <div class="field">
+                  <label for="zapiClientToken">Z-API Client Token</label>
+                  <input id="zapiClientToken" type="password">
+                </div>
+              </div>
+            </section>
+
+            <section class="section-card">
+              <h3>Identificadores</h3>
+              <p>Informações técnicas para conferência. Não são editadas nesta tela.</p>
+
+              <div class="form-grid">
+                <div class="field full">
+                  <label for="eventIdField">ID do evento</label>
+                  <input id="eventIdField" type="text" readonly>
+                </div>
+
+                <div class="field">
+                  <label for="userIdField">User ID</label>
+                  <input id="userIdField" type="text" readonly>
+                </div>
+
+                <div class="field">
+                  <label for="createdAtField">Criado em</label>
+                  <input id="createdAtField" type="text" readonly>
+                </div>
+
+                <div class="field full">
+                  <label for="paymentIdField">Payment ID</label>
+                  <input id="paymentIdField" type="text" readonly>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          <div id="message" class="message"></div>
+
+          <div class="sticky-actions">
+            <button class="btn btn-secondary" type="button" onclick="resetCurrentEvent()">
+              Descartar alterações
+            </button>
+
+            <button id="deleteButton" class="btn btn-danger" type="button" onclick="deleteCurrentEvent()">
+              Excluir evento
+            </button>
+
+            <button id="saveButton" class="btn btn-primary" type="submit">
+              Salvar alterações
+            </button>
+          </div>
+        </form>
+      </main>
+    </div>
+  </div>
+
+  <div id="overlay" class="overlay">
+    <div class="progress">
+      <div class="spinner"></div>
+      <h2 id="progressTitle">Carregando...</h2>
+      <p id="progressText" style="color:#64748b;margin-top:8px;line-height:1.5">
+        Aguarde enquanto processamos as informações.
+      </p>
+    </div>
+  </div>
+
+  <script>
+    const savedUrl =
+      localStorage.getItem('supabase_url') ||
+      'https://pfyctxoikdrephjogdtm.supabase.co';
+
+    const savedKey =
+      localStorage.getItem('supabase_key') ||
+      'sb_publishable_h_5hK_HTT-XJ4WUoOGzkGg_tqkBDLjv';
+
+    const supabaseClient = supabase.createClient(savedUrl, savedKey);
+
+    const params = new URLSearchParams(window.location.search);
+    const requestedEventId = params.get('event_id');
+    const requestedUserId = params.get('user_id');
+
+    let allEvents = [];
+    let filteredEvents = [];
+    let currentEvent = null;
+
+    initializePage();
+
+    async function initializePage() {
+      await loadEvents();
+
+      if (requestedEventId) {
+        await selectEvent(requestedEventId);
+      }
+    }
+
+    async function loadEvents() {
+      showProgress('Carregando eventos...', 'Buscando os eventos cadastrados no Supabase.');
+
+      try {
+        let query = supabaseClient
+          .from('events')
+          .select('*')
+          .order('event_date', { ascending: false });
+
+        if (requestedUserId) {
+          query = query.eq('user_id', requestedUserId);
+        }
+
+        const { data, error } = await query;
+
+        if (error) throw error;
+
+        allEvents = data || [];
+        filteredEvents = allEvents.slice();
+
+        renderEventList();
+      } catch (error) {
+        document.getElementById('eventList').innerHTML = `
+          <div class="empty">
+            Não foi possível carregar os eventos.<br>
+            ${escapeHTML(buildReadableError(error))}
+          </div>
+        `;
+
+        document.getElementById('eventCount').textContent =
+          'Erro ao carregar eventos';
+      } finally {
+        hideProgress();
+      }
+    }
+
+    async function reloadEvents() {
+      const selectedId = currentEvent?.id || null;
+
+      await loadEvents();
+
+      if (selectedId) {
+        await selectEvent(selectedId);
+      }
+    }
+
+    function applySearch() {
+      const search = document
+        .getElementById('searchInput')
+        .value
+        .trim()
+        .toLowerCase();
+
+      const dateFilter = document.getElementById('dateFilter').value;
+      const today = new Date();
+      today.setHours(0,0,0,0);
+
+      filteredEvents = allEvents.filter(event => {
+        const text = [
+          event.name,
+          event.location,
+          event.responsible_name,
+          event.package_name
+        ]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+
+        const matchesSearch = !search || text.includes(search);
+
+        const eventDate = event.event_date
+          ? new Date(`${event.event_date}T00:00:00`)
+          : null;
+
+        const matchesDate =
+          dateFilter === 'all' ||
+          (dateFilter === 'upcoming' && eventDate && eventDate >= today) ||
+          (dateFilter === 'past' && eventDate && eventDate < today);
+
+        return matchesSearch && matchesDate;
+      });
+
+      renderEventList();
+    }
+
+    function renderEventList() {
+      const list = document.getElementById('eventList');
+
+      document.getElementById('eventCount').textContent =
+        `${filteredEvents.length} ${filteredEvents.length === 1 ? 'evento encontrado' : 'eventos encontrados'}`;
+
+      if (!filteredEvents.length) {
+        list.innerHTML = `
+          <div class="empty">
+            Nenhum evento encontrado para os filtros selecionados.
+          </div>
+        `;
+        return;
+      }
+
+      list.innerHTML = filteredEvents.map(event => `
+        <button
+          type="button"
+          class="event-card ${currentEvent?.id === event.id ? 'active' : ''}"
+          onclick="selectEvent('${escapeHTML(event.id)}')"
+        >
+          <strong>${escapeHTML(event.name || 'Evento sem nome')}</strong>
+
+          <div class="event-meta">
+            ${event.event_date ? `<span class="chip">📅 ${escapeHTML(formatDateBR(event.event_date))}</span>` : ''}
+            ${event.event_time ? `<span class="chip">⏰ ${escapeHTML(formatTime(event.event_time))}</span>` : ''}
+            ${event.location ? `<span class="chip">📍 ${escapeHTML(event.location)}</span>` : ''}
+          </div>
+        </button>
+      `).join('');
+    }
+
+    async function selectEvent(eventId) {
+      showProgress('Carregando evento...', 'Buscando todas as informações do evento.');
+
+      try {
+        const { data, error } = await supabaseClient
+          .from('events')
+          .select('*')
+          .eq('id', eventId)
+          .maybeSingle();
+
+        if (error) throw error;
+
+        if (!data) {
+          throw new Error('Evento não encontrado.');
+        }
+
+        currentEvent = data;
+
+        populateForm(data);
+        renderEventList();
+
+        document.getElementById('editorPlaceholder').style.display = 'none';
+        document.getElementById('eventForm').classList.add('active');
+
+        const nextUrl = new URL(window.location.href);
+        nextUrl.searchParams.set('event_id', data.id);
+        window.history.replaceState({}, '', nextUrl);
+      } catch (error) {
+        showMessage(
+          'Não foi possível carregar o evento: ' + buildReadableError(error),
+          'error'
+        );
+      } finally {
+        hideProgress();
+      }
+    }
+
+    function populateForm(event) {
+      document.getElementById('editorTitle').textContent =
+        event.name || 'Editar evento';
+
+      document.getElementById('editorSubtitle').textContent =
+        `Última leitura realizada agora. ID: ${event.id}`;
+
+      setValue('name', event.name);
+      setValue('eventDate', event.event_date);
+      setValue('location', event.location);
+      setValue('eventTime', formatTimeForInput(event.event_time));
+      setValue('eventEndTime', formatTimeForInput(event.event_end_time));
+      setValue('googleMapsLink', event.google_maps_link);
+
+      setValue('invitationImageUrl', event.invitation_image_url);
+      setValue('guestLimit', event.guest_limit);
+      setValue('packageName', event.package_name);
+      setValue('packageAmount', event.package_amount);
+      setValue('pricePerGuest', event.price_per_guest);
+
+      setChecked('generateQrCodeOnConfirm', event.generate_qrcode_on_confirm);
+      setChecked('allowGuestCompanions', event.allow_guest_companions);
+      setChecked('paymentRequired', event.payment_required);
+      setValue('paymentStatus', event.payment_status);
+
+      setValue('responsibleName', event.responsible_name);
+      setValue('responsibleWhatsapp', event.responsible_whatsapp);
+      setValue('responsibleEmail', event.responsible_email);
+
+      setValue('pixKey', event.pix_key);
+      setValue('pixCopyPaste', event.pix_copy_paste);
+      setValue('pixRecipientName', event.pix_recipient_name);
+      setValue('pixRecipientCity', event.pix_recipient_city);
+
+      setValue('sendProvider', event.send_provider);
+      setValue('zapiInstanceId', event.zapi_instance_id);
+      setValue('zapiInstanceToken', event.zapi_instance_token);
+      setValue('zapiClientToken', event.zapi_client_token);
+
+      setValue('eventIdField', event.id);
+      setValue('userIdField', event.user_id);
+      setValue('createdAtField', formatDateTimeBR(event.created_at));
+      setValue('paymentIdField', event.payment_id);
+
+      renderInvitationPreview();
+      clearMessage();
+    }
+
+    async function saveEvent(event) {
+      event.preventDefault();
+
+      if (!currentEvent?.id) {
+        showMessage('Selecione um evento antes de salvar.', 'error');
+        return;
+      }
+
+      const payload = {
+        name: getText('name'),
+        event_date: getNullable('eventDate'),
+        event_time: getNullable('eventTime'),
+        event_end_time: getNullable('eventEndTime'),
+        location: getText('location'),
+        google_maps_link: getNullable('googleMapsLink'),
+
+        invitation_image_url: getNullable('invitationImageUrl'),
+        guest_limit: getNullableInteger('guestLimit'),
+        package_name: getNullable('packageName'),
+        package_amount: getNullableNumber('packageAmount'),
+        price_per_guest: getNullableNumber('pricePerGuest'),
+
+        generate_qrcode_on_confirm:
+          document.getElementById('generateQrCodeOnConfirm').checked,
+
+        allow_guest_companions:
+          document.getElementById('allowGuestCompanions').checked,
+
+        payment_required:
+          document.getElementById('paymentRequired').checked,
+
+        payment_status: getNullable('paymentStatus'),
+
+        responsible_name: getNullable('responsibleName'),
+        responsible_whatsapp: getNullable('responsibleWhatsapp'),
+        responsible_email: getNullable('responsibleEmail'),
+
+        pix_key: getNullable('pixKey'),
+        pix_copy_paste: getNullable('pixCopyPaste'),
+        pix_recipient_name: getNullable('pixRecipientName'),
+        pix_recipient_city: getNullable('pixRecipientCity'),
+
+        send_provider: getNullable('sendProvider'),
+        zapi_instance_id: getNullable('zapiInstanceId'),
+        zapi_instance_token: getNullable('zapiInstanceToken'),
+        zapi_client_token: getNullable('zapiClientToken')
+      };
+
+      if (!payload.name) {
+        showMessage('Informe o nome do evento.', 'error');
+        return;
+      }
+
+      if (!payload.event_date) {
+        showMessage('Informe a data do evento.', 'error');
+        return;
+      }
+
+      if (!payload.location) {
+        showMessage('Informe o local do evento.', 'error');
+        return;
+      }
+
+      showProgress('Salvando alterações...', 'Atualizando o evento no Supabase.');
+
+      try {
+        const { data, error } = await supabaseClient
+          .from('events')
+          .update(payload)
+          .eq('id', currentEvent.id)
+          .select('*')
+          .maybeSingle();
+
+        if (error) throw error;
+
+        currentEvent = data;
+
+        const index = allEvents.findIndex(item => item.id === data.id);
+
+        if (index >= 0) {
+          allEvents[index] = data;
+        }
+
+        applySearch();
+        populateForm(data);
+
+        showMessage('Evento atualizado com sucesso.', 'success');
+      } catch (error) {
+        showMessage(
+          'Não foi possível salvar o evento: ' + buildReadableError(error),
+          'error'
+        );
+      } finally {
+        hideProgress();
+      }
+    }
+
+    function resetCurrentEvent() {
+      if (!currentEvent) return;
+      populateForm(currentEvent);
+      showMessage('Alterações descartadas.', 'info');
+    }
+
+    async function deleteCurrentEvent() {
+      if (!currentEvent?.id) return;
+
+      const confirmed = window.confirm(
+        `Tem certeza que deseja excluir o evento "${currentEvent.name}"?\n\n` +
+        'Esta ação pode apagar ou afetar convidados, pagamentos e QR Codes vinculados, dependendo das regras do banco.'
+      );
+
+      if (!confirmed) return;
+
+      const typedName = window.prompt(
+        'Para confirmar a exclusão, digite o nome exato do evento:'
+      );
+
+      if (typedName !== currentEvent.name) {
+        showMessage('O nome informado não corresponde ao evento.', 'error');
+        return;
+      }
+
+      showProgress('Excluindo evento...', 'Removendo o registro do Supabase.');
+
+      try {
+        const { error } = await supabaseClient
+          .from('events')
+          .delete()
+          .eq('id', currentEvent.id);
+
+        if (error) throw error;
+
+        allEvents = allEvents.filter(item => item.id !== currentEvent.id);
+        filteredEvents = filteredEvents.filter(item => item.id !== currentEvent.id);
+        currentEvent = null;
+
+        document.getElementById('eventForm').classList.remove('active');
+        document.getElementById('editorPlaceholder').style.display = 'grid';
+
+        const nextUrl = new URL(window.location.href);
+        nextUrl.searchParams.delete('event_id');
+        window.history.replaceState({}, '', nextUrl);
+
+        renderEventList();
+      } catch (error) {
+        showMessage(
+          'Não foi possível excluir o evento: ' + buildReadableError(error),
+          'error'
+        );
+      } finally {
+        hideProgress();
+      }
+    }
+
+    function renderInvitationPreview() {
+      const url = document
+        .getElementById('invitationImageUrl')
+        .value
+        .trim();
+
+      const preview = document.getElementById('invitationPreview');
+      const image = document.getElementById('invitationPreviewImage');
+
+      if (!url) {
+        preview.classList.remove('active');
+        image.removeAttribute('src');
+        return;
+      }
+
+      image.src = url;
+      preview.classList.add('active');
+
+      image.onerror = () => {
+        preview.classList.remove('active');
+      };
+    }
+
+    function goToNewEvent() {
+      const userId = currentEvent?.user_id || requestedUserId || '';
+      const url = `/events/novo/${userId ? `?user_id=${encodeURIComponent(userId)}` : ''}`;
+      window.location.href = url;
+    }
+
+    function showProgress(title, text) {
+      document.getElementById('progressTitle').textContent = title;
+      document.getElementById('progressText').textContent = text;
+      document.getElementById('overlay').classList.add('active');
+    }
+
+    function hideProgress() {
+      document.getElementById('overlay').classList.remove('active');
+    }
+
+    function showMessage(text, type) {
+      const el = document.getElementById('message');
+      el.textContent = text;
+      el.className = `message ${type}`;
+
+      window.setTimeout(() => {
+        el.scrollIntoView({
+          behavior: 'smooth',
+          block: 'nearest'
+        });
+      }, 100);
+    }
+
+    function clearMessage() {
+      const el = document.getElementById('message');
+      el.textContent = '';
+      el.className = 'message';
+    }
+
+    function setValue(id, value) {
+      document.getElementById(id).value =
+        value === null || value === undefined ? '' : value;
+    }
+
+    function setChecked(id, value) {
+      document.getElementById(id).checked = value === true;
+    }
+
+    function getText(id) {
+      return document.getElementById(id).value.trim();
+    }
+
+    function getNullable(id) {
+      const value = getText(id);
+      return value || null;
+    }
+
+    function getNullableInteger(id) {
+      const value = getText(id);
+
+      if (!value) return null;
+
+      const number = parseInt(value, 10);
+      return Number.isFinite(number) ? number : null;
+    }
+
+    function getNullableNumber(id) {
+      const value = getText(id);
+
+      if (!value) return null;
+
+      const number = Number(String(value).replace(',', '.'));
+      return Number.isFinite(number) ? number : null;
+    }
+
+    function formatDateBR(value) {
+      if (!value) return '';
+
+      const parts = String(value).split('-');
+
+      return parts.length === 3
+        ? `${parts[2]}/${parts[1]}/${parts[0]}`
+        : value;
+    }
+
+    function formatTime(value) {
+      return value ? String(value).slice(0,5) : '';
+    }
+
+    function formatTimeForInput(value) {
+      return value ? String(value).slice(0,5) : '';
+    }
+
+    function formatDateTimeBR(value) {
+      if (!value) return '';
+
+      const date = new Date(value);
+
+      if (Number.isNaN(date.getTime())) {
+        return String(value);
+      }
+
+      return date.toLocaleString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    }
+
+    function buildReadableError(error) {
+      if (!error) return 'Erro desconhecido.';
+
+      const parts = [];
+
+      if (error.message) parts.push(error.message);
+      if (error.details) parts.push(error.details);
+      if (error.hint) parts.push(error.hint);
+      if (error.code) parts.push(`Código: ${error.code}`);
+
+      return parts.length ? parts.join(' ') : String(error);
+    }
+
+    function escapeHTML(value) {
+      return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+  </script>
+</body>
+</html>

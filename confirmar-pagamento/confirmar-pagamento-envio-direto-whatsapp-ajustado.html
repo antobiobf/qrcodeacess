@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pagamento do ingresso</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode/1.5.1/qrcode.min.js"></script>
+  <!--
+  SQL BASE
+
+  create table if not exists public.guest_payments (
+    id uuid primary key default gen_random_uuid(),
+    event_id uuid not null references public.events(id) on delete cascade,
+    guest_id uuid not null references public.event_guests(id) on delete cascade,
+    unit_amount numeric(12,2) not null,
+    companion_count integer not null default 0,
+    people_count integer not null default 1,
+    total_amount numeric(12,2) not null,
+    receipt_path text,
+    receipt_filename text,
+    receipt_mime_type text,
+    receipt_size bigint,
+    status text not null default 'pending_receipt'
+      check (status in ('pending_receipt','pending_review','approved','rejected','cancelled')),
+    submitted_at timestamptz,
+    reviewed_at timestamptz,
+    reviewed_by uuid,
+    review_notes text,
+    created_at timestamptz not null default now(),
+    updated_at timestamptz not null default now(),
+    unique(event_id, guest_id)
+  );
+
+  create table if not exists public.guest_payment_people (
+    id uuid primary key default gen_random_uuid(),
+    payment_id uuid not null references public.guest_payments(id) on delete cascade,
+    event_guest_id uuid not null references public.event_guests(id) on delete cascade,
+    role text not null check (role in ('main_guest','companion')),
+    amount numeric(12,2) not null,
+    created_at timestamptz not null default now(),
+    unique(payment_id, event_guest_id)
+  );
+
+  alter table public.event_guests
+    add column if not exists payment_status text default 'not_started',
+    add column if not exists payment_id uuid references public.guest_payments(id) on delete set null,
+    add column if not exists payment_approved_at timestamptz;
+
+  alter table public.events
+    add column if not exists pix_key text,
+    add column if not exists pix_copy_paste text,
+    add column if not exists pix_recipient_name text,
+    add column if not exists pix_recipient_city text;
+
+  insert into storage.buckets (id, name, public)
+  values ('payment-receipts','payment-receipts',false)
+  on conflict (id) do update set public = false;
+
+  create policy "public upload payment receipts"
+  on storage.objects for insert to anon, authenticated
+  with check (bucket_id = 'payment-receipts');
+
+  create or replace function public.get_payment_checkout(p_guest_id uuid)
+  returns jsonb
+  language plpgsql
+  security definer
+  set search_path = public
+  as $$
+  declare
+    v_guest record;
+    v_event record;
+    v_companions jsonb;
+    v_payment jsonb;
+  begin
+    select * into v_guest from public.event_guests where id = p_guest_id;
+    if not found then return jsonb_build_object('error','guest_not_found'); end if;
+
+    select * into v_event from public.events where id = v_guest.event_id;
+
+    select coalesce(jsonb_agg(jsonb_build_object(
+      'id',eg.id,
+      'guest_name',eg.guest_name,
+      'whatsapp',eg.whatsapp,
+      'companion_of',eg.companion_of,
+      'confirmed',eg.confirmed,
+      'payment_status',eg.payment_status
+    ) order by eg.guest_name),'[]'::jsonb)
+    into v_companions
+    from public.event_guests eg
+    where eg.event_id = v_guest.event_id
+      and eg.companion_of = v_guest.guest_name;
+
+    select to_jsonb(gp) into v_payment
+    from public.guest_payments gp
+    where gp.event_id = v_guest.event_id and gp.guest_id = v_guest.id;
+
+    return jsonb_build_object(
+      'guest',jsonb_build_object(
+        'id',v_guest.id,
+        'event_id',v_guest.event_id,
+        'guest_name',v_guest.guest_name,
+        'whatsapp',v_guest.whatsapp,
+        'group_name',v_guest.group_name,
+        'payment_status',v_guest.payment_status
+      ),
+      'event',jsonb_build_object(
+        'id',v_event.id,
+        'name',v_event.name,
+        'event_date',v_event.event_date,
+        'event_time',v_event.event_time,
+        'event_end_time',v_event.event_end_time,
+        'location',v_event.location,
+        'pix_key',v_event.pix_key,
+        'pix_copy_paste',v_event.pix_copy_paste,
+        'pix_recipient_name',v_event.pix_recipient_name,
+        'pix_recipient_city',v_event.pix_recipient_city
+      ),
+      'companions',v_companions,
+      'payment',v_payment
+    );
+  end;
+  $$;
+
+  grant execute on function public.get_payment_checkout(uuid) to anon, authenticated;
+
+  alter table public.guest_payments
+    add column if not exists tickets_sent_at timestamptz,
+    add column if not exists tickets_send_status text default 'not_sent'
+      check (tickets_send_status in ('not_sent','sending','sent','error')),
+    add column if not exists tickets_send_error text;
+
+  alter table public.event_guests
+    add column if not exists ticket_message_sent boolean default false,
+    add column if not exists ticket_message_sent_at timestamptz,
+    add column if not exists ticket_message_error text;
+
+  alter table public.access_codes
+    add column if not exists source_guest_id uuid,
+    add column if not exists group_name text;
+
+  notify pgrst, 'reload schema';
+
+  APROVAÇÃO:
+  - continua manual no painel administrativo;
+  - quando guest_payments.status mudar para approved e esta tela estiver aberta,
+    a própria tela gera os QR Codes e envia diretamente pelo Bot WhatsApp;
+  - não é necessário Edge Function para o envio dos ingressos;
+  - não aprove automaticamente analisando somente a imagem do comprovante.
+  -->
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0;font-family:Inter,Arial,sans-serif}
+    :root{--navy:#0f172a;--blue:#2563eb;--blue2:#1d4ed8;--green:#15803d;--slate:#64748b;--line:#e2e8f0;--soft:#f8fafc}
+    body{min-height:100vh;padding:18px;color:#111827;background:radial-gradient(circle at 10% 8%,rgba(59,130,246,.2),transparent 30%),radial-gradient(circle at 92% 88%,rgba(16,185,129,.16),transparent 34%),linear-gradient(135deg,#0f172a,#1e3a8a)}
+    .page{max-width:820px;margin:auto}
+    .card{background:rgba(255,255,255,.97);border:1px solid rgba(255,255,255,.45);border-radius:30px;padding:30px;box-shadow:0 30px 90px rgba(0,0,0,.28)}
+    .icon{width:84px;height:84px;margin:0 auto 20px;border-radius:999px;display:grid;place-items:center;font-size:38px;background:linear-gradient(135deg,#dbeafe,#bfdbfe);color:var(--blue2)}
+    .icon.success{background:linear-gradient(135deg,#dcfce7,#bbf7d0);color:#166534}.icon.warning{background:linear-gradient(135deg,#fef3c7,#fde68a);color:#92400e}.icon.error{background:linear-gradient(135deg,#fee2e2,#fecaca);color:#991b1b}
+    h1{text-align:center;color:var(--navy);font-size:34px;margin-bottom:12px}.subtitle{text-align:center;color:var(--slate);line-height:1.6;margin-bottom:24px}
+    .status{display:none;margin-bottom:18px;padding:16px 18px;border-radius:18px;font-weight:800;line-height:1.5}.status.active{display:block}.status.pending{background:#fef3c7;color:#92400e}.status.approved{background:#dcfce7;color:#166534}.status.rejected{background:#fee2e2;color:#991b1b}.status.info{background:#dbeafe;color:#1e40af}
+    .details{display:none;background:var(--soft);border:1px solid var(--line);border-radius:22px;padding:18px}.row{display:flex;justify-content:space-between;gap:18px;padding:14px 0;border-bottom:1px solid #e5e7eb}.row:last-child{border-bottom:0}.label{color:var(--slate);font-weight:700}.value{font-weight:850;text-align:right}
+    h2{margin:26px 0 10px;color:var(--navy);font-size:22px}.help{color:var(--slate);line-height:1.55;margin-bottom:14px}
+    .people{display:grid;gap:10px}.person{display:grid;grid-template-columns:1fr auto;gap:14px;align-items:center;padding:15px;border-radius:17px;border:1px solid var(--line);background:var(--soft)}.person strong{display:block;margin-bottom:4px}.person span{color:var(--slate);font-size:13px;font-weight:700}.person .price{color:var(--blue2);font-size:15px;font-weight:900}
+    .total{margin-top:14px;padding:20px;border-radius:20px;background:linear-gradient(135deg,#eff6ff,#ecfdf5);border:1px solid #bfdbfe}.total-main{display:flex;justify-content:space-between;align-items:end;gap:16px}.total-main span{color:var(--slate);font-weight:750}.total-main strong{font-size:30px;color:var(--navy)}.total small{display:block;margin-top:8px;color:var(--slate)}
+    .pix{display:grid;gap:14px;padding:20px;border-radius:22px;border:1px solid var(--line)}.pixline{display:flex;justify-content:space-between;gap:14px;align-items:center}.pixline small{display:block;color:var(--slate);font-weight:750;margin-bottom:5px}.pixline strong{word-break:break-word}.copyarea{padding:14px;border-radius:16px;background:var(--soft);border:1px dashed #94a3b8;word-break:break-word;font-weight:750;line-height:1.45}
+    button{width:100%;border:0;border-radius:18px;padding:17px;font-size:15px;font-weight:850;cursor:pointer}.btn-primary{background:linear-gradient(135deg,var(--blue),var(--blue2));color:#fff}.btn-success{background:linear-gradient(135deg,#16a34a,#15803d);color:#fff}.btn-secondary{background:#e2e8f0;color:#111827}.btn-dark{background:linear-gradient(135deg,#0f172a,#334155);color:#fff}button:disabled{opacity:.55;cursor:not-allowed}
+    .upload-section{display:flex;flex-direction:column;gap:14px;margin-top:14px}
+    .upload{position:relative;width:100%;min-height:190px;border:2px dashed #cbd5e1;border-radius:22px;padding:28px 22px;text-align:center;background:var(--soft);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;cursor:pointer;overflow:hidden;transition:.22s}
+    .upload:hover,.upload.dragover{border-color:var(--blue);background:#eff6ff}
+    .upload input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
+    .upload-icon{font-size:40px;line-height:1;margin-bottom:4px}
+    .upload-title{font-size:16px;font-weight:900;color:var(--navy)}
+    .upload-subtitle{color:var(--slate);font-size:13px;line-height:1.45}
+    .preview{display:none;width:100%;margin-top:4px;padding:14px;border-radius:16px;background:#fff;border:1px solid var(--line);text-align:left}
+    .preview.active{display:block}
+    .preview strong{display:block;margin-bottom:4px;color:var(--navy)}
+    .preview span{color:var(--slate);font-size:13px}
+    .submit-wrap{width:100%;margin-top:4px}
+    .submit-wrap button{display:block;width:100%;min-height:56px}
+    .message{display:none;margin-top:16px;padding:16px;border-radius:17px;font-size:14px;font-weight:750;line-height:1.5}.message.success{display:block;background:#dcfce7;color:#166534}.message.error{display:block;background:#fee2e2;color:#991b1b}.message.info{display:block;background:#dbeafe;color:#1e40af}
+    .note{margin-top:16px;padding:15px;border-radius:17px;background:var(--soft);border:1px solid var(--line);color:#475569;line-height:1.5;font-size:13px}
+    .overlay{position:fixed;inset:0;display:none;z-index:999;align-items:center;justify-content:center;padding:20px;background:rgba(15,23,42,.78)}.overlay.active{display:flex}.progress{width:min(460px,100%);background:#fff;border-radius:26px;padding:28px;text-align:center}.spinner{width:46px;height:46px;margin:0 auto 16px;border-radius:999px;border:4px solid #dbeafe;border-top-color:var(--blue);animation:spin .8s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+    @media(max-width:640px){body{padding:10px}.card{padding:22px;border-radius:24px}h1{font-size:28px}.row,.pixline,.total-main{flex-direction:column;align-items:flex-start}.value{text-align:left}.person{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <div class="page">
+    <main class="card">
+      <div class="icon" id="icon">💳</div>
+      <h1 id="title">Pagamento do ingresso</h1>
+      <p class="subtitle" id="subtitle">Carregando as informações...</p>
+      <div id="status" class="status"></div>
+      <div id="details" class="details"></div>
+
+      <section id="checkout" style="display:none">
+        <h2>Quem está incluído</h2>
+        <p class="help">O pagamento será vinculado nominalmente ao convidado principal e aos acompanhantes abaixo.</p>
+        <div id="people" class="people"></div>
+        <div class="total"><div class="total-main"><span>Total do pagamento</span><strong id="total">R$ 0,00</strong></div><small id="totalNote"></small></div>
+
+        <h2>Pagamento via PIX</h2>
+        <p class="help">Faça o pagamento do total e depois envie o comprovante.</p>
+        <div class="pix">
+          <div class="pixline"><div><small>Favorecido</small><strong id="recipient">Antônio Fonseca Filho</strong></div></div>
+          <div class="pixline"><div><small>Chave PIX</small><strong id="pixKey">07063561448</strong></div><button class="btn-secondary" style="width:auto;padding:12px 16px" onclick="copyPixKey()">Copiar</button></div>
+          <div id="copyWrapper" style="display:none"><div id="copyPaste" class="copyarea"></div><button class="btn-dark" style="margin-top:10px" onclick="copyPixCopyPaste()">Copiar PIX Copia e Cola</button></div>
+        </div>
+
+        <h2>Comprovante</h2>
+        <p class="help">Envie JPG, PNG, WEBP ou PDF legível de até 10 MB.</p>
+
+        <div class="upload-section">
+          <label class="upload" id="uploadArea" for="receiptFile">
+            <input
+              id="receiptFile"
+              type="file"
+              accept="image/jpeg,image/png,image/webp,application/pdf"
+              onchange="handleFile(event)"
+            >
+            <div class="upload-icon">📎</div>
+            <div class="upload-title">Selecionar comprovante</div>
+            <div class="upload-subtitle">Clique aqui ou arraste o arquivo para esta área.</div>
+          </label>
+
+          <div id="preview" class="preview">
+            <strong id="fileName">-</strong>
+            <span id="fileMeta">-</span>
+          </div>
+
+          <div class="submit-wrap">
+            <button
+              id="submit"
+              class="btn-success"
+              type="button"
+              onclick="submitPayment()"
+              disabled>
+              Enviar comprovante para aprovação
+            </button>
+          </div>
+        </div>
+
+        <div class="note">
+          O comprovante será analisado por um administrador. Após a aprovação, esta própria tela gera os QR Codes nominais e envia os ingressos diretamente pelo WhatsApp.
+        </div>
+
+        <div id="ticketSendStatus" class="status" style="margin-top:16px"></div>
+        <button
+          id="sendTicketsButton"
+          class="btn-primary"
+          type="button"
+          onclick="sendApprovedTickets()"
+          style="display:none;margin-top:12px">
+          Enviar ingressos pelo WhatsApp
+        </button>
+      </section>
+      <div id="message" class="message"></div>
+    </main>
+  </div>
+
+  <div id="overlay" class="overlay"><div class="progress"><div class="spinner"></div><h2 id="progressTitle">Processando...</h2><p id="progressText" class="help" style="margin-top:8px">Aguarde.</p></div></div>
+
+  <script>
+    const savedUrl=localStorage.getItem('supabase_url')||'https://pfyctxoikdrephjogdtm.supabase.co';
+    const savedKey=localStorage.getItem('supabase_key')||'sb_publishable_h_5hK_HTT-XJ4WUoOGzkGg_tqkBDLjv';
+    const supabaseClient=supabase.createClient(savedUrl,savedKey);
+    const BOT_WHATSAPP_BASE_URL='https://bot-whatsapp-leila.clin.digital';
+    const BOT_WHATSAPP_MESSAGE_URL=BOT_WHATSAPP_BASE_URL+'/message';
+    const params=new URLSearchParams(location.search);
+    const guestId=params.get('guest_id');
+    const unitPrice=parseMoney(params.get('p'));
+    const maxCompanions=Math.max(0,parseInt(params.get('a')||'0',10)||0);
+    let guestData=null,eventData=null,companions=[],includedPeople=[],existingPayment=null,receiptFile=null;
+    let paymentPollTimer=null,ticketSending=false;
+
+    init();
+    setupUploadArea();
+
+    function setupUploadArea(){
+      const area=document.getElementById('uploadArea');
+      const input=document.getElementById('receiptFile');
+      if(!area||!input)return;
+
+      ['dragenter','dragover'].forEach(name=>{
+        area.addEventListener(name,event=>{
+          event.preventDefault();
+          event.stopPropagation();
+          area.classList.add('dragover');
+        });
+      });
+
+      ['dragleave','drop'].forEach(name=>{
+        area.addEventListener(name,event=>{
+          event.preventDefault();
+          event.stopPropagation();
+          area.classList.remove('dragover');
+        });
+      });
+
+      area.addEventListener('drop',event=>{
+        const files=event.dataTransfer?.files;
+        if(!files||!files.length)return;
+
+        const transfer=new DataTransfer();
+        transfer.items.add(files[0]);
+        input.files=transfer.files;
+        handleFile({target:input});
+      });
+    }
+
+    async function init(){
+      if(!guestId)return setError('Link inválido','O link precisa conter guest_id.');
+      if(!unitPrice||unitPrice<=0)return setError('Valor inválido','O parâmetro p precisa conter um valor válido.');
+      showProgress('Carregando pagamento...','Buscando convidado, acompanhantes e dados do PIX.');
+      try{
+        const {data,error}=await supabaseClient.rpc('get_payment_checkout',{p_guest_id:guestId});
+        if(error)throw new Error('Execute o SQL recomendado no início do arquivo. '+error.message);
+        if(!data||data.error==='guest_not_found')throw new Error('Convidado não encontrado.');
+        guestData=data.guest;eventData=data.event;existingPayment=data.payment||null;
+        companions=(Array.isArray(data.companions)?data.companions:[]).slice(0,maxCompanions);
+        includedPeople=[{...guestData,role:'main_guest'},...companions.map(x=>({...x,role:'companion'}))];
+        render();
+        startPaymentPolling();
+      }catch(e){setError('Não foi possível carregar o pagamento',e.message)}finally{hideProgress()}
+    }
+
+    function render(){
+      const st=existingPayment?.status||guestData?.payment_status||'not_started';
+      icon.textContent=st==='approved'?'✅':st==='pending_review'?'⏳':st==='rejected'?'⚠️':'💳';
+      icon.className=st==='approved'?'icon success':st==='pending_review'?'icon warning':st==='rejected'?'icon error':'icon';
+      title.textContent=st==='approved'?'Pagamento aprovado':st==='pending_review'?'Comprovante em análise':st==='rejected'?'Comprovante não aprovado':'Pagamento do ingresso';
+      subtitle.textContent=st==='approved'?'Seu pagamento foi confirmado. Os ingressos serão enviados diretamente pelo WhatsApp.':st==='pending_review'?'Recebemos seu comprovante e ele está aguardando análise.':st==='rejected'?'Envie um novo comprovante.':`Olá, ${guestData.guest_name}. Confira os dados abaixo.`;
+      renderStatus(st);renderDetails();renderPeople();renderPix();renderState(st);renderTicketSendState(st);checkout.style.display='block';
+    }
+
+    function renderStatus(st){
+      const map={approved:['approved','Pagamento aprovado. O acesso será liberado nominalmente.'],pending_review:['pending','Comprovante enviado. Aguardando aprovação manual.'],rejected:['rejected','O comprovante anterior não foi aprovado.'],pending_receipt:['info','Pagamento criado. Envie o comprovante.']};
+      if(!map[st]){status.className='status';status.textContent='';return}
+      status.className=`status active ${map[st][0]}`;status.textContent=map[st][1];
+    }
+
+    function renderDetails(){
+      const rows=[['Convidado',guestData.guest_name],['Evento',eventData.name],['Data',formatDate(eventData.event_date)],['Horário',eventTime(eventData)],['Local',eventData.location],['Valor por pessoa',money(unitPrice)],['Limite de acompanhantes',String(maxCompanions)]].filter(x=>x[1]);
+      details.style.display='block';details.innerHTML=rows.map(([l,v])=>`<div class="row"><div class="label">${esc(l)}</div><div class="value">${esc(v)}</div></div>`).join('');
+    }
+
+    function renderPeople(){
+      people.innerHTML=includedPeople.map(p=>`<div class="person"><div><strong>${esc(p.guest_name)}</strong><span>${p.role==='main_guest'?'Convidado principal':'Acompanhante'}</span></div><span class="price">${money(unitPrice)}</span></div>`).join('');
+      const amount=unitPrice*includedPeople.length;total.textContent=money(amount);totalNote.textContent=`${includedPeople.length} ${includedPeople.length===1?'ingresso':'ingressos'} × ${money(unitPrice)}.`;
+    }
+
+    function renderPix(){
+      recipient.textContent=[eventData.pix_recipient_name,eventData.pix_recipient_city].filter(Boolean).join(' • ')||'Não informado';
+      pixKey.textContent=eventData.pix_key||'Não informada';
+      if(eventData.pix_copy_paste){copyWrapper.style.display='block';copyPaste.textContent=eventData.pix_copy_paste}else copyWrapper.style.display='none';
+    }
+
+    function renderState(st){
+      const locked=st==='approved'||st==='pending_review';
+      const receiptFileEl=document.getElementById('receiptFile');
+
+      receiptFileEl.disabled=locked;
+
+      if(locked){
+        submit.disabled=true;
+      }else{
+        submit.disabled=!receiptFile;
+      }
+
+      submit.textContent=
+        st==='approved'
+          ? 'Pagamento aprovado'
+          : st==='pending_review'
+            ? 'Comprovante em análise'
+            : st==='rejected'
+              ? 'Enviar novo comprovante'
+              : 'Enviar comprovante para aprovação';
+    }
+
+    function handleFile(e){
+      const f=e.target.files?.[0]||null;receiptFile=null;preview.classList.remove('active');submit.disabled=true;
+      if(!f)return;
+      const allowed=['image/jpeg','image/png','image/webp','application/pdf'];
+      if(!allowed.includes(f.type)){e.target.value='';return showMessage('Formato inválido.','error')}
+      if(f.size>10*1024*1024){e.target.value='';return showMessage('O arquivo deve ter no máximo 10 MB.','error')}
+      receiptFile=f;fileName.textContent=f.name;fileMeta.textContent=`${fileSize(f.size)} • ${f.type}`;preview.classList.add('active');submit.disabled=false;clearMessage();
+    }
+
+    async function submitPayment(){
+      if(!receiptFile)return showMessage('Selecione o comprovante.','error');
+      if(!eventData.pix_key&&!eventData.pix_copy_paste)return showMessage('O PIX ainda não foi configurado.','error');
+      showProgress('Enviando comprovante...','Salvando pagamento e vinculando participantes.');
+      try{
+        const amount=unitPrice*includedPeople.length;
+        const payload={event_id:guestData.event_id,guest_id:guestData.id,unit_amount:unitPrice,companion_count:companions.length,people_count:includedPeople.length,total_amount:amount,status:'pending_receipt',updated_at:new Date().toISOString()};
+        let payment=existingPayment;
+        if(payment?.id){const r=await supabaseClient.from('guest_payments').update(payload).eq('id',payment.id).select('*').maybeSingle();if(r.error)throw r.error;payment=r.data}else{const r=await supabaseClient.from('guest_payments').insert(payload).select('*').maybeSingle();if(r.error)throw r.error;payment=r.data}
+        const ext=fileExt(receiptFile.name,receiptFile.type);const path=`${guestData.event_id}/${guestData.id}/${payment.id}-${Date.now()}.${ext}`;
+        const up=await supabaseClient.storage.from('payment-receipts').upload(path,receiptFile,{upsert:true,contentType:receiptFile.type});if(up.error)throw up.error;
+        const upd=await supabaseClient.from('guest_payments').update({receipt_path:path,receipt_filename:receiptFile.name,receipt_mime_type:receiptFile.type,receipt_size:receiptFile.size,status:'pending_review',submitted_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq('id',payment.id);if(upd.error)throw upd.error;
+        await supabaseClient.from('guest_payment_people').delete().eq('payment_id',payment.id);
+        const ppl=includedPeople.map(p=>({payment_id:payment.id,event_guest_id:p.id,role:p.role,amount:unitPrice}));const pp=await supabaseClient.from('guest_payment_people').insert(ppl);if(pp.error)throw pp.error;
+        const ids=includedPeople.map(p=>p.id);const gu=await supabaseClient.from('event_guests').update({payment_status:'pending_review',payment_id:payment.id}).in('id',ids);if(gu.error)throw gu.error;
+        existingPayment={...payment,status:'pending_review',receipt_path:path};document.getElementById('receiptFile').value='';preview.classList.remove('active');render();showMessage('Comprovante enviado. O pagamento está aguardando aprovação.','success');
+      }catch(e){console.error(e);showMessage('Não foi possível concluir: '+readError(e),'error')}finally{hideProgress()}
+    }
+
+
+    function renderTicketSendState(st){
+      const box=document.getElementById('ticketSendStatus');
+      const btn=document.getElementById('sendTicketsButton');
+      if(!box||!btn)return;
+      box.className='status';box.textContent='';btn.style.display='none';btn.disabled=false;
+
+      if(st!=='approved')return;
+
+      const sendStatus=existingPayment?.tickets_send_status||'not_sent';
+
+      if(sendStatus==='sent'){
+        box.className='status active approved';
+        box.textContent='Ingressos enviados pelo WhatsApp em '+formatDateTime(existingPayment?.tickets_sent_at)+'.';
+        return;
+      }
+
+      if(sendStatus==='sending'){
+        box.className='status active pending';
+        box.textContent='Os ingressos estão sendo gerados e enviados pelo WhatsApp.';
+        btn.style.display='block';btn.disabled=true;btn.textContent='Enviando ingressos...';
+        return;
+      }
+
+      if(sendStatus==='error'){
+        box.className='status active rejected';
+        box.textContent='Pagamento aprovado, mas houve erro no envio: '+(existingPayment?.tickets_send_error||'erro não informado');
+        btn.style.display='block';btn.textContent='Tentar enviar novamente';
+        return;
+      }
+
+      box.className='status active info';
+      box.textContent='Pagamento aprovado. Os ingressos já podem ser enviados diretamente pelo WhatsApp.';
+      btn.style.display='block';btn.textContent='Enviar ingressos pelo WhatsApp';
+
+      setTimeout(()=>{if(!ticketSending)sendApprovedTickets()},1200);
+    }
+
+    function startPaymentPolling(){
+      if(paymentPollTimer)return;
+      paymentPollTimer=setInterval(async()=>{
+        try{
+          const {data,error}=await supabaseClient.from('guest_payments').select('*').eq('event_id',guestData.event_id).eq('guest_id',guestData.id).maybeSingle();
+          if(error||!data)return;
+          const changed=existingPayment?.status!==data.status||existingPayment?.tickets_send_status!==data.tickets_send_status;
+          existingPayment=data;
+          if(changed)render();
+          if(data.status==='approved'&&!['sent','sending'].includes(data.tickets_send_status||'not_sent')&&!ticketSending){
+            await sendApprovedTickets();
+          }
+        }catch(e){console.warn('Falha ao atualizar pagamento:',e)}
+      },10000);
+    }
+
+    async function sendApprovedTickets(){
+      if(ticketSending)return;
+      if(existingPayment?.status!=='approved')return showMessage('O pagamento ainda não foi aprovado.','error');
+
+      const phone=normalizePhoneWithDDI(guestData?.whatsapp);
+      if(!phone){
+        await markTicketSendError('O convidado principal está sem WhatsApp válido.');
+        return showMessage('O convidado principal está sem WhatsApp válido.','error');
+      }
+
+      ticketSending=true;
+      showProgress('Gerando ingressos...','Criando os QR Codes nominais e enviando pelo WhatsApp.');
+
+      try{
+        await supabaseClient.from('guest_payments').update({
+          tickets_send_status:'sending',
+          tickets_send_error:null,
+          updated_at:new Date().toISOString()
+        }).eq('id',existingPayment.id);
+
+        existingPayment.tickets_send_status='sending';
+
+        for(let i=0;i<includedPeople.length;i++){
+          const person=includedPeople[i];
+          showProgress(`Enviando ingresso ${i+1} de ${includedPeople.length}`,`Preparando o QR Code de ${person.guest_name}.`);
+
+          const accessCode=await getOrCreateAccessCode(person);
+          const blob=await createTicketBlob(person,accessCode);
+          const message=buildTicketMessage(person,i,includedPeople.length);
+
+          await sendBotWhatsappFile(phone,message,blob,buildTicketFileName(person));
+
+          await supabaseClient.from('event_guests').update({
+            access_code_id:accessCode.id,
+            payment_status:'approved',
+            payment_approved_at:existingPayment.reviewed_at||new Date().toISOString(),
+            ticket_message_sent:true,
+            ticket_message_sent_at:new Date().toISOString(),
+            ticket_message_error:null
+          }).eq('id',person.id);
+        }
+
+        const sentAt=new Date().toISOString();
+        const {error}=await supabaseClient.from('guest_payments').update({
+          tickets_send_status:'sent',
+          tickets_sent_at:sentAt,
+          tickets_send_error:null,
+          updated_at:sentAt
+        }).eq('id',existingPayment.id);
+        if(error)throw error;
+
+        existingPayment.tickets_send_status='sent';
+        existingPayment.tickets_sent_at=sentAt;
+        render();
+        showMessage(includedPeople.length===1?'Ingresso enviado com sucesso pelo WhatsApp.':`${includedPeople.length} ingressos nominais enviados com sucesso pelo WhatsApp.`,'success');
+      }catch(e){
+        console.error(e);
+        await markTicketSendError(readError(e));
+        render();
+        showMessage('Pagamento aprovado, mas não foi possível enviar os ingressos: '+readError(e),'error');
+      }finally{
+        ticketSending=false;
+        hideProgress();
+      }
+    }
+
+    async function getOrCreateAccessCode(person){
+      const existing=await supabaseClient.from('access_codes').select('*').eq('event_id',guestData.event_id).eq('source_guest_id',person.id).maybeSingle();
+      if(existing.data)return existing.data;
+
+      const payload={
+        event_id:guestData.event_id,
+        event_name:eventData.name,
+        event_date:eventData.event_date,
+        event_time:eventData.event_time,
+        qr_code:generateQrCode(),
+        customer_name:person.guest_name,
+        customer_whatsapp:person.whatsapp||guestData.whatsapp,
+        group_name:person.group_name||guestData.group_name||'Acompanhantes',
+        source_guest_id:person.id,
+        accessed:false,
+        status:'pending',
+        ticket_type:'individual'
+      };
+
+      let {data,error}=await supabaseClient.from('access_codes').insert(payload).select('*').maybeSingle();
+
+      if(error&&(String(error.message||'').includes('group_name')||String(error.message||'').includes('source_guest_id')||String(error.message||'').includes('schema cache'))){
+        const fallback={...payload};delete fallback.group_name;delete fallback.source_guest_id;
+        const retry=await supabaseClient.from('access_codes').insert(fallback).select('*').maybeSingle();
+        data=retry.data;error=retry.error;
+      }
+
+      if(error||!data)throw new Error(`Não foi possível gerar o QR Code de ${person.guest_name}: ${error?.message||'erro desconhecido'}`);
+      return data;
+    }
+
+    async function createTicketBlob(person,accessCode){
+      const canvas=document.createElement('canvas');
+      canvas.width=1080;canvas.height=1500;
+      const ctx=canvas.getContext('2d');
+
+      const grad=ctx.createLinearGradient(0,0,1080,1500);
+      grad.addColorStop(0,'#0f172a');grad.addColorStop(1,'#1e3a8a');
+      ctx.fillStyle=grad;ctx.fillRect(0,0,1080,1500);
+
+      roundRect(ctx,70,70,940,1360,42);ctx.fillStyle='#fff';ctx.fill();
+
+      ctx.textAlign='center';ctx.fillStyle='#0f172a';ctx.font='bold 54px Arial';
+      drawWrapped(ctx,eventData.name||'Evento',540,165,820,62);
+
+      ctx.fillStyle='#64748b';ctx.font='30px Arial';
+      ctx.fillText(`${formatDate(eventData.event_date)} • ${eventTime(eventData)}`,540,290);
+      drawWrapped(ctx,eventData.location||'',540,345,800,38);
+
+      const qr=document.createElement('canvas');
+      await QRCode.toCanvas(qr,accessCode.qr_code,{width:520,margin:2});
+      ctx.drawImage(qr,280,460,520,520);
+
+      ctx.fillStyle='#f1f5f9';roundRect(ctx,155,1020,770,110,24);ctx.fill();
+      ctx.fillStyle='#0f172a';ctx.font='bold 25px monospace';
+      drawWrapped(ctx,accessCode.qr_code,540,1075,700,30);
+
+      ctx.font='bold 46px Arial';
+      drawWrapped(ctx,person.guest_name||'Convidado',540,1205,800,54);
+
+      ctx.fillStyle='#64748b';ctx.font='28px Arial';
+      ctx.fillText(person.role==='companion'?'Ingresso de acompanhante':'Ingresso individual',540,1320);
+
+      return await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(new Error('Não foi possível gerar a imagem do ingresso.')),'image/png',.95));
+    }
+
+    function buildTicketMessage(person,index,totalPeople){
+      return [
+        `Olá, ${guestData.guest_name}!`,
+        '',
+        `Pagamento confirmado para o *${eventData.name||'evento'}*.`,
+        '',
+        `Segue o ingresso nominal de *${person.guest_name}*.`,
+        totalPeople>1?`Este é o ingresso ${index+1} de ${totalPeople} vinculados ao seu pagamento.`:'Este é o seu ingresso individual.',
+        '',
+        `📅 *Data:* ${formatDate(eventData.event_date)}`,
+        `⏰ *Hora:* ${eventTime(eventData)}`,
+        `📍 *Local:* ${eventData.location||'-'}`,
+        '',
+        'Apresente o QR Code na entrada. Cada ingresso é individual e poderá ser utilizado apenas uma vez.'
+      ].join('\n');
+    }
+
+    async function sendBotWhatsappFile(phone,message,blob,fileName,timeoutMs=60000){
+      const form=new FormData();
+      form.append('from',phone);
+      form.append('message',message);
+      form.append('caption',message);
+      form.append('file',blob,fileName);
+      form.append('image',blob,fileName);
+
+      const controller=new AbortController();
+      const timer=setTimeout(()=>controller.abort(),timeoutMs);
+      let response,result={};
+
+      try{
+        response=await fetch(BOT_WHATSAPP_MESSAGE_URL,{method:'POST',body:form,signal:controller.signal});
+        const raw=await response.text();
+        try{result=raw?JSON.parse(raw):{}}catch{result={raw}}
+      }catch(e){
+        if(e.name==='AbortError')throw new Error('Timeout ao enviar o ingresso pelo WhatsApp.');
+        throw new Error('Falha de conexão com o Bot WhatsApp: '+(e.message||'erro desconhecido'));
+      }finally{clearTimeout(timer)}
+
+      if(!response.ok)throw new Error(result?.message||result?.error||`Erro Bot WhatsApp HTTP ${response.status}`);
+      return result||{ok:true};
+    }
+
+    async function markTicketSendError(errorMessage){
+      const msg=String(errorMessage||'Erro desconhecido').slice(0,500);
+      if(existingPayment?.id){
+        await supabaseClient.from('guest_payments').update({
+          tickets_send_status:'error',
+          tickets_send_error:msg,
+          updated_at:new Date().toISOString()
+        }).eq('id',existingPayment.id);
+        existingPayment.tickets_send_status='error';
+        existingPayment.tickets_send_error=msg;
+      }
+    }
+
+    function normalizePhoneWithDDI(v){
+      let d=String(v||'').replace(/\D/g,'');
+      if(!d)return'';
+      if(!d.startsWith('55'))d='55'+d;
+      return d.length>=12?d:'';
+    }
+
+    function generateQrCode(){
+      return 'QR-'+Math.random().toString(36).slice(2,11).toUpperCase()+'-'+Date.now().toString(36).toUpperCase();
+    }
+
+    function buildTicketFileName(person){
+      return safeFileName(eventData.name||'evento')+'-'+safeFileName(person.guest_name||'convidado')+'-qrcode.png';
+    }
+
+    function safeFileName(v){
+      return String(v||'arquivo').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-zA-Z0-9-_]+/g,'-').replace(/-+/g,'-').replace(/^-|-$/g,'').toLowerCase();
+    }
+
+    function formatDateTime(v){
+      if(!v)return'-';
+      const d=new Date(v);
+      return Number.isNaN(d.getTime())?String(v):d.toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+    }
+
+    function roundRect(ctx,x,y,w,h,r){
+      const q=Math.min(r,w/2,h/2);
+      ctx.beginPath();ctx.moveTo(x+q,y);ctx.arcTo(x+w,y,x+w,y+h,q);ctx.arcTo(x+w,y+h,x,y+h,q);ctx.arcTo(x,y+h,x,y,q);ctx.arcTo(x,y,x+w,y,q);ctx.closePath();
+    }
+
+    function drawWrapped(ctx,text,x,y,maxWidth,lineHeight){
+      const words=String(text||'').split(/\s+/);const lines=[];let line='';
+      for(const word of words){const test=line?line+' '+word:word;if(ctx.measureText(test).width>maxWidth&&line){lines.push(line);line=word}else line=test}
+      if(line)lines.push(line);lines.forEach((l,i)=>ctx.fillText(l,x,y+i*lineHeight));
+    }
+
+    async function copyPixKey(){if(!eventData?.pix_key)return showMessage('Chave PIX não informada.','error');await copyText(eventData.pix_key,'Chave PIX copiada.')}
+    async function copyPixCopyPaste(){if(!eventData?.pix_copy_paste)return showMessage('PIX Copia e Cola não informado.','error');await copyText(eventData.pix_copy_paste,'PIX Copia e Cola copiado.')}
+    async function copyText(v,msg){try{await navigator.clipboard.writeText(v)}catch{const t=document.createElement('textarea');t.value=v;document.body.appendChild(t);t.select();document.execCommand('copy');t.remove()}showMessage(msg,'success')}
+    function setError(t,s){icon.textContent='⚠️';icon.className='icon error';title.textContent=t;subtitle.textContent=s;checkout.style.display='none'}
+    function showProgress(t,s){progressTitle.textContent=t;progressText.textContent=s;overlay.classList.add('active')}function hideProgress(){overlay.classList.remove('active')}
+    function showMessage(t,type){message.textContent=t;message.className=`message ${type}`}function clearMessage(){message.textContent='';message.className='message'}
+    function parseMoney(v){if(!v)return 0;const n=Number(String(v).replace(',','.').replace(/[^\d.]/g,''));return Number.isFinite(n)?n:0}
+    function money(v){return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}
+    function formatDate(v){if(!v)return'';const p=String(v).split('-');return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:v}
+    function formatTime(v){return v?String(v).slice(0,5):''}function eventTime(e){const a=formatTime(e.event_time),b=formatTime(e.event_end_time);return a&&b?`${a} às ${b}`:a||b||''}
+    function fileSize(b){return b<1024?`${b} B`:b<1048576?`${(b/1024).toFixed(1)} KB`:`${(b/1048576).toFixed(1)} MB`}
+    function fileExt(n,t){const e=String(n||'').split('.').pop()?.toLowerCase();if(e&&e!==String(n).toLowerCase())return e.replace(/[^a-z0-9]/g,'')||'bin';return {'image/jpeg':'jpg','image/png':'png','image/webp':'webp','application/pdf':'pdf'}[t]||'bin'}
+    function readError(e){return e?.message||e?.details||String(e||'Erro desconhecido')}
+    function esc(v){return String(v||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;')}
+  </script>
+</body>
+</html>
